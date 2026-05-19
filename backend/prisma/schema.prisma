@@ -123,6 +123,7 @@ model User {
   marketingConsentAt DateTime?
   kvkkAcceptedAt     DateTime?
   accountDeletedAt   DateTime?
+  lockedUntil        DateTime?
 
   tenant        Tenant?    @relation(fields: [tenantId], references: [id])
   orders        Order[]
@@ -180,6 +181,8 @@ model TrustedDevice {
   token      String   @unique
   userId     String
   deviceName String?
+  userAgent  String?
+  lastUsedAt DateTime?
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 
@@ -661,9 +664,9 @@ model PlatformSettings {
   id String @id @default("singleton")
 
   // ── Platform Identity ──────────────────────────────────────────────────────
-  platformName        String  @default("MerchStage")
+  platformName        String  @default("VibeHub")
   platformTagline     String  @default("Your merch, your stage.")
-  supportEmail        String  @default("support@merch.stage")
+  supportEmail        String  @default("support@vibehub.com.tr")
   supportPhone        String?
   logoUrl             String?
   faviconUrl          String?
@@ -710,7 +713,7 @@ model PlatformSettings {
   notifyAdminOnVendorApply Boolean @default(true)
 
   // ── SEO & Marketing ────────────────────────────────────────────────────────
-  metaTitle                String  @default("MerchStage — Your Merch, Your Stage")
+  metaTitle                String  @default("VibeHub — Your Merch, Your Stage")
   metaDescription          String  @default("Buy official merch from your favourite artists and creators.")
   facebookPixelId          String?
   googleTagManagerId       String?
