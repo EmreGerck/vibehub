@@ -1,20 +1,49 @@
-// Catch unhandled rejections so Vercel doesn't kill the function
+import type { NestExpressApplication } from '@nestjs/platform-express';
+
 process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
 });
 
+let app: NestExpressApplication | null = null;
+
+async function bootstrap(): Promise<NestExpressApplication> {
+  if (app) return app;
+
+  const { NestFactory } = await import('@nestjs/core');
+  const { AppModuleServerless } = await import('../src/app.module.serverless');
+  const { ValidationPipe } = await import('@nestjs/common');
+  const cookieParser = (await import('cookie-parser')).default;
+
+  const instance = await NestFactory.create<NestExpressApplication>(
+    AppModuleServerless,
+    { logger: ['error', 'warn'] },
+  );
+
+  instance.use(cookieParser());
+  instance.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  instance.enableCors({
+    origin: [
+      'https://vibehub.com.tr',
+      'https://www.vibehub.com.tr',
+      /https:\/\/.*\.vercel\.app$/,
+    ],
+    credentials: true,
+  });
+
+  await instance.init();
+  app = instance;
+  return app;
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Content-Type', 'application/json');
   try {
-    const { NestFactory } = await import('@nestjs/core');
-    const { AppModule } = await import('../src/app.module');
-    const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
-    await app.init();
-    res.end(JSON.stringify({ ok: true, booted: true }));
-    await app.close();
+    const server = await bootstrap();
+    server.getHttpAdapter().getInstance()(req, res);
   } catch (err: any) {
     const msg = err?.message?.slice(0, 500) ?? String(err);
     console.error('[Bootstrap Error]', msg);
-    res.end(JSON.stringify({ step: 'app-init', error: msg }));
+    res.statusCode = 500;
+    res.end(JSON.stringify({ error: 'Bootstrap failed', message: msg }));
   }
 }
