@@ -52,7 +52,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const lockoutMs = this.otp.loginLockoutRemaining(dto.email);
+    const lockoutMs = await this.otp.loginLockoutRemaining(dto.email);
     if (lockoutMs > 0) {
       throw new HttpException(
         `Too many failed attempts. Try again in ${Math.ceil(lockoutMs / 60000)} minute(s).`,
@@ -62,13 +62,13 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
-      this.otp.recordFailedLogin(dto.email);
+      await this.otp.recordFailedLogin(dto.email);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
-      const { locked, lockoutMs: newLockout } = this.otp.recordFailedLogin(dto.email);
+      const { locked, lockoutMs: newLockout } = await this.otp.recordFailedLogin(dto.email);
       if (locked) {
         // Fire-and-forget security alert email
         this.mail.sendSecurityAlert(user.email, Math.ceil(newLockout / 60000)).catch(() => {});
@@ -76,7 +76,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    this.otp.resetLoginAttempts(dto.email);
+    await this.otp.resetLoginAttempts(dto.email);
     return this.issueTokens(user);
   }
 
@@ -89,7 +89,7 @@ export class AuthService {
     | { trusted: true; accessToken: string; refreshToken: string; user: any }
     | { trusted: false; challenge: string; email: string; cooldownUntil: number }
   > {
-    const lockoutMsMfa = this.otp.loginLockoutRemaining(dto.email);
+    const lockoutMsMfa = await this.otp.loginLockoutRemaining(dto.email);
     if (lockoutMsMfa > 0) {
       throw new HttpException(
         `Too many failed attempts. Try again in ${Math.ceil(lockoutMsMfa / 60000)} minute(s).`,
@@ -99,18 +99,18 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
-      this.otp.recordFailedLogin(dto.email);
+      await this.otp.recordFailedLogin(dto.email);
       throw new UnauthorizedException('Invalid credentials');
     }
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
-      const { locked, lockoutMs: newLockout } = this.otp.recordFailedLogin(dto.email);
+      const { locked, lockoutMs: newLockout } = await this.otp.recordFailedLogin(dto.email);
       if (locked) {
         this.mail.sendSecurityAlert(user.email, Math.ceil(newLockout / 60000)).catch(() => {});
       }
       throw new UnauthorizedException('Invalid credentials');
     }
-    this.otp.resetLoginAttempts(dto.email);
+    await this.otp.resetLoginAttempts(dto.email);
 
     // Check if device is trusted — skip OTP if so
     if (dto.deviceToken) {
@@ -145,7 +145,7 @@ export class AuthService {
     }
     if (payload?.purpose !== 'mfa') throw new UnauthorizedException('Invalid challenge');
 
-    const result = this.otp.verifyOtp(payload.email, code);
+    const result = await this.otp.verifyOtp(payload.email, code);
     if (!result.ok) {
       if (result.reason === 'expired') throw new BadRequestException('Code expired');
       if (result.reason === 'too-many-attempts') throw new HttpException('Too many attempts', HttpStatus.TOO_MANY_REQUESTS);
@@ -182,7 +182,7 @@ export class AuthService {
     }
     if (payload?.purpose !== 'mfa') throw new UnauthorizedException('Invalid challenge');
 
-    const remaining = this.otp.resendCooldownRemaining(payload.email);
+    const remaining = await this.otp.resendCooldownRemaining(payload.email);
     if (remaining > 0) {
       throw new HttpException(
         `Please wait ${Math.ceil(remaining / 1000)}s before requesting another code`,

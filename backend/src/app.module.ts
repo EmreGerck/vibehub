@@ -33,6 +33,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { FeedModule } from './feed/feed.module';
 import { PushModule } from './push/push.module';
 import { AppConfigModule } from './app-config/app-config.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AppConfigModule } from './app-config/app-config.module';
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     PrismaModule,
+    RedisModule,
     AuthModule,
     VendorModule,
     ProductModule,
