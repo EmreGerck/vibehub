@@ -1,25 +1,25 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: merchstage_postgres
+    container_name: vibehub_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-merchstage}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-merchstage_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-merchstage}
+      POSTGRES_USER: ${POSTGRES_USER:-vibehub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vibehub_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-vibehub}
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-merchstage}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-vibehub}']
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: merchstage_redis
+    container_name: vibehub_redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
@@ -36,11 +36,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: merchstage_backend
+    container_name: vibehub_backend
     restart: unless-stopped
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-merchstage}:${POSTGRES_PASSWORD:-merchstage_secret}@postgres:5432/${POSTGRES_DB:-merchstage}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vibehub}:${POSTGRES_PASSWORD:-vibehub_secret}@postgres:5432/${POSTGRES_DB:-vibehub}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
@@ -58,7 +58,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: merchstage_frontend
+    container_name: vibehub_frontend
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001

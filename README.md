@@ -53,7 +53,7 @@ cd mobile && npm install && npx expo start
 ```
 
 **Swagger API docs:** http://localhost:3001/api/docs  
-**GOD_USER:** `god@merchstage.io` / `God@MerchStage2025!`
+**GOD_USER:** `god@vibehub.com.tr` / `God@VibeHub2025!`
 
 ---
 

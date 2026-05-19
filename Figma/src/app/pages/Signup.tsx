@@ -58,7 +58,7 @@ export function Signup() {
               <UserPlus size={32} />
             </div>
             <h1 className="text-3xl font-bold mb-2">Create Account</h1>
-            <p className="text-gray-400">Join VibeWorks community</p>
+            <p className="text-gray-400">Join VibeHub community</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

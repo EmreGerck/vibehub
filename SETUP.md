@@ -133,8 +133,8 @@ EXPO_PUBLIC_API_URL=http://localhost:3001
 ## GOD_USER (Admin Hesabı)
 
 ```
-Email:    god@merchstage.io
-Password: God@MerchStage2025!
+Email:    god@vibehub.com.tr
+Password: God@VibeHub2025!
 ```
 
 Özelleştirmek için `.env`'e seed'den önce ekle:

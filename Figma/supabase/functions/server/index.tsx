@@ -26,7 +26,7 @@ async function initializeData() {
   const admins = await kv.get("admins");
   if (!admins || (Array.isArray(admins) && admins.length === 0)) {
     await kv.set("admins", [
-      { email: "owner@vibehub.com", role: "owner", name: "VibeWorks Owner" },
+      { email: "owner@vibehub.com", role: "owner", name: "VibeHub Owner" },
       { email: "modexl@admin.com", role: "merch_admin", category: "Mode XL", name: "Mode XL Admin" },
       { email: "kalt@admin.com", role: "merch_admin", category: "KALT", name: "KALT Admin" }
     ]);
@@ -489,7 +489,7 @@ async function initializeData() {
         {
           email: "owner@vibehub.com",
           role: "owner",
-          name: "VibeWorks Owner"
+          name: "VibeHub Owner"
         },
         {
           email: "modexl@admin.com",
@@ -981,7 +981,7 @@ app.post("/make-server-8ae6f8e5/admin/products", async (c) => {
     const newProduct = {
       id: `product-${Date.now()}`,
       name,
-      category: admin.role === "owner" ? "VibeWorks" : admin.category,
+      category: admin.role === "owner" ? "VibeHub" : admin.category,
       price: Number(price),
       image,
       description,
