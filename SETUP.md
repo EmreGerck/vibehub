@@ -1,65 +1,171 @@
-# MerchStage — Setup Guide
+# VibeHub — Setup Guide
 
-## Prerequisites
-- Node.js 20+ (`nvm install 20` or https://nodejs.org)
-- Docker Desktop (for Postgres + Redis)
+## Repos
 
-## First-time setup
+| Proje | GitHub |
+|-------|--------|
+| Web + Backend (monorepo) | https://github.com/EmreGerck/vibehub |
+| Mobile (Expo) | https://github.com/EmreGerck/vibehub-mobile |
+
+---
+
+## Fork & Clone
 
 ```bash
-# 1. Start the database and Redis
-docker-compose up -d
+# Web + Backend
+git clone https://github.com/EmreGerck/vibehub.git
+cd vibehub
 
-# 2. Install backend deps
+# Mobile (ayrı klasöre)
+git clone https://github.com/EmreGerck/vibehub-mobile.git
+```
+
+---
+
+## Prerequisites
+- Node.js 20+ (`nvm install 20` veya https://nodejs.org)
+- Docker Desktop (local Postgres + Redis için — opsiyonel, cloud bağlantıları da çalışır)
+
+---
+
+## Backend Setup
+
+```bash
 cd backend
+
+# 1. Bağımlılıkları yükle
 npm install
 
-# 3. Copy env file
+# 2. Env dosyasını kopyala
 cp .env.example .env
-# Edit .env if you need custom values (defaults work with docker-compose as-is)
+# .env içindeki DATABASE_URL ve REDIS_* değerlerini doldur
+# (Neon.tech ve Upstash ücretsiz hesaplarıyla çalışır)
 
-# 4. Run database migration and generate Prisma client
-npx prisma migrate dev --name init
+# 3. Migrasyon + Prisma client
+npx prisma migrate deploy
 npx prisma generate
 
-# 5. Seed GOD_USER
+# 4. GOD_USER seed
 npx prisma db seed
 
-# 6. Start backend (http://localhost:3001)
+# 5. Başlat (http://localhost:3001)
 npm run start:dev
+```
 
-# In a new terminal — frontend
-cd ../frontend
+**Swagger:** http://localhost:3001/api/docs
+
+---
+
+## Frontend Setup
+
+```bash
+cd frontend
+
 npm install
 cp .env.example .env.local
+# NEXT_PUBLIC_API_URL=http://localhost:3001
+
 npm run dev   # http://localhost:3000
 ```
 
-## Swagger API Docs
-http://localhost:3001/api/docs
+---
 
-## Auth flow quick test (httpie or curl)
+## Mobile Setup
+
 ```bash
-# Register
+cd vibehub-mobile
+
+npm install
+cp .env.example .env
+# EXPO_PUBLIC_API_URL=http://localhost:3001
+
+npx expo start
+```
+
+---
+
+## Hepsi Birden (Web)
+
+```bash
+# Root'tan tek komutla her ikisini başlat
+npm install
+npm run dev
+```
+
+veya tek seferlik script:
+
+```bash
+bash scripts/dev.sh
+```
+
+---
+
+## Gerekli Env Değişkenleri
+
+### backend/.env
+
+```env
+DATABASE_URL=postgresql://...       # Neon.tech connection string
+REDIS_HOST=...                      # Upstash host
+REDIS_PORT=6379
+REDIS_PASSWORD=...                  # Upstash password
+REDIS_TLS=true
+JWT_ACCESS_SECRET=<min 32 char>
+JWT_REFRESH_SECRET=<min 32 char>
+FRONTEND_URL=http://localhost:3000
+```
+
+### frontend/.env.local
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### mobile/.env
+
+```env
+EXPO_PUBLIC_API_URL=http://localhost:3001
+```
+
+---
+
+## GOD_USER (Admin Hesabı)
+
+```
+Email:    god@merchstage.io
+Password: God@MerchStage2025!
+```
+
+Özelleştirmek için `.env`'e seed'den önce ekle:
+```env
+GOD_USER_EMAIL=admin@yourdomain.com
+GOD_USER_PASSWORD=YourSecurePassword123!
+```
+
+---
+
+## Hızlı API Testi
+
+```bash
+# Kayıt
 curl -X POST http://localhost:3001/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Test1234!"}'
+  -d '{"email":"test@example.com","password":"Test1234!","termsAccepted":true,"privacyAccepted":true}'
 
-# Login
+# Giriş
 curl -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{"email":"test@example.com","password":"Test1234!"}'
-
-# Refresh (uses httpOnly cookie)
-curl -X POST http://localhost:3001/auth/refresh -b cookies.txt -c cookies.txt
-
-# Me (pass Bearer token from login response)
-curl http://localhost:3001/auth/me \
-  -H "Authorization: Bearer <access_token>"
 ```
 
-## GOD_USER credentials (seeded)
-- Email: `god@merchstage.io`  
-- Password: `God@MerchStage2025!`  
-(override via GOD_USER_EMAIL / GOD_USER_PASSWORD in .env before first seed)
+---
+
+## Production
+
+| Servis | URL |
+|--------|-----|
+| Backend (Railway) | https://api-production-26a7.up.railway.app |
+| Frontend (Vercel) | https://vibehub.com.tr |
+| Swagger | https://api-production-26a7.up.railway.app/api/docs |
