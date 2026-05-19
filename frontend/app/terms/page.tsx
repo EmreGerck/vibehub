@@ -26,10 +26,10 @@ export default function TermsPage() {
               1. Platform Description / Platform Tanımı
             </h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              <strong>EN:</strong> MerchStage is an e-commerce marketplace connecting fans with artists, bands, and content creators for the purchase of official merchandise. MerchStage acts as an intermediary platform operator; individual vendors are responsible for the products they list and fulfil.
+              <strong>EN:</strong> VibeHub is an e-commerce marketplace connecting fans with artists, bands, and content creators for the purchase of official merchandise. VibeHub acts as an intermediary platform operator; individual vendors are responsible for the products they list and fulfil.
             </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              <strong>TR:</strong> MerchStage, hayranları sanatçılar, gruplar ve içerik üreticileriyle resmi ürünler satın almaları için buluşturan bir e-ticaret pazaryeridir. MerchStage aracı platform işletmecisi olarak hareket eder; bireysel satıcılar listeledikleri ve yerine getirdikleri ürünlerden sorumludur.
+              <strong>TR:</strong> VibeHub, hayranları sanatçılar, gruplar ve içerik üreticileriyle resmi ürünler satın almaları için buluşturan bir e-ticaret pazaryeridir. VibeHub aracı platform işletmecisi olarak hareket eder; bireysel satıcılar listeledikleri ve yerine getirdikleri ürünlerden sorumludur.
             </p>
           </section>
 
@@ -68,24 +68,24 @@ export default function TermsPage() {
               3. Vendor Obligations / Satıcı Yükümlülükleri
             </h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              <strong>EN:</strong> Vendors who list products on MerchStage agree to:
+              <strong>EN:</strong> Vendors who list products on VibeHub agree to:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700 dark:text-gray-300">
               <li>Provide accurate, complete, and non-misleading product descriptions, images, and pricing</li>
               <li>Hold all necessary rights and licences to sell the listed products</li>
               <li>Fulfil confirmed orders within the timeframes communicated to buyers</li>
               <li>Comply with applicable consumer protection laws, including the right of withdrawal</li>
-              <li>Maintain adequate stock levels or promptly notify MerchStage of stock shortages</li>
+              <li>Maintain adequate stock levels or promptly notify VibeHub of stock shortages</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              <strong>TR:</strong> MerchStage'de ürün listeleyen satıcılar şunları kabul eder:
+              <strong>TR:</strong> VibeHub'de ürün listeleyen satıcılar şunları kabul eder:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700 dark:text-gray-300">
               <li>Doğru, eksiksiz ve yanıltıcı olmayan ürün açıklamaları, görseller ve fiyatlandırma sağlamak</li>
               <li>Listelenen ürünleri satmak için gerekli tüm haklara ve lisanslara sahip olmak</li>
               <li>Onaylanan siparişleri alıcılara bildirilen süreler içinde yerine getirmek</li>
               <li>Cayma hakkı dahil geçerli tüketici koruma yasalarına uymak</li>
-              <li>Yeterli stok seviyelerini korumak veya stok eksiklikleri durumunda MerchStage'i derhal bilgilendirmek</li>
+              <li>Yeterli stok seviyelerini korumak veya stok eksiklikleri durumunda VibeHub'i derhal bilgilendirmek</li>
             </ul>
           </section>
 
@@ -99,7 +99,7 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700 dark:text-gray-300">
               <li>Customers have the right to withdraw from a purchase within <strong>14 calendar days</strong> of receiving the goods, without providing any reason</li>
-              <li>To exercise the right of withdrawal, customers must notify MerchStage at <a href="mailto:legal@merch.stage" className="text-purple-600 dark:text-purple-400 underline">legal@merch.stage</a> within the 14-day period</li>
+              <li>To exercise the right of withdrawal, customers must notify VibeHub at <a href="mailto:legal@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">legal@vibehub.com.tr</a> within the 14-day period</li>
               <li>The vendor must dispatch the replacement or refund within <strong>3 business days</strong> of the return being received and inspected</li>
               <li>Products that are personalised, made-to-order, or that have been unsealed (for hygiene reasons) may be exempt from the right of withdrawal where permitted by law</li>
             </ul>
@@ -108,7 +108,7 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700 dark:text-gray-300">
               <li>Müşteriler, malı teslim aldıktan itibaren herhangi bir gerekçe göstermeksizin <strong>14 takvim günü</strong> içinde cayma hakkını kullanabilir</li>
-              <li>Cayma hakkını kullanmak için müşterilerin 14 günlük süre içinde <a href="mailto:legal@merch.stage" className="text-purple-600 dark:text-purple-400 underline">legal@merch.stage</a> adresine bildirimde bulunması gerekmektedir</li>
+              <li>Cayma hakkını kullanmak için müşterilerin 14 günlük süre içinde <a href="mailto:legal@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">legal@vibehub.com.tr</a> adresine bildirimde bulunması gerekmektedir</li>
               <li>Satıcı, iade teslim alındıktan ve incelendikten sonra <strong>3 iş günü</strong> içinde değişim veya iade işlemini gerçekleştirmekle yükümlüdür</li>
               <li>Kişiselleştirilmiş, sipariş üzerine üretilen veya hijyen gerekçesiyle açılmış ürünler, yasanın izin verdiği durumlarda cayma hakkı kapsamı dışında tutulabilir</li>
             </ul>
@@ -147,15 +147,15 @@ export default function TermsPage() {
             </h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               <strong>EN:</strong> For legal enquiries, please e-mail{' '}
-              <a href="mailto:legal@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                legal@merch.stage
+              <a href="mailto:legal@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                legal@vibehub.com.tr
               </a>
               .
             </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               <strong>TR:</strong> Hukuki talepler için lütfen{' '}
-              <a href="mailto:legal@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                legal@merch.stage
+              <a href="mailto:legal@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                legal@vibehub.com.tr
               </a>{' '}
               adresine e-posta gönderin.
             </p>
