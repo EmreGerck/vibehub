@@ -11,6 +11,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { AdminService } from './admin.service';
 import { Roles } from '../common/roles.decorator';
@@ -596,12 +597,14 @@ export class AdminController {
 
   // ── Analytics ─────────────────────────────────────────────────────────────────
 
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Get('analytics/overview')
   @ApiOperation({ summary: 'Analytics overview from DB' })
   async analyticsOverview() {
     return ApiResponse.ok(await this.adminService.getAnalyticsOverview(), 'Analytics overview');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Get('analytics/revenue-trend')
   @ApiOperation({ summary: 'Daily revenue for last N days' })
   async analyticsRevenueTrend(@Query('days') days?: string) {

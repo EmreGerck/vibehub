@@ -67,7 +67,11 @@ export class OrderService {
     const lineItems = cartItems.map((entry) => {
       const v = variantMap.get(entry.variantId)!;
       const unitPrice = new Decimal(v.priceOverride ?? v.product.price);
+      if (unitPrice.isNegative()) throw new BadRequestException(`Invalid price for "${v.product.title}"`);
       const commissionRate = new Decimal(v.product.tenant.commissionRate);
+      if (commissionRate.isNegative() || commissionRate.greaterThan(new Decimal(1))) {
+        throw new BadRequestException(`Invalid commission rate for store "${v.product.tenant.displayName}"`);
+      }
       const lineTotal = unitPrice.mul(entry.qty);
       const platformFee = lineTotal.mul(commissionRate);
       const vendorPayout = lineTotal.sub(platformFee);
@@ -243,6 +247,11 @@ export class OrderService {
       throw new BadRequestException(
         `Cannot transition order from ${order.status} to ${dto.status}`,
       );
+    }
+
+    // Require payment confirmation before vendor can confirm an order
+    if (dto.status === OrderStatus.CONFIRMED && !order.paymentRef) {
+      throw new BadRequestException('Cannot confirm order: payment has not been received');
     }
 
     const updated = await this.prisma.order.update({

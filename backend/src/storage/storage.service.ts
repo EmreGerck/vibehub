@@ -1,8 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+
+const ALLOWED_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif',
+  '.pdf', '.mp4', '.mov', '.mp3', '.wav',
+]);
+
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif',
+  'application/pdf',
+  'video/mp4', 'video/quicktime',
+  'audio/mpeg', 'audio/wav',
+]);
+
+const ALLOWED_FOLDERS = new Set(['products', 'avatars', 'banners', 'media', 'general']);
+
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 @Injectable()
 export class StorageService {
@@ -24,10 +40,35 @@ export class StorageService {
     buffer: Buffer,
     originalName: string,
     folder = 'general',
+    mimeType?: string,
   ): Promise<string> {
-    const ext = path.extname(originalName);
+    // Validate folder to prevent path traversal
+    if (!ALLOWED_FOLDERS.has(folder)) {
+      throw new BadRequestException(`Invalid upload folder: ${folder}`);
+    }
+
+    // Validate file size
+    if (buffer.length > MAX_FILE_SIZE_BYTES) {
+      throw new BadRequestException(`File exceeds maximum allowed size of ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB`);
+    }
+
+    // Validate extension
+    const ext = path.extname(originalName).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      throw new BadRequestException(`File type not allowed: ${ext}`);
+    }
+
+    // Validate MIME type if provided
+    if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType)) {
+      throw new BadRequestException(`MIME type not allowed: ${mimeType}`);
+    }
+
     const filename = `${uuidv4()}${ext}`;
-    const folderPath = path.join(this.uploadDir, folder);
+    // Use path.resolve + verify to prevent path traversal even with valid folder name
+    const folderPath = path.resolve(this.uploadDir, folder);
+    if (!folderPath.startsWith(path.resolve(this.uploadDir))) {
+      throw new BadRequestException('Invalid folder path');
+    }
 
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
@@ -37,7 +78,7 @@ export class StorageService {
     fs.writeFileSync(filePath, buffer);
 
     const relativePath = `/${folder}/${filename}`;
-    this.logger.log(`File saved: ${relativePath}`);
+    this.logger.log(`File saved: ${relativePath} (${buffer.length} bytes)`);
 
     return relativePath;
   }

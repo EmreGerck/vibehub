@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CartService } from './cart.service';
 import { AddCartItemDto, UpdateCartItemDto } from './dto/cart-item.dto';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -29,6 +30,7 @@ export class CartController {
     return ApiResponse.ok({ items, total, itemCount: items.length }, 'Cart retrieved');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @Post('items')
   @ApiOperation({ summary: 'Add an item to cart' })
   async addItem(@Body() dto: AddCartItemDto, @CurrentUser() user: any) {

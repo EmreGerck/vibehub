@@ -29,9 +29,12 @@ export class MessagesController {
   }
 
   @Get('partner/:userId/profile')
-  @ApiOperation({ summary: 'Get basic profile info for a message partner' })
-  async getPartnerProfile(@Param('userId') otherId: string) {
-    return ApiResponse.ok(await this.svc.getPartnerProfile(otherId));
+  @ApiOperation({ summary: 'Get basic profile info for a message partner (requires existing conversation)' })
+  async getPartnerProfile(
+    @CurrentUser('id') myId: string,
+    @Param('userId') otherId: string,
+  ) {
+    return ApiResponse.ok(await this.svc.getPartnerProfile(myId, otherId));
   }
 
   @Post(':userId')

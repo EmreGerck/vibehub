@@ -1,24 +1,43 @@
-import { Controller, Post, Body, Param, Get, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller, Post, Body, Param, Req,
+  HttpCode, HttpStatus, Logger, BadRequestException, ForbiddenException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
+import * as crypto from 'crypto';
 import { IyzicoService } from './iyzico.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
 import { ApiResponse } from '../common/response.dto';
+import { OrderStatus } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentController {
-  constructor(private readonly iyzico: IyzicoService) {}
+  private readonly logger = new Logger(PaymentController.name);
 
+  constructor(
+    private readonly iyzico: IyzicoService,
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('iyzico/initiate/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Initiate İyzico checkout session for an order' })
   async initiate(@Param('orderId') orderId: string, @CurrentUser() user: any) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new BadRequestException('Order not found');
+    if (order.customerId !== user.id) throw new ForbiddenException('Not your order');
+
     const result = await this.iyzico.initiatePayment(
       orderId,
-      0,       // amount will be pulled from order in real impl
-      'TRY',
+      Number(order.totalAmount),
+      order.currency,
       { id: user.id, name: user.email, email: user.email },
     );
     return ApiResponse.ok(result, 'Payment session created');
@@ -29,14 +48,52 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'İyzico payment callback webhook (public — called by İyzico)' })
   async callback(@Req() req: Request) {
-    // In real impl: extract token from req.body, call iyzico.verifyPayment(token),
-    // update Order.status to CONFIRMED and set Order.paymentRef = result.paymentId
+    // Verify webhook signature to ensure request originates from İyzico
+    const secretKey = this.config.get<string>('IYZICO_SECRET_KEY', '');
+    const receivedSignature = req.headers['x-iyzico-signature'] as string | undefined;
+
+    if (secretKey && receivedSignature) {
+      const payload = JSON.stringify(req.body);
+      const expectedSignature = crypto
+        .createHmac('sha256', secretKey)
+        .update(payload)
+        .digest('base64');
+      if (receivedSignature !== expectedSignature) {
+        this.logger.warn('[PAYMENT] Callback rejected — invalid İyzico signature');
+        throw new ForbiddenException('Invalid webhook signature');
+      }
+    } else if (secretKey && !receivedSignature) {
+      // In production with real credentials, always require signature
+      if (this.config.get('NODE_ENV') === 'production') {
+        throw new ForbiddenException('Missing webhook signature');
+      }
+    }
+
     const token = req.body?.token;
-    const result = await this.iyzico.verifyPayment(token ?? 'placeholder');
-    // TODO: find order by conversationId and update status
-    return ApiResponse.ok(result, 'Callback received');
+    if (!token) throw new BadRequestException('Missing token in callback');
+
+    const result = await this.iyzico.verifyPayment(token);
+
+    if (result.success && result.conversationId) {
+      // conversationId is stored as "conv-<orderId>" during initiation
+      const orderId = result.conversationId.replace(/^conv-/, '');
+      const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+      if (order && order.status === OrderStatus.PLACED) {
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: OrderStatus.CONFIRMED,
+            paymentRef: result.paymentId,
+          },
+        });
+        this.logger.log(`[PAYMENT] Order ${orderId} confirmed via İyzico callback`);
+      }
+    }
+
+    return ApiResponse.ok({ received: true }, 'Callback processed');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('iyzico/verify/:token')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually verify a payment by token' })
@@ -45,6 +102,7 @@ export class PaymentController {
     return ApiResponse.ok(result, 'Payment verified');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('iyzico/refund/:paymentId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Refund a payment' })

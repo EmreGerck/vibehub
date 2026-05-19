@@ -101,8 +101,20 @@ export class MessagesService {
     });
   }
 
-  /** Fetch lightweight profile for a conversation partner */
-  async getPartnerProfile(userId: string) {
+  /** Fetch lightweight profile for a conversation partner (caller must have a message thread with them) */
+  async getPartnerProfile(callerId: string, userId: string) {
+    // Ensure the caller has an actual conversation with this user before exposing profile data
+    const hasConversation = await this.prisma.directMessage.findFirst({
+      where: {
+        OR: [
+          { senderId: callerId, recipientId: userId },
+          { senderId: userId, recipientId: callerId },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!hasConversation) throw new ForbiddenException('No conversation with this user');
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, socialProfile: { select: { nickname: true, avatarUrl: true } } },
