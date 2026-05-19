@@ -7,9 +7,9 @@ type FormState = Omit<PlatformSettings, 'id' | 'updatedAt'>;
 
 const DEFAULTS: FormState = {
   // Identity
-  platformName: 'MerchStage',
-  platformTagline: 'Your merch, your stage.',
-  supportEmail: 'support@merch.stage',
+  platformName: 'VibeHub',
+  platformTagline: 'Your vibe, your stage.',
+  supportEmail: 'support@vibehub.com.tr',
   supportPhone: '',
   logoUrl: '',
   faviconUrl: '',
@@ -50,7 +50,7 @@ const DEFAULTS: FormState = {
   notifyVendorOnSale: true,
   notifyAdminOnVendorApply: true,
   // SEO
-  metaTitle: 'MerchStage — Your Merch, Your Stage',
+  metaTitle: 'VibeHub — Your Vibe, Your Stage',
   metaDescription: 'Buy official merch from your favourite artists and creators.',
   facebookPixelId: '',
   googleTagManagerId: '',

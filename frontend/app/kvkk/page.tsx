@@ -32,11 +32,11 @@ export default function KvkkPage() {
               6698 sayılı Kişisel Verilerin Korunması Kanunu (&ldquo;KVKK&rdquo;) uyarınca veri sorumlusu sıfatıyla hareket eden kuruluş:
             </p>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-gray-700 dark:text-gray-300 space-y-1">
-              <p><strong>Ünvan:</strong> MerchStage / [Platform Operator]</p>
-              <p><strong>Platform Adı:</strong> MerchStage</p>
+              <p><strong>Ünvan:</strong> VibeHub / [Platform Operator]</p>
+              <p><strong>Platform Adı:</strong> VibeHub</p>
               <p><strong>İletişim:</strong>{' '}
-                <a href="mailto:kvkk@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                  kvkk@merch.stage
+                <a href="mailto:kvkk@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                  kvkk@vibehub.com.tr
                 </a>
               </p>
             </div>
@@ -199,8 +199,8 @@ export default function KvkkPage() {
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-gray-700 dark:text-gray-300 space-y-1">
               <p>
                 <strong>E-posta:</strong>{' '}
-                <a href="mailto:kvkk@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                  kvkk@merch.stage
+                <a href="mailto:kvkk@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                  kvkk@vibehub.com.tr
                 </a>
               </p>
             </div>

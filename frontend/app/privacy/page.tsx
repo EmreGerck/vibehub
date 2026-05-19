@@ -26,7 +26,7 @@ export default function PrivacyPage() {
               1. Data We Collect / Topladığımız Veriler
             </h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              <strong>EN:</strong> MerchStage collects the following categories of personal data:
+              <strong>EN:</strong> VibeHub collects the following categories of personal data:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700 dark:text-gray-300">
               <li>Identity data: name, surname, date of birth</li>
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
               <li>Payment reference data: masked card information provided by our payment processor</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              <strong>TR:</strong> MerchStage aşağıdaki kişisel veri kategorilerini toplamaktadır:
+              <strong>TR:</strong> VibeHub aşağıdaki kişisel veri kategorilerini toplamaktadır:
             </p>
             <ul className="list-disc pl-6 space-y-1 text-gray-700 dark:text-gray-300">
               <li>Kimlik verileri: ad, soyad, doğum tarihi</li>
@@ -165,8 +165,8 @@ export default function PrivacyPage() {
             </ul>
             <p className="text-gray-700 dark:text-gray-300 mt-4">
               To exercise your rights, contact us at:{' '}
-              <a href="mailto:privacy@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                privacy@merch.stage
+              <a href="mailto:privacy@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                privacy@vibehub.com.tr
               </a>
             </p>
           </section>
@@ -178,15 +178,15 @@ export default function PrivacyPage() {
             </h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               <strong>EN:</strong> For all privacy-related enquiries, please e-mail{' '}
-              <a href="mailto:privacy@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                privacy@merch.stage
+              <a href="mailto:privacy@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                privacy@vibehub.com.tr
               </a>
               . We aim to respond within 30 days.
             </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               <strong>TR:</strong> Gizlilik ile ilgili tüm talepleriniz için lütfen{' '}
-              <a href="mailto:privacy@merch.stage" className="text-purple-600 dark:text-purple-400 underline">
-                privacy@merch.stage
+              <a href="mailto:privacy@vibehub.com.tr" className="text-purple-600 dark:text-purple-400 underline">
+                privacy@vibehub.com.tr
               </a>{' '}
               adresine e-posta gönderin. 30 gün içinde yanıt vermeyi hedefliyoruz.
             </p>
