@@ -1,4 +1,4 @@
-# VibeWorks Admin Panel
+# VibeHub Admin Panel
 
 ## Admin Credentials for Testing
 

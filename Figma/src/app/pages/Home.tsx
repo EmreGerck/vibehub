@@ -25,7 +25,7 @@ export function Home() {
     {
       id: 'modexl',
       title: 'Mode XL',
-      subtitle: 'VibeWorks x MODE XL',
+      subtitle: 'VibeHub x MODE XL',
       heading: 'Official Merch Drop: Mode XL',
       description: 'Limited-run tees, hoodies, and accessories crafted for the Mode XL rap collective—premium blanks, bold graphics, and tour-ready quality.',
       buttonText: 'Shop Mode XL',
@@ -37,7 +37,7 @@ export function Home() {
     {
       id: 'kalt',
       title: 'KALT',
-      subtitle: 'VibeWorks x KALT (Turkey)',
+      subtitle: 'VibeHub x KALT (Turkey)',
       heading: 'Signature Collection: KALT',
       description: 'Designed for KALT\'s fans across Turkey—sleek silhouettes, elevated details, and a refined palette built for everyday wear.',
       buttonText: 'Shop KALT',

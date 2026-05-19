@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MerchStage — one-shot dev startup
+# VibeHub — one-shot dev startup
 # Usage: bash scripts/dev.sh
 
 set -e
@@ -9,7 +9,7 @@ echo "▶ Starting Postgres + Redis..."
 docker compose up -d postgres redis
 
 echo "▶ Waiting for Postgres..."
-until docker exec merchstage_postgres pg_isready -U merchstage > /dev/null 2>&1; do
+until docker exec vibehub_postgres pg_isready -U vibehub > /dev/null 2>&1; do
   sleep 1
 done
 
@@ -41,5 +41,5 @@ echo "  Backend:  http://localhost:3001"
 echo "  Frontend: http://localhost:3000"
 echo "  Swagger:  http://localhost:3001/api/docs"
 echo ""
-echo "  GOD_USER: god@merchstage.io / God@MerchStage2025!"
+echo "  GOD_USER: god@vibehub.com.tr / God@VibeHub2025!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -16,7 +16,7 @@ export class MailService {
   constructor(private readonly config: ConfigService) {
     const key = this.config.get<string>('RESEND_API_KEY');
     this.resend = key ? new Resend(key) : null;
-    this.from = this.config.get<string>('MAIL_FROM') ?? 'MerchStage <onboarding@resend.dev>';
+    this.from = this.config.get<string>('MAIL_FROM') ?? 'VibeHub <onboarding@resend.dev>';
     if (!this.resend) {
       this.logger.warn(
         'RESEND_API_KEY not set — emails will be logged to stdout instead of sent.',
@@ -25,10 +25,10 @@ export class MailService {
   }
 
   async sendOtp(to: string, code: string, ttlSeconds: number): Promise<void> {
-    const subject = `Your MerchStage verification code: ${code}`;
+    const subject = `Your VibeHub verification code: ${code}`;
     const html = `
       <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0B1022;color:#fff;border-radius:12px;">
-        <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">MerchStage sign-in</h1>
+        <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">VibeHub sign-in</h1>
         <p style="margin:0 0 24px;color:#94a3b8;font-size:14px;">Use this code to finish signing in.</p>
         <div style="font-size:36px;letter-spacing:8px;font-weight:700;text-align:center;padding:20px;background:#070A12;border-radius:8px;color:#fff;">
           ${code}
@@ -39,26 +39,26 @@ export class MailService {
         </p>
       </div>
     `.trim();
-    const text = `Your MerchStage verification code is ${code}. Expires in ${Math.round(ttlSeconds / 60)} minutes.`;
+    const text = `Your VibeHub verification code is ${code}. Expires in ${Math.round(ttlSeconds / 60)} minutes.`;
 
     await this.send(to, subject, html, text);
   }
 
   async sendVendorWelcome(to: string, tenantDisplayName: string): Promise<void> {
-    const subject = `${tenantDisplayName} is approved on MerchStage`;
+    const subject = `${tenantDisplayName} is approved on VibeHub`;
     const html = `
       <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
         <h1 style="margin:0 0 8px;">Your store is live</h1>
-        <p>${tenantDisplayName} is now approved on MerchStage. You can sign in to your dashboard and start uploading products.</p>
+        <p>${tenantDisplayName} is now approved on VibeHub. You can sign in to your dashboard and start uploading products.</p>
       </div>
     `.trim();
-    const text = `${tenantDisplayName} is approved on MerchStage. Sign in to your dashboard to start uploading products.`;
+    const text = `${tenantDisplayName} is approved on VibeHub. Sign in to your dashboard to start uploading products.`;
 
     await this.send(to, subject, html, text);
   }
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<void> {
-    const subject = 'Reset your MerchStage password';
+    const subject = 'Reset your VibeHub password';
     const html = `
       <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0B1022;color:#fff;border-radius:12px;">
         <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">Password reset</h1>
@@ -74,7 +74,7 @@ export class MailService {
         </p>
       </div>
     `.trim();
-    const text = `Reset your MerchStage password by visiting: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`;
+    const text = `Reset your VibeHub password by visiting: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`;
 
     await this.send(to, subject, html, text);
   }
@@ -105,14 +105,14 @@ export class MailService {
   }
 
   async sendOrderConfirmation(to: string, orderId: string): Promise<void> {
-    const subject = `MerchStage order ${orderId.slice(0, 8).toUpperCase()} confirmed`;
+    const subject = `VibeHub order ${orderId.slice(0, 8).toUpperCase()} confirmed`;
     const html = `
       <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
         <h1 style="margin:0 0 8px;">Thanks for your order</h1>
         <p>We received your order <strong>${orderId}</strong> and will email you again when it ships.</p>
       </div>
     `.trim();
-    const text = `Thanks — we received your MerchStage order ${orderId}.`;
+    const text = `Thanks — we received your VibeHub order ${orderId}.`;
 
     await this.send(to, subject, html, text);
   }

@@ -74,7 +74,7 @@ async function bootstrap() {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('MerchStage API')
+    .setTitle('VibeHub API')
     .setDescription('Multi-vendor merchandise marketplace API')
     .setVersion('1.0')
     .addBearerAuth()
@@ -85,7 +85,7 @@ async function bootstrap() {
 
   const port = config.get<number>('PORT', 3001);
   await app.listen(port);
-  console.log(`MerchStage API running on http://localhost:${port}`);
+  console.log(`VibeHub API running on http://localhost:${port}`);
   console.log(`Swagger docs: http://localhost:${port}/api/docs`);
 }
 

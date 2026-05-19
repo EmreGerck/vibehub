@@ -46,8 +46,8 @@ def section_header(title):
 section_header("AUTH — GOD_USER login")
 
 god_token = None
-for password in ["Admin1234!", "GodUser1234!", "Vibeworks1234!"]:
-    r = requests.post(f"{BASE}/auth/login", json={"email": "admin@vibeworks.com", "password": password})
+for password in ["Admin1234!", "GodUser1234!", "God@VibeHub2025!"]:
+    r = requests.post(f"{BASE}/auth/login", json={"email": "god@vibehub.com.tr", "password": password})
     print(f"  Trying password '{password}': HTTP {r.status_code}")
     if r.status_code == 200:
         data = get_json(r)
@@ -64,7 +64,7 @@ for password in ["Admin1234!", "GodUser1234!", "Vibeworks1234!"]:
 if not god_token:
     print("  All GOD login attempts failed. Trying registration...")
     r = requests.post(f"{BASE}/auth/register", json={
-        "email": "godtest_auto@vibeworks.com",
+        "email": "godtest_auto@vibehub.com.tr",
         "password": "Admin1234!",
         "termsAccepted": True,
         "privacyAccepted": True
@@ -115,7 +115,7 @@ if not tenant_id:
 section_header("AUTH — VENDOR login")
 
 vendor_token = None
-vendor_email = f"vendor_test_auto@vibeworks.com"
+vendor_email = f"vendor_test_auto@vibehub.com.tr"
 vendor_password = "Vendor1234!"
 
 # try login first
@@ -176,7 +176,7 @@ if isinstance(nfc_list, dict):
 # 2. POST /nfc/tags
 r = requests.post(f"{BASE}/nfc/tags", headers=god_headers, json={
     "name": "Test Tag",
-    "destinationUrl": "https://vibeworks.com.tr"
+    "destinationUrl": "https://vibehub.com.tr.tr"
 })
 ok, _, body = report("NFC", "2. POST /nfc/tags (create)", r, (200, 201))
 nfc_id = None
@@ -201,7 +201,7 @@ else:
 # 4. PATCH /nfc/tags/{id}
 if nfc_id:
     r = requests.patch(f"{BASE}/nfc/tags/{nfc_id}", headers=god_headers, json={
-        "destinationUrl": "https://vibeworks.com.tr/shop"
+        "destinationUrl": "https://vibehub.com.tr.tr/shop"
     })
     report("NFC", f"4. PATCH /nfc/tags/{nfc_id}", r, (200, 201))
 else:

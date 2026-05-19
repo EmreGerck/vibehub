@@ -50,7 +50,7 @@ def section_header(title):
 
 section_header("AUTH — Obtaining tokens")
 
-god_token, god_user = get_token("god@merchstage.io", "God@MerchStage2025!")
+god_token, god_user = get_token("god@vibehub.com.tr", "God@VibeHub2025!")
 if god_token:
     print(f"  [OK] GOD_USER token obtained — email: {god_user['email']}, role: {god_user['role']}")
 else:
@@ -60,7 +60,7 @@ else:
 god_headers = {"Authorization": f"Bearer {god_token}", "Content-Type": "application/json"}
 
 # Vendor token — register a new test vendor user
-vendor_email = "vendor_live_test@vibeworks.com"
+vendor_email = "vendor_live_test@vibehub.com.tr"
 vendor_password = "Vendor1234!"
 
 vendor_token, vendor_user = get_token(vendor_email, vendor_password)
@@ -124,7 +124,7 @@ if ok:
 # 2. POST /nfc/tags
 r = requests.post(f"{BASE}/nfc/tags", headers=god_headers, json={
     "name": "Test Tag",
-    "destinationUrl": "https://vibeworks.com.tr"
+    "destinationUrl": "https://vibehub.com.tr"
 })
 ok, _, body = report("NFC", "2. POST /nfc/tags — create tag", r, (200, 201))
 nfc_id = None
@@ -150,7 +150,7 @@ else:
 # 4. PATCH /nfc/tags/{id}
 if nfc_id:
     r = requests.patch(f"{BASE}/nfc/tags/{nfc_id}", headers=god_headers, json={
-        "destinationUrl": "https://vibeworks.com.tr/shop"
+        "destinationUrl": "https://vibehub.com.tr/shop"
     })
     report("NFC", f"4. PATCH /nfc/tags/{{id}}", r, (200, 201))
 else:
