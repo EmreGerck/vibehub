@@ -104,6 +104,29 @@ export class MailService {
     await this.send(to, subject, html, text);
   }
 
+  async sendSecurityAlert(to: string, lockoutMinutes: number): Promise<void> {
+    const subject = 'VibeHub — Suspicious login activity detected';
+    const html = `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0B1022;color:#fff;border-radius:12px;">
+        <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">⚠️ Security Alert</h1>
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          Multiple failed login attempts were detected on your VibeHub account.
+          Your account has been temporarily locked for <strong style="color:#fff;">${lockoutMinutes} minute(s)</strong>.
+        </p>
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          If this was you, please wait and try again later.
+          If you did not attempt to log in, consider resetting your password immediately.
+        </p>
+        <a href="${this.config.get('FRONTEND_URL') ?? 'https://vibehub.com.tr'}/auth/forgot-password"
+           style="display:inline-block;padding:12px 28px;background:#7c3aed;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;font-size:15px;">
+          Reset my password
+        </a>
+      </div>
+    `.trim();
+    const text = `Multiple failed login attempts locked your VibeHub account for ${lockoutMinutes} min. If this wasn't you, reset your password.`;
+    await this.send(to, subject, html, text);
+  }
+
   async sendOrderConfirmation(to: string, orderId: string): Promise<void> {
     const subject = `VibeHub order ${orderId.slice(0, 8).toUpperCase()} confirmed`;
     const html = `

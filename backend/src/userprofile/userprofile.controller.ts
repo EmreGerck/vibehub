@@ -1,5 +1,6 @@
 import { Controller, Get, Patch, Body, Param } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserProfileService } from './userprofile.service';
 import { UpdateUserProfileDto } from './dto/userprofile.dto';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -35,6 +36,7 @@ export class UserProfileController {
     return ApiResponse.ok(await this.svc.getMyVisitors(userId));
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @Public()
   @Get(':nickname')
   @ApiOperation({ summary: 'Get a public profile by nickname (records visit if logged in)' })

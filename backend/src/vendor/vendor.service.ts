@@ -121,9 +121,11 @@ export class VendorService {
 
     if (query.artistType) where.artistType = query.artistType;
     if (query.search) {
+      // Clamp search to 100 chars to prevent ReDoS via very long patterns
+      const safeSearch = query.search.slice(0, 100);
       where.OR = [
-        { displayName: { contains: query.search, mode: 'insensitive' } },
-        { slug: { contains: query.search, mode: 'insensitive' } },
+        { displayName: { contains: safeSearch, mode: 'insensitive' } },
+        { slug: { contains: safeSearch, mode: 'insensitive' } },
       ];
     }
 

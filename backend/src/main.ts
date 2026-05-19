@@ -10,6 +10,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  // Fail fast if JWT secrets are too short — prevents weak-secret token forgery
+  const jwtAccessSecret = config.get<string>('JWT_ACCESS_SECRET', '');
+  const jwtRefreshSecret = config.get<string>('JWT_REFRESH_SECRET', '');
+  if (jwtAccessSecret.length < 32) {
+    throw new Error('FATAL: JWT_ACCESS_SECRET must be at least 32 characters. Run: openssl rand -base64 48');
+  }
+  if (jwtRefreshSecret.length < 32) {
+    throw new Error('FATAL: JWT_REFRESH_SECRET must be at least 32 characters. Run: openssl rand -base64 48');
+  }
+
   // Security headers — helmet first, then explicit fallback middleware
   // in case Railway's edge proxy strips some headers
   app.use(helmet({
@@ -51,9 +61,16 @@ async function bootstrap() {
     allowedOrigins.add(frontendUrl.replace('https://', 'https://www.'));
   }
 
-  // Add extra origins (e.g. Vercel preview URLs, staging domains)
+  // Add extra origins (e.g. staging domains) from CORS_EXTRA_ORIGINS (comma-separated)
   const extraOrigins = config.get<string>('CORS_EXTRA_ORIGINS', '');
   extraOrigins.split(',').map((o) => o.trim()).filter(Boolean).forEach((o) => allowedOrigins.add(o));
+
+  // Explicit Vercel preview project slugs — ALLOWED_VERCEL_PREVIEWS=vibehub-frontend,vibehub-staging
+  // Do NOT use a wildcard *.vercel.app — any Vercel user could bypass CORS otherwise
+  const allowedVercelPreviews = config.get<string>('ALLOWED_VERCEL_PREVIEWS', '')
+    .split(',').map((s) => s.trim()).filter(Boolean)
+    .map((slug) => `https://${slug}.vercel.app`);
+  allowedVercelPreviews.forEach((o) => allowedOrigins.add(o));
 
   // Always allow localhost for local dev
   allowedOrigins.add('http://localhost:3000');
@@ -64,8 +81,6 @@ async function bootstrap() {
       // Allow requests with no origin (curl, Postman, server-to-server)
       if (!origin) return callback(null, true);
       if (allowedOrigins.has(origin)) return callback(null, true);
-      // Allow all *.vercel.app preview deployments for this project
-      if (origin.endsWith('.vercel.app')) return callback(null, true);
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
@@ -81,12 +96,17 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  // Expose Swagger UI only in non-production environments
+  if (config.get<string>('NODE_ENV') !== 'production') {
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = config.get<number>('PORT', 3001);
   await app.listen(port);
-  console.log(`VibeHub API running on http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  if (config.get<string>('NODE_ENV') !== 'production') {
+    console.log(`VibeHub API running on http://localhost:${port}`);
+    console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  }
 }
 
 bootstrap();

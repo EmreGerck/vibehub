@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { OrderService } from './order.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
@@ -29,6 +30,7 @@ export class OrderController {
 
   // ── Customer ──────────────────────────────────────────────────────────────────
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post()
   @ApiOperation({ summary: 'Place an order from the current cart' })
   async placeOrder(@Body() dto: PlaceOrderDto, @CurrentUser() user: any) {
@@ -69,6 +71,7 @@ export class OrderController {
     return ApiResponse.ok(result, 'Vendor orders retrieved');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   @Patch('vendor/:id/status')
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @RequirePermissions(VendorPermission.ORDER_FULFILL)

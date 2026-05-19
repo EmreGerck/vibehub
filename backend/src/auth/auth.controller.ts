@@ -5,6 +5,7 @@ import {
   Patch,
   Delete,
   Body,
+  Param,
   Res,
   Req,
   UseGuards,
@@ -209,6 +210,34 @@ export class AuthController {
   async updateMarketingConsent(@CurrentUser() user: any, @Body() dto: UpdateMarketingConsentDto) {
     const result = await this.authService.updateMarketingConsent(user.id, dto.consent);
     return ApiResponse.ok(result, 'Marketing consent updated');
+  }
+
+  // ── Trusted Device Management ─────────────────────────────────────────────────
+
+  @Get('devices')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all active trusted devices for current user' })
+  async listDevices(@CurrentUser() user: any) {
+    const devices = await this.authService.listTrustedDevices(user.id);
+    return ApiResponse.ok(devices, 'Trusted devices retrieved');
+  }
+
+  @Delete('devices')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke all trusted devices (forces OTP on next login from all devices)' })
+  async revokeAllDevices(@CurrentUser() user: any) {
+    const result = await this.authService.revokeAllTrustedDevices(user.id);
+    return ApiResponse.ok(result, 'All trusted devices revoked');
+  }
+
+  @Delete('devices/:id')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke a specific trusted device by ID' })
+  async revokeDevice(@CurrentUser() user: any, @Param('id') deviceId: string) {
+    const result = await this.authService.revokeTrustedDevice(user.id, deviceId);
+    return ApiResponse.ok(result, 'Device revoked');
   }
 
   private setRefreshCookie(res: Response, token: string) {

@@ -9,22 +9,31 @@ interface OtpRecord {
   lastSent: number;
 }
 
-interface RateLimitRecord {
+interface LoginAttemptRecord {
   count: number;
   windowStart: number;
+  lockedUntil: number; // epoch ms — 0 means not locked
 }
 
 const OTP_TTL_MS = 5 * 60 * 1000;           // 5 minutes
 const OTP_MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 30 * 1000;       // 30 s
-const LOGIN_RATE_LIMIT = 5;                 // 5 failed attempts
+const LOGIN_RATE_LIMIT = 5;                 // attempts before first lockout
 const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000;
+
+// Exponential lockout durations after exceeding LOGIN_RATE_LIMIT
+const LOCKOUT_DURATIONS_MS = [
+  1  * 60 * 1000,   // 1st lockout: 1 min
+  5  * 60 * 1000,   // 2nd: 5 min
+  15 * 60 * 1000,   // 3rd: 15 min
+  60 * 60 * 1000,   // 4th+: 1 hour
+];
 
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   private readonly otps = new Map<string, OtpRecord>();
-  private readonly loginAttempts = new Map<string, RateLimitRecord>();
+  private readonly loginAttempts = new Map<string, LoginAttemptRecord>();
 
   constructor(private readonly mail: MailService) {}
 
@@ -50,7 +59,12 @@ export class OtpService {
     };
     this.otps.set(email, record);
 
-    this.logger.log(`[OTP] ${email} → ${code} (expires in ${OTP_TTL_MS / 1000}s)`);
+    // Never log OTP codes in production — logs may be shipped to external services
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.debug(`[OTP-DEV] ${email} → ${code} (ttl=${OTP_TTL_MS / 1000}s)`);
+    } else {
+      this.logger.log(`[OTP] Issued for ${email} (ttl=${OTP_TTL_MS / 1000}s)`);
+    }
     await this.mail.sendOtp(email, code, OTP_TTL_MS / 1000);
 
     return {
@@ -93,27 +107,52 @@ export class OtpService {
     return Math.max(0, r.lastSent + RESEND_COOLDOWN_MS - Date.now());
   }
 
-  // ─── Login rate limiting ─────────────────────────────────────────────────
+  // ─── Login rate limiting + exponential lockout ───────────────────────────
 
-  /** Throws-free check. Returns true if the email is currently rate-limited. */
-  isLoginRateLimited(email: string): boolean {
+  /**
+   * Returns ms remaining in lockout (>0 = still locked), or 0 if allowed.
+   * Callers should throw TooManyRequests when this returns > 0.
+   */
+  loginLockoutRemaining(email: string): number {
     const r = this.loginAttempts.get(email);
-    if (!r) return false;
-    if (Date.now() - r.windowStart > LOGIN_RATE_WINDOW_MS) {
+    if (!r) return 0;
+    const now = Date.now();
+    if (r.lockedUntil > now) return r.lockedUntil - now;
+    // Window expired and not locked — clean up
+    if (now - r.windowStart > LOGIN_RATE_WINDOW_MS && r.lockedUntil <= now) {
       this.loginAttempts.delete(email);
-      return false;
+      return 0;
     }
-    return r.count >= LOGIN_RATE_LIMIT;
+    return 0;
   }
 
-  recordFailedLogin(email: string): void {
-    const r = this.loginAttempts.get(email);
+  /** @deprecated use loginLockoutRemaining() instead */
+  isLoginRateLimited(email: string): boolean {
+    return this.loginLockoutRemaining(email) > 0;
+  }
+
+  recordFailedLogin(email: string): { locked: boolean; lockoutMs: number } {
     const now = Date.now();
+    let r = this.loginAttempts.get(email);
+
     if (!r || now - r.windowStart > LOGIN_RATE_WINDOW_MS) {
-      this.loginAttempts.set(email, { count: 1, windowStart: now });
-    } else {
-      r.count += 1;
+      r = { count: 1, windowStart: now, lockedUntil: 0 };
+      this.loginAttempts.set(email, r);
+      return { locked: false, lockoutMs: 0 };
     }
+
+    r.count += 1;
+
+    if (r.count >= LOGIN_RATE_LIMIT) {
+      // Determine lockout tier based on how many times limit was hit
+      const tier = Math.floor((r.count - LOGIN_RATE_LIMIT) / LOGIN_RATE_LIMIT);
+      const duration = LOCKOUT_DURATIONS_MS[Math.min(tier, LOCKOUT_DURATIONS_MS.length - 1)];
+      r.lockedUntil = now + duration;
+      this.logger.warn(`[AUTH] Account temporarily locked: ${email} (${duration / 60000} min)`);
+      return { locked: true, lockoutMs: duration };
+    }
+
+    return { locked: false, lockoutMs: 0 };
   }
 
   resetLoginAttempts(email: string): void {

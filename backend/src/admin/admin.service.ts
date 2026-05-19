@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -171,8 +172,7 @@ export class AdminService {
       metadata: {
         slug: tenant.slug,
         status: tenant.status,
-        ownerEmail: dto.ownerEmail,
-        hasOwner: !!dto.ownerEmail,
+        hasOwner: !!dto.ownerEmail, // store presence only — not the email itself
       },
     });
 
@@ -664,8 +664,18 @@ export class AdminService {
       if (clash) throw new ConflictException('Email already in use');
     }
 
+    // GOD_USER role cannot be downgraded by anyone
     if (user.role === UserRole.GOD_USER && dto.role && dto.role !== UserRole.GOD_USER) {
       throw new BadRequestException('GOD_USER role cannot be downgraded');
+    }
+
+    // Only GOD_USER can assign PLATFORM_ADMIN or GOD_USER roles
+    const privilegedRoles: UserRole[] = [UserRole.PLATFORM_ADMIN, UserRole.GOD_USER];
+    if (dto.role && privilegedRoles.includes(dto.role)) {
+      const actor = await this.prisma.user.findUnique({ where: { id: actorId }, select: { role: true } });
+      if (!actor || actor.role !== UserRole.GOD_USER) {
+        throw new ForbiddenException('Only GOD_USER can assign admin roles');
+      }
     }
 
     const updated = await this.prisma.user.update({
@@ -687,8 +697,9 @@ export class AdminService {
       targetType: 'User',
       targetId: userId,
       metadata: {
+        // Log role change without PII — use IDs only
         ...(dto.role && dto.role !== user.role ? { roleChange: { from: user.role, to: dto.role } } : {}),
-        ...(dto.email && dto.email !== user.email ? { emailChange: { from: user.email, to: dto.email } } : {}),
+        emailChanged: !!(dto.email && dto.email !== user.email),
       },
     });
 

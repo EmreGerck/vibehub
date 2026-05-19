@@ -52,9 +52,10 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    if (this.otp.isLoginRateLimited(dto.email)) {
+    const lockoutMs = this.otp.loginLockoutRemaining(dto.email);
+    if (lockoutMs > 0) {
       throw new HttpException(
-        'Too many failed attempts. Please try again later.',
+        `Too many failed attempts. Try again in ${Math.ceil(lockoutMs / 60000)} minute(s).`,
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -67,7 +68,11 @@ export class AuthService {
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
-      this.otp.recordFailedLogin(dto.email);
+      const { locked, lockoutMs: newLockout } = this.otp.recordFailedLogin(dto.email);
+      if (locked) {
+        // Fire-and-forget security alert email
+        this.mail.sendSecurityAlert(user.email, Math.ceil(newLockout / 60000)).catch(() => {});
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -84,9 +89,10 @@ export class AuthService {
     | { trusted: true; accessToken: string; refreshToken: string; user: any }
     | { trusted: false; challenge: string; email: string; cooldownUntil: number }
   > {
-    if (this.otp.isLoginRateLimited(dto.email)) {
+    const lockoutMsMfa = this.otp.loginLockoutRemaining(dto.email);
+    if (lockoutMsMfa > 0) {
       throw new HttpException(
-        'Too many failed attempts. Please try again later.',
+        `Too many failed attempts. Try again in ${Math.ceil(lockoutMsMfa / 60000)} minute(s).`,
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -98,7 +104,10 @@ export class AuthService {
     }
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
-      this.otp.recordFailedLogin(dto.email);
+      const { locked, lockoutMs: newLockout } = this.otp.recordFailedLogin(dto.email);
+      if (locked) {
+        this.mail.sendSecurityAlert(user.email, Math.ceil(newLockout / 60000)).catch(() => {});
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
     this.otp.resetLoginAttempts(dto.email);
@@ -316,6 +325,29 @@ export class AuthService {
     await this.prisma.user.delete({ where: { id: userId } });
   }
 
+  async listTrustedDevices(userId: string) {
+    const now = new Date();
+    return this.prisma.trustedDevice.findMany({
+      where: { userId, expiresAt: { gt: now } },
+      select: { id: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async revokeTrustedDevice(userId: string, deviceId: string) {
+    const device = await this.prisma.trustedDevice.findUnique({ where: { id: deviceId } });
+    if (!device || device.userId !== userId) {
+      throw new BadRequestException('Device not found');
+    }
+    await this.prisma.trustedDevice.delete({ where: { id: deviceId } });
+    return { revoked: true };
+  }
+
+  async revokeAllTrustedDevices(userId: string) {
+    const { count } = await this.prisma.trustedDevice.deleteMany({ where: { userId } });
+    return { revoked: count };
+  }
+
   async updateMarketingConsent(userId: string, consent: boolean) {
     const now = new Date();
     const user = await this.prisma.user.update({
@@ -348,7 +380,8 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: refreshTokenValue,
-      user: { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      // Return minimal user data — email is not needed post-login and reduces PII exposure
+      user: { id: user.id, role: user.role, tenantId: user.tenantId },
     };
   }
 }
