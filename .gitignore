@@ -1,0 +1,37 @@
+### Node
+node_modules/
+*.log
+npm-debug.log*
+
+### Build outputs
+dist/
+.next/
+coverage/
+
+### Environment — never commit secrets
+.env
+.env.local
+.env.production.local
+
+### OS
+.DS_Store
+Thumbs.db
+
+### Backend
+uploads/
+prisma/migrations/*.sql
+
+### Frontend
+frontend/tsconfig.tsbuildinfo
+
+### Infrastructure doc (contains secrets — local only)
+docs/INFRASTRUCTURE.md
+
+### Mobile / Expo
+mobile/.expo/
+mobile/ios/
+mobile/android/
+mobile/dist/
+mobile/
+.claude/
+frontend/.claude/

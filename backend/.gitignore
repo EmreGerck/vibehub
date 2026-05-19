@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+*.env.local
+uploads/
+.vercel
+.railway
+tsconfig.tsbuildinfo
+tsconfig.build.tsbuildinfo
+*.tsbuildinfo
+prisma/seed.js
+prisma/seed.js.map
+prisma/seed.d.ts
+prisma/seed-vendors.js
+prisma/seed-vendors.js.map
+prisma/seed-vendors.d.ts
