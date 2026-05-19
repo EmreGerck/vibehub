@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "vercel-build": "prisma generate",
+    "postinstall": "prisma generate",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
