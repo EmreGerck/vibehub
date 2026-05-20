@@ -19,7 +19,7 @@ Thumbs.db
 
 ### Backend
 uploads/
-prisma/migrations/*.sql
+# NOTE: prisma/migrations/ MUST be tracked — required for `prisma migrate deploy` in CI/prod.
 
 ### Frontend
 frontend/tsconfig.tsbuildinfo
