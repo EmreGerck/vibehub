@@ -10,9 +10,11 @@ export function middleware(request: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   const isAuthPage = AUTH_ONLY_PATHS.some((p) => pathname.startsWith(p));
 
-  // Cookie presence is a lightweight proxy — real token validation happens server-side via the API.
-  // The cookie is httpOnly and set by the backend on login.
-  const hasSession = request.cookies.has('refresh_token');
+  // The refresh_token cookie is set by the backend on its own domain (cross-site),
+  // so it isn't readable here. The frontend sets a `vh_session` marker cookie on
+  // this domain in auth.store.ts whenever the user logs in/out. Real token
+  // validation still happens server-side via the API.
+  const hasSession = request.cookies.has('vh_session');
 
   if (isProtected && !hasSession) {
     const loginUrl = request.nextUrl.clone();
