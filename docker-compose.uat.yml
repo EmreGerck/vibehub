@@ -1,0 +1,78 @@
+# UAT (User Acceptance Testing) environment
+# Runs alongside production on the same VPS using different ports and a separate DB.
+#
+# Usage:
+#   docker compose -f docker-compose.uat.yml up -d --build
+#   docker compose -f docker-compose.uat.yml down
+#
+# Ports:
+#   Frontend : 4000  (uat.vibehub.com.tr)
+#   Backend  : 4001  (api-uat.vibehub.com.tr)
+#   Postgres : shared production container, separate database 'vibehub_uat'
+#   Redis    : shared production container, DB index 1
+
+services:
+  backend_uat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vibehub_backend_uat
+    restart: unless-stopped
+    env_file: ./backend/.env.uat
+    environment:
+      DATABASE_URL: postgresql://postgres:1234qweremre123@vibehub_postgres:5432/vibehub_uat?schema=public
+      REDIS_HOST: vibehub_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_secret
+      REDIS_DB: 1
+    ports:
+      - '127.0.0.1:4001:3001'
+    networks:
+      - vibehub_default
+      - uat_internal
+    depends_on:
+      db_init_uat:
+        condition: service_completed_successfully
+
+  frontend_uat:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://api-uat.vibehub.com.tr
+        NEXT_PUBLIC_SITE_URL: https://uat.vibehub.com.tr
+        NEXT_PUBLIC_FRONTEND_URL: https://uat.vibehub.com.tr
+    container_name: vibehub_frontend_uat
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: https://api-uat.vibehub.com.tr
+      NEXT_PUBLIC_SITE_URL: https://uat.vibehub.com.tr
+      NEXT_PUBLIC_FRONTEND_URL: https://uat.vibehub.com.tr
+    ports:
+      - '127.0.0.1:4000:3000'
+    networks:
+      - uat_internal
+    depends_on:
+      - backend_uat
+
+  # One-shot helper: creates the vibehub_uat database if it doesn't exist yet.
+  db_init_uat:
+    image: postgres:16-alpine
+    container_name: vibehub_db_init_uat
+    restart: 'no'
+    environment:
+      PGPASSWORD: 1234qweremre123
+    command: >
+      sh -c "psql -h vibehub_postgres -U postgres -tc
+      \"SELECT 1 FROM pg_database WHERE datname='vibehub_uat'\" |
+      grep -q 1 ||
+      psql -h vibehub_postgres -U postgres -c 'CREATE DATABASE vibehub_uat'"
+    networks:
+      - vibehub_default
+
+networks:
+  vibehub_default:
+    external: true
+    name: vibehub_default
+  uat_internal:
+    driver: bridge

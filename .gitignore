@@ -12,6 +12,7 @@ coverage/
 .env
 .env.local
 .env.production.local
+.env.uat
 
 ### OS
 .DS_Store
