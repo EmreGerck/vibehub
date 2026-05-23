@@ -165,7 +165,7 @@ export function Navbar() {
                   onClick={() => setUserOpen((v) => !v)}
                   className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 font-bold hover:bg-purple-200 dark:hover:bg-purple-900/50 hover:scale-105 active:scale-95 transition-all duration-200 ring-0 hover:ring-2 ring-purple-400/40"
                 >
-                  {user.email[0].toUpperCase()}
+                  {user.email?.[0]?.toUpperCase() ?? '?'}
                 </button>
                 {userOpen && (
                   <div className="absolute top-full right-0 mt-2 w-52 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 py-1 origin-top-right animate-scale-in overflow-hidden" style={{ boxShadow: 'var(--shadow-dropdown)' }}>

@@ -172,9 +172,9 @@ export function SearchPalette() {
                     {r.image ? (
                       <img src={r.image} alt="" className="w-full h-full object-cover" />
                     ) : r.type === 'artist' ? (
-                      <span className="text-purple-500 font-bold text-lg">{r.title[0]}</span>
+                      <span className="text-purple-500 font-bold text-lg">{r.title?.[0] ?? '?'}</span>
                     ) : (
-                      <span className="text-gray-400 font-bold">{r.title[0]}</span>
+                      <span className="text-gray-400 font-bold">{r.title?.[0] ?? '?'}</span>
                     )}
                   </div>
 

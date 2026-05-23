@@ -99,7 +99,7 @@ function VendorCard({ vendor }: { vendor: Tenant }) {
           />
         ) : (
           <div className="h-16 w-16 rounded-full bg-surface-card border-2 border-surface-border flex items-center justify-center text-2xl font-bold text-brand-400">
-            {vendor.displayName[0].toUpperCase()}
+            {vendor.displayName?.[0]?.toUpperCase() ?? '?'}
           </div>
         )}
       </div>
