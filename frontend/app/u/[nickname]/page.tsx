@@ -21,7 +21,7 @@ function Avatar({ profile }: { profile: { nickname: string; avatarUrl?: string |
   }
   return (
     <div className="h-28 w-28 sm:h-36 sm:w-36 rounded-full border-4 border-white dark:border-gray-900 shadow-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-5xl font-black text-white">
-      {profile.nickname[0].toUpperCase()}
+      {profile.nickname?.[0]?.toUpperCase() ?? '?'}
     </div>
   );
 }

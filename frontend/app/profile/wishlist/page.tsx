@@ -49,7 +49,7 @@ export default function WishlistPage() {
                     <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center" style={{ background: brandGradient(product.tenant?.slug) }}>
-                      <span className="text-2xl font-black text-white/20">{product.title[0]}</span>
+                      <span className="text-2xl font-black text-white/20">{product.title?.[0] ?? '?'}</span>
                     </div>
                   )}
                 </Link>

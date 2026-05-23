@@ -189,7 +189,7 @@ function ArtistCard({ vendor }: { vendor: any }) {
       <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-800 to-black">
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-[100px] font-extrabold text-white/10 group-hover:text-white/15 transition-colors">
-            {vendor.displayName[0]}
+            {vendor.displayName?.[0] ?? '?'}
           </span>
         </div>
       </div>
@@ -416,7 +416,7 @@ function RecentlyViewedSection() {
                 <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center" style={{ background: brandGradient(item.tenantSlug) }}>
-                  <span className="text-4xl font-black text-white/20">{item.title[0]}</span>
+                  <span className="text-4xl font-black text-white/20">{item.title?.[0] ?? '?'}</span>
                 </div>
               )}
             </div>

@@ -106,7 +106,7 @@ export function StorePageClient() {
                     className="h-28 w-28 sm:h-36 sm:w-36 rounded-2xl border-4 border-white/90 shadow-2xl flex items-center justify-center text-5xl font-black text-white"
                     style={{ background: vendor.brandColor ?? brandGradient(vendor.slug) }}
                   >
-                    {vendor.displayName[0].toUpperCase()}
+                    {vendor.displayName?.[0]?.toUpperCase() ?? '?'}
                   </div>
                 )}
               </div>

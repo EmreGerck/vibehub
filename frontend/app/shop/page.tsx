@@ -139,7 +139,7 @@ function BentoCard({ product, price, isLarge, layoutClass, hidden, delay }: {
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className={`font-black text-white/15 ${isLarge ? 'text-[120px]' : 'text-[80px]'}`}>
-              {product.title[0]}
+              {product.title?.[0] ?? '?'}
             </span>
           </div>
         )}
@@ -617,7 +617,7 @@ function ShopProductCard({ product }: { product: Product }) {
             style={{ background: brandGradient(product.tenant?.slug) }}
           >
             <span className="text-6xl font-black text-white/20 group-hover:text-white/30 group-hover:scale-110 transition-all duration-500">
-              {product.title[0]}
+              {product.title?.[0] ?? '?'}
             </span>
           </div>
         )}

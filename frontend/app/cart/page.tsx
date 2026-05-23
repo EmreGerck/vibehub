@@ -117,7 +117,7 @@ function CartRow({
       <div className="h-16 w-16 shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
         {item.product.images?.[0]
           ? <img src={item.product.images[0]} alt="" className="w-full h-full object-cover" />
-          : <span className="text-xl font-bold text-gray-400 dark:text-gray-600">{item.product.title[0]}</span>
+          : <span className="text-xl font-bold text-gray-400 dark:text-gray-600">{item.product.title?.[0] ?? '?'}</span>
         }
       </div>
       <div className="flex-1 min-w-0">
