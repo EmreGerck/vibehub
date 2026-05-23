@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAdminVendors, usePatchVendorStatus, usePatchCommission, useAdminUpdateTenant, useAdminCreateVendor } from '../../../../hooks/useAdmin';
+import { useAdminVendors, usePatchVendorStatus, usePatchCommission, useAdminUpdateTenant, useAdminCreateVendor, useDeleteVendor } from '../../../../hooks/useAdmin';
 import { useI18n } from '../../../../lib/i18n';
 import type { Tenant } from '../../../../types';
 
@@ -36,6 +36,31 @@ export default function AdminVendorsPage() {
   const patchCommission = usePatchCommission();
   const updateTenant = useAdminUpdateTenant();
   const createVendor = useAdminCreateVendor();
+  const deleteVendor = useDeleteVendor();
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<Tenant | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteForce, setDeleteForce] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  async function confirmDelete() {
+    if (!deleteModal) return;
+    setDeleteError('');
+    try {
+      await deleteVendor.mutateAsync({ id: deleteModal.id, force: deleteForce });
+      setDeleteModal(null);
+      setDeleteConfirmText('');
+      setDeleteForce(false);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Failed to delete vendor';
+      setDeleteError(msg);
+      // If the server says there are orders/payouts, surface the force option
+      if (typeof msg === 'string' && /force=true|order items|payouts/i.test(msg)) {
+        setDeleteForce(false); // user must explicitly opt in
+      }
+    }
+  }
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -219,6 +244,18 @@ export default function AdminVendorsPage() {
                         >
                           {t('adminVendor.permissions')}
                         </Link>
+                        <button
+                          onClick={() => {
+                            setDeleteModal(vendor);
+                            setDeleteConfirmText('');
+                            setDeleteForce(false);
+                            setDeleteError('');
+                          }}
+                          className="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg transition-colors"
+                          title="Permanently delete this vendor and all their data"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -456,6 +493,98 @@ export default function AdminVendorsPage() {
                 {updateTenant.isPending ? t('adminVendor.saving') : t('adminVendor.save')}
               </button>
               <button onClick={() => setEditModal(null)} className="flex-1 btn-ghost">
+                {t('admin.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal ──────────────────────────────────────────── */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-red-200 dark:border-red-900/40 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Delete vendor permanently?
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 p-3 mb-4 text-sm text-red-700 dark:text-red-300">
+              <p className="font-semibold mb-1">
+                "{deleteModal.displayName}" (@{deleteModal.slug})
+              </p>
+              <p className="text-xs leading-relaxed">
+                Will permanently delete: all products, variants, reviews, wishlist entries,
+                forum channels/topics, vendor media, events, NFC tags, hero banners (detached),
+                followers, and permissions. Members (users) are released to customer accounts —
+                not deleted.
+              </p>
+            </div>
+
+            <label className="block mb-3">
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                Type the vendor slug{' '}
+                <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                  {deleteModal.slug}
+                </span>{' '}
+                to confirm:
+              </span>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full mt-1 input"
+                placeholder={deleteModal.slug}
+                autoFocus
+              />
+            </label>
+
+            <label className="flex items-start gap-2 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deleteForce}
+                onChange={(e) => setDeleteForce(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-xs text-gray-700 dark:text-gray-300">
+                <span className="font-semibold text-red-600 dark:text-red-400">Force delete</span>{' '}
+                — also wipe order items, shipments, and payouts. Required if the vendor has any
+                financial history. <span className="font-bold">Cannot be undone.</span>
+              </span>
+            </label>
+
+            {deleteError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mb-3">{deleteError}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={confirmDelete}
+                disabled={
+                  deleteConfirmText !== deleteModal.slug || deleteVendor.isPending
+                }
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2 rounded-lg transition-colors"
+              >
+                {deleteVendor.isPending ? 'Deleting…' : 'Delete forever'}
+              </button>
+              <button
+                onClick={() => {
+                  setDeleteModal(null);
+                  setDeleteConfirmText('');
+                  setDeleteForce(false);
+                  setDeleteError('');
+                }}
+                className="flex-1 btn-ghost"
+              >
                 {t('admin.cancel')}
               </button>
             </div>

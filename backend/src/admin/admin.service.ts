@@ -228,6 +228,91 @@ export class AdminService {
     return updated;
   }
 
+  /**
+   * Permanently delete a vendor and ALL related entities.
+   * - Safe by default: refuses if vendor has any orders or payouts.
+   * - With `force=true`, cascades through orderItems/shipments/payouts as well.
+   * - Members (User.tenantId) are released — they become customers, not deleted.
+   * - HeroBanners and NfcTags are detached (tenantId set to null) so the data isn't lost.
+   * - Products, ProductVariants, Reviews, Wishlist items, ForumChannels, ForumTopics,
+   *   ForumReplies, ForumReactions, VendorMedia, VendorEvent, Follow, TenantPermission
+   *   are all destroyed (some via Prisma cascade, the rest explicitly).
+   */
+  async deleteVendor(tenantId: string, actorId: string, force = false) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        _count: {
+          select: {
+            products: true,
+            orderItems: true,
+            payouts: true,
+            users: true,
+          },
+        },
+      },
+    });
+    if (!tenant) throw new NotFoundException('Vendor not found');
+
+    // Safety check: don't delete a vendor with financial history unless forced
+    if (!force && (tenant._count.orderItems > 0 || tenant._count.payouts > 0)) {
+      throw new ConflictException(
+        `Vendor has ${tenant._count.orderItems} order items and ${tenant._count.payouts} payouts. Pass force=true to delete anyway.`,
+      );
+    }
+
+    const counts = { ...tenant._count };
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Release members (don't delete users)
+      await tx.user.updateMany({
+        where: { tenantId },
+        data: { tenantId: null, role: 'CUSTOMER' as any },
+      });
+
+      // 2. Detach hero banners & NFC tags (keep the records, just unlink)
+      await tx.heroBanner.updateMany({ where: { tenantId }, data: { tenantId: null } });
+      await tx.nfcTag.updateMany({ where: { tenantId }, data: { tenantId: null } });
+
+      // 3. Delete product subgraph: variants → wishlist/reviews → products
+      const products = await tx.product.findMany({ where: { tenantId }, select: { id: true } });
+      const productIds = products.map((p) => p.id);
+      if (productIds.length > 0) {
+        await tx.wishlist.deleteMany({ where: { productId: { in: productIds } } });
+        await tx.review.deleteMany({ where: { productId: { in: productIds } } });
+        await tx.productVariant.deleteMany({ where: { productId: { in: productIds } } });
+        await tx.product.deleteMany({ where: { id: { in: productIds } } });
+      }
+
+      // 4. If forced, blow away financial records too
+      if (force) {
+        await tx.shipment.deleteMany({ where: { tenantId } });
+        await tx.orderItem.deleteMany({ where: { tenantId } });
+        await tx.payout.deleteMany({ where: { tenantId } });
+      }
+
+      // 5. Finally delete the tenant — Prisma cascades the rest
+      //    (TenantPermission, Follow, ForumSettings, ForumChannel, ForumTopic,
+      //     VendorMedia, VendorEvent)
+      await tx.tenant.delete({ where: { id: tenantId } });
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_VENDOR_DELETED',
+      targetType: 'Tenant',
+      targetId: tenantId,
+      metadata: {
+        slug: tenant.slug,
+        displayName: tenant.displayName,
+        force,
+        counts,
+      },
+    });
+
+    return { id: tenantId, slug: tenant.slug, displayName: tenant.displayName, deleted: true };
+  }
+
   // ── Orders ────────────────────────────────────────────────────────────────────
 
   async getAllOrders(query: QueryOrdersDto) {

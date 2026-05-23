@@ -167,6 +167,21 @@ export class AdminController {
     return ApiResponse.ok(data, 'Commission rate updated');
   }
 
+  @Delete('vendors/:id')
+  @ApiOperation({
+    summary:
+      'PERMANENTLY delete a vendor and all related products, banners, NFC tags, forum content, etc. ' +
+      'Members are released (become customers). Pass ?force=true to also wipe order items and payouts.',
+  })
+  async deleteVendor(
+    @Param('id') id: string,
+    @Query('force') force: string | undefined,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const data = await this.adminService.deleteVendor(id, actorId, force === 'true');
+    return ApiResponse.ok(data, 'Vendor deleted');
+  }
+
   // ── Orders ────────────────────────────────────────────────────────────────────
 
   @Get('orders')

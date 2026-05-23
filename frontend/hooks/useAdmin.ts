@@ -96,6 +96,25 @@ export function usePatchCommission() {
   });
 }
 
+export function useDeleteVendor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, force }: { id: string; force?: boolean }) => {
+      const res = await api.delete<ApiResponse<{ id: string; slug: string; displayName: string; deleted: boolean }>>(
+        `/admin/vendors/${id}${force ? '?force=true' : ''}`,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-vendors'] });
+      qc.invalidateQueries({ queryKey: ['vendors'] });
+      qc.invalidateQueries({ queryKey: ['banners'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['admin-overview'] });
+    },
+  });
+}
+
 // ── Products ──────────────────────────────────────────────────────────────────
 
 export function useAdminPendingProducts(params?: { page?: number; limit?: number }) {
