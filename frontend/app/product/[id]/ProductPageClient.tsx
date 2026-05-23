@@ -280,6 +280,30 @@ export function ProductPageClient() {
           <RelatedProducts tenantId={product.tenant.id} currentProductId={product.id} tenantSlug={product.tenant.slug} />
         )}
       </div>
+
+      {/* Sticky mobile add-to-cart bar — only visible on small screens.
+          Adds a safe bottom inset so the page content can scroll past it. */}
+      <div
+        className="fixed bottom-0 inset-x-0 z-30 lg:hidden border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur px-3 py-3 flex items-center gap-3"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{product.title}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">
+            {formatPrice((variant?.priceOverride ?? product.price) * qty)}
+          </p>
+        </div>
+        <button
+          onClick={handleAddToCart}
+          disabled={!inStock || !variant || addToCart.isPending}
+          className={`flex-shrink-0 btn-primary px-5 py-3 ${!inStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {addToCart.isPending ? t('pdp.adding') : added ? '✓' : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
+        </button>
+      </div>
+      {/* Spacer so content isn't hidden behind the sticky bar on mobile */}
+      <div className="h-20 lg:hidden" aria-hidden="true" />
+
       <Footer />
     </>
   );

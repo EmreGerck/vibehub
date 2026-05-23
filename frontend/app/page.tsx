@@ -72,7 +72,7 @@ function HeroSlider({ banners }: { banners: HeroBanner[] }) {
   const slide = banners[current];
 
   return (
-    <div className="relative overflow-hidden mx-4 sm:mx-6 lg:mx-8 rounded-2xl" style={{ minHeight: 480 }}>
+    <div className="relative overflow-hidden mx-2 sm:mx-6 lg:mx-8 rounded-2xl min-h-[260px] sm:min-h-[380px] md:min-h-[480px]">
       <div
         className="absolute inset-0 transition-all duration-700"
         style={{ background: slide.gradient }}
@@ -225,7 +225,7 @@ export default function HomePage() {
       {/* Hero slider */}
       <div className="py-6 md:py-8">
         {bannersLoading ? (
-          <div className="mx-4 sm:mx-6 lg:mx-8 rounded-2xl bg-gray-200 dark:bg-gray-900 animate-pulse" style={{ minHeight: 480 }} />
+          <div className="mx-2 sm:mx-6 lg:mx-8 rounded-2xl bg-gray-200 dark:bg-gray-900 animate-pulse min-h-[260px] sm:min-h-[380px] md:min-h-[480px]" />
         ) : (
           <HeroSlider banners={banners} />
         )}

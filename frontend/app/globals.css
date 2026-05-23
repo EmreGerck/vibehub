@@ -61,6 +61,33 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.2s ease, color 0.2s ease;
+    /* Mobile safety: prevent a single overflowing element from making the
+       entire page horizontally scrollable. Individual scroll containers
+       (tables, sliders) should set their own overflow-x: auto. */
+    overflow-x: hidden;
+  }
+  html { overflow-x: hidden; }
+
+  /* Reusable utility for any modal/dialog content that may exceed the viewport
+     on small screens. Combine with the standard inset-0 backdrop. */
+  .modal-panel {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Mobile-safe modal panels: any centered modal-card-shaped direct child of
+     a fixed-position full-screen overlay should be scrollable when content
+     exceeds the viewport. Catches the pattern:
+       <div class="fixed inset-0 ... flex items-center justify-center ... z-50">
+         <div class="... max-w-XX w-full"> ← gets auto scroll </div>
+     Works on every existing modal without per-component edits.
+  */
+  .fixed.inset-0.z-50.flex > div[class*="max-w-"],
+  .fixed.inset-0.flex.z-50 > div[class*="max-w-"] {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   h1, h2, h3, h4, h5, h6 {
