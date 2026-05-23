@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../../components/layout/Navbar';
@@ -53,12 +53,24 @@ export function StorePageClient() {
     }
   }
 
-  const tabs = [
-    { key: 'products', label: t('store.tabProducts'), icon: '🛍' },
-    { key: 'events', label: t('store.tabEvents'), icon: '🎫' },
-    { key: 'media', label: t('store.tabMedia'), icon: '🎵' },
-    { key: 'forum', label: t('store.tabForum'), icon: '💬' },
+  // Filter ribbon by per-vendor feature toggles. Defaults to enabled so that
+  // older API responses (without the flags) still show all tabs.
+  const allTabs = [
+    { key: 'products', label: t('store.tabProducts'), icon: '🛍', enabled: true },
+    { key: 'events',   label: t('store.tabEvents'),   icon: '🎫', enabled: vendor?.eventsEnabled ?? true },
+    { key: 'media',    label: t('store.tabMedia'),    icon: '🎵', enabled: vendor?.mediaEnabled  ?? true },
+    { key: 'forum',    label: t('store.tabForum'),    icon: '💬', enabled: vendor?.forumEnabled  ?? true },
   ];
+  const tabs = allTabs.filter((t) => t.enabled);
+
+  // If the user lands on a disabled tab (via URL/state), bounce them back to products.
+  useEffect(() => {
+    if (!vendor) return;
+    if (!tabs.find((tt) => tt.key === activeTab)) {
+      setActiveTab('products');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendor?.eventsEnabled, vendor?.mediaEnabled, vendor?.forumEnabled, activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col transition-colors">

@@ -18,6 +18,7 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { PatchVendorStatusDto, PatchCommissionDto } from './dto/patch-vendor.dto';
+import { PatchVendorFeaturesDto, PatchForumSettingsDto } from './dto/vendor-features.dto';
 import { CreateAdminUserDto } from './dto/create-admin.dto';
 import { QueryAuditDto } from './dto/query-audit.dto';
 import { QueryVendorsDto } from '../vendor/dto/query-vendors.dto';
@@ -180,6 +181,43 @@ export class AdminController {
   ) {
     const data = await this.adminService.deleteVendor(id, actorId, force === 'true');
     return ApiResponse.ok(data, 'Vendor deleted');
+  }
+
+  @Patch('vendors/:id/features')
+  @ApiOperation({
+    summary:
+      'Toggle per-vendor feature flags (forum / media / events / nfc). ' +
+      'Disabled features are hidden from the storefront ribbon and their APIs return 404.',
+  })
+  async patchVendorFeatures(
+    @Param('id') id: string,
+    @Body() dto: PatchVendorFeaturesDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const data = await this.adminService.patchVendorFeatures(id, dto, actorId);
+    return ApiResponse.ok(data, 'Vendor features updated');
+  }
+
+  @Get('vendors/:id/forum-settings')
+  @ApiOperation({ summary: 'Get the comprehensive forum settings for a vendor (auto-initialised if missing).' })
+  async getVendorForumSettings(@Param('id') id: string) {
+    const data = await this.adminService.getForumSettings(id);
+    return ApiResponse.ok(data, 'Forum settings retrieved');
+  }
+
+  @Patch('vendors/:id/forum-settings')
+  @ApiOperation({
+    summary:
+      'Update vendor forum sub-settings: moderation mode, content rules, slow mode, ' +
+      'visibility, posting policy, auto-mod (banned keywords / auto-archive), community rules, etc.',
+  })
+  async patchVendorForumSettings(
+    @Param('id') id: string,
+    @Body() dto: PatchForumSettingsDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const data = await this.adminService.patchForumSettings(id, dto, actorId);
+    return ApiResponse.ok(data, 'Forum settings updated');
   }
 
   // ── Orders ────────────────────────────────────────────────────────────────────

@@ -115,6 +115,86 @@ export function useDeleteVendor() {
   });
 }
 
+// ── Per-vendor feature toggles + forum sub-settings (god-user) ────────────────
+
+export interface VendorFeatures {
+  forumEnabled: boolean;
+  mediaEnabled: boolean;
+  eventsEnabled: boolean;
+  nfcEnabled: boolean;
+}
+
+export interface ForumSettings {
+  id: string;
+  tenantId: string;
+  enabled: boolean;
+  requireApproval: boolean;
+  allowGuestView: boolean;
+  moderationMode: 'OPEN' | 'PRE_MODERATED' | 'LOCKED';
+  allowAnonymous: boolean;
+  minPostLength: number;
+  maxPostLength: number;
+  allowImages: boolean;
+  allowLinks: boolean;
+  allowMentions: boolean;
+  allowReactions: boolean;
+  allowReplies: boolean;
+  slowModeSeconds: number;
+  visibility: 'PUBLIC' | 'MEMBERS_ONLY' | 'FOLLOWERS_ONLY';
+  postingPolicy: 'EVERYONE' | 'VERIFIED_ONLY' | 'FOLLOWERS_ONLY';
+  bannedKeywords: string[];
+  autoArchiveDays: number;
+  welcomeMessage: string | null;
+  rulesText: string | null;
+}
+
+export function usePatchVendorFeatures() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, features }: { id: string; features: Partial<VendorFeatures> }) => {
+      const res = await api.patch<ApiResponse<Tenant & VendorFeatures>>(
+        `/admin/vendors/${id}/features`,
+        features,
+      );
+      return res.data.data;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['admin-vendors'] });
+      qc.invalidateQueries({ queryKey: ['vendor', vars.id] });
+      qc.invalidateQueries({ queryKey: ['vendor-by-slug'] });
+    },
+  });
+}
+
+export function useVendorForumSettings(vendorId: string | null) {
+  return useQuery({
+    queryKey: ['vendor-forum-settings', vendorId],
+    enabled: !!vendorId,
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<ForumSettings>>(
+        `/admin/vendors/${vendorId}/forum-settings`,
+      );
+      return res.data.data;
+    },
+  });
+}
+
+export function usePatchVendorForumSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, settings }: { id: string; settings: Partial<ForumSettings> }) => {
+      const res = await api.patch<ApiResponse<ForumSettings>>(
+        `/admin/vendors/${id}/forum-settings`,
+        settings,
+      );
+      return res.data.data;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['vendor-forum-settings', vars.id] });
+    },
+  });
+}
+
 // ── Products ──────────────────────────────────────────────────────────────────
 
 export function useAdminPendingProducts(params?: { page?: number; limit?: number }) {

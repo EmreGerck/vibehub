@@ -37,6 +37,11 @@ export interface Tenant {
   logoUrl: string | null;
   bannerUrl: string | null;
   brandColor: string | null;
+  // ── Feature toggles (god-user controlled) ─────────────────────────────────
+  forumEnabled?: boolean;
+  mediaEnabled?: boolean;
+  eventsEnabled?: boolean;
+  nfcEnabled?: boolean;
   createdAt: string;
 }
 

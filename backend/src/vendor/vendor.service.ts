@@ -213,6 +213,13 @@ export class VendorService {
   }
 
   async getVendorEvents(tenantId: string) {
+    // Respect per-vendor feature toggle: if events are disabled, return empty.
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { eventsEnabled: true },
+    });
+    if (!tenant || !tenant.eventsEnabled) return [];
+
     return this.prisma.vendorEvent.findMany({
       where: { tenantId, active: true },
       orderBy: { date: 'asc' },

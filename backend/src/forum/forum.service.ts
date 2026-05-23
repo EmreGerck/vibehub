@@ -55,6 +55,42 @@ export class ForumService {
   // ── Settings ─────────────────────────────────────────────────────────────────
 
   async getSettings(tenantId: string) {
+    // Hard kill-switch: god-user can disable forum entirely at the tenant level
+    // (independent of ForumSettings.enabled). Treat as if the forum doesn't exist.
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { forumEnabled: true },
+    });
+    if (!tenant) throw new NotFoundException('Vendor not found');
+    if (!tenant.forumEnabled) {
+      // Return a synthetic disabled settings object so existing callers see enabled=false.
+      return {
+        id: 'disabled',
+        tenantId,
+        enabled: false,
+        requireApproval: false,
+        allowGuestView: false,
+        moderationMode: 'LOCKED' as const,
+        allowAnonymous: false,
+        minPostLength: 1,
+        maxPostLength: 5000,
+        allowImages: false,
+        allowLinks: false,
+        allowMentions: false,
+        allowReactions: false,
+        allowReplies: false,
+        slowModeSeconds: 0,
+        visibility: 'PUBLIC' as const,
+        postingPolicy: 'EVERYONE' as const,
+        bannedKeywords: [] as string[],
+        autoArchiveDays: 0,
+        welcomeMessage: null,
+        rulesText: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any;
+    }
+
     let settings = await this.prisma.forumSettings.findUnique({ where: { tenantId } });
     if (!settings) {
       settings = await this.prisma.forumSettings.create({ data: { tenantId } });
@@ -256,6 +292,16 @@ export class ForumService {
   async createTopic(tenantId: string, authorId: string, dto: CreateTopicDto) {
     const settings = await this.getSettings(tenantId);
     if (!settings.enabled) throw new BadRequestException('Forum is disabled for this vendor');
+    if (settings.moderationMode === 'LOCKED')
+      throw new BadRequestException('Forum is locked — no new topics allowed');
+
+    // Content rule enforcement
+    this.enforceContentRules(settings, dto.body, { imageUrl: dto.imageUrl });
+    if (dto.title.length < 3 || dto.title.length > 200)
+      throw new BadRequestException('Title must be between 3 and 200 characters');
+
+    // Slow mode: prevent posting if user posted within slowModeSeconds
+    await this.enforceSlowMode(settings, tenantId, authorId);
 
     // Validate channel belongs to this tenant if provided
     if (dto.channelId) {
@@ -286,6 +332,16 @@ export class ForumService {
     const topic = await this.prisma.forumTopic.findUnique({ where: { id: topicId } });
     if (!topic) throw new NotFoundException('Topic not found');
     if (topic.locked) throw new BadRequestException('Topic is locked');
+
+    const settings = await this.getSettings(topic.tenantId);
+    if (!settings.enabled) throw new BadRequestException('Forum is disabled for this vendor');
+    if (!settings.allowReplies) throw new BadRequestException('Replies are disabled in this forum');
+    if (settings.moderationMode === 'LOCKED')
+      throw new BadRequestException('Forum is locked — no new replies allowed');
+
+    // Content rules + slow mode for replies too
+    this.enforceContentRules(settings, dto.body, { imageUrl: dto.imageUrl });
+    await this.enforceSlowMode(settings, topic.tenantId, authorId);
 
     // Validate parentReplyId belongs to same topic
     if (dto.parentReplyId) {
@@ -433,5 +489,77 @@ export class ForumService {
 
     await this.audit.log({ actorId, action: 'FORUM_REPLY_DELETE', targetType: 'ForumReply', targetId: replyId, metadata: {} });
     return { deleted: true };
+  }
+
+  // ── Sub-settings enforcement helpers ──────────────────────────────────────
+
+  /**
+   * Validates a single forum post/reply body against the vendor's forum settings.
+   * - Min/max length
+   * - Image / link / mention allow flags (rejects body containing them when disabled)
+   * - Banned keyword substring match (case-insensitive)
+   */
+  private enforceContentRules(
+    settings: any,
+    body: string,
+    extras: { imageUrl?: string | null } = {},
+  ) {
+    const trimmed = (body ?? '').trim();
+    if (trimmed.length < settings.minPostLength)
+      throw new BadRequestException(`Post must be at least ${settings.minPostLength} character(s)`);
+    if (trimmed.length > settings.maxPostLength)
+      throw new BadRequestException(`Post must be at most ${settings.maxPostLength} characters`);
+
+    if (extras.imageUrl && !settings.allowImages)
+      throw new BadRequestException('Images are not allowed in this forum');
+
+    // Cheap link detection: presence of "http://" or "https://" or "www."
+    if (!settings.allowLinks && /(https?:\/\/|www\.)/i.test(trimmed))
+      throw new BadRequestException('Links are not allowed in this forum');
+
+    // Mention detection: @something at word boundary
+    if (!settings.allowMentions && /(^|\s)@[a-z0-9_-]+/i.test(trimmed))
+      throw new BadRequestException('Mentions are not allowed in this forum');
+
+    // Banned keywords (case-insensitive substring match)
+    if (Array.isArray(settings.bannedKeywords) && settings.bannedKeywords.length > 0) {
+      const lower = trimmed.toLowerCase();
+      const hit = settings.bannedKeywords.find((kw: string) =>
+        kw && lower.includes(kw.toLowerCase()),
+      );
+      if (hit) throw new BadRequestException(`Content contains a banned term: "${hit}"`);
+    }
+  }
+
+  /**
+   * Slow mode: forbid posting if the user posted within the last
+   * settings.slowModeSeconds in this tenant's forum (topic or reply).
+   * Returns silently when slow mode is disabled (0).
+   */
+  private async enforceSlowMode(settings: any, tenantId: string, authorId: string) {
+    const slow = settings.slowModeSeconds ?? 0;
+    if (!slow || slow <= 0) return;
+
+    const cutoff = new Date(Date.now() - slow * 1000);
+    const [recentTopic, recentReply] = await Promise.all([
+      this.prisma.forumTopic.findFirst({
+        where: { tenantId, authorId, createdAt: { gte: cutoff } },
+        select: { createdAt: true },
+      }),
+      this.prisma.forumReply.findFirst({
+        where: { authorId, topic: { tenantId }, createdAt: { gte: cutoff } },
+        select: { createdAt: true },
+      }),
+    ]);
+    const last = [recentTopic?.createdAt, recentReply?.createdAt]
+      .filter(Boolean)
+      .sort((a: any, b: any) => b.getTime() - a.getTime())[0];
+    if (last) {
+      const waitMs = slow * 1000 - (Date.now() - (last as Date).getTime());
+      const waitSec = Math.max(1, Math.ceil(waitMs / 1000));
+      throw new BadRequestException(
+        `Slow mode is active — please wait ${waitSec}s before posting again`,
+      );
+    }
   }
 }

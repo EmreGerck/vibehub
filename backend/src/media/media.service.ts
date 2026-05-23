@@ -32,6 +32,14 @@ export class MediaService {
   }
 
   async listPublic(tenantId: string) {
+    // Respect per-vendor feature toggle: if media is disabled, treat it as
+    // if there are no public media entries (storefront ribbon hides the tab).
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { mediaEnabled: true },
+    });
+    if (!tenant || !tenant.mediaEnabled) return [];
+
     return this.prisma.vendorMedia.findMany({
       where: { tenantId, active: true },
       orderBy: { sortOrder: 'asc' },

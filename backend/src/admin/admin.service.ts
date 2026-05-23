@@ -229,6 +229,121 @@ export class AdminService {
   }
 
   /**
+   * God-user only: toggle per-vendor feature flags (forum/media/events/nfc).
+   * Returns the updated flag set.
+   */
+  async patchVendorFeatures(
+    tenantId: string,
+    dto: import('./dto/vendor-features.dto').PatchVendorFeaturesDto,
+    actorId: string,
+  ) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        slug: true,
+        forumEnabled: true,
+        mediaEnabled: true,
+        eventsEnabled: true,
+        nfcEnabled: true,
+      },
+    });
+    if (!tenant) throw new NotFoundException('Vendor not found');
+
+    const data: Record<string, boolean> = {};
+    if (dto.forumEnabled !== undefined) data.forumEnabled = dto.forumEnabled;
+    if (dto.mediaEnabled !== undefined) data.mediaEnabled = dto.mediaEnabled;
+    if (dto.eventsEnabled !== undefined) data.eventsEnabled = dto.eventsEnabled;
+    if (dto.nfcEnabled !== undefined) data.nfcEnabled = dto.nfcEnabled;
+
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data,
+      select: {
+        id: true,
+        slug: true,
+        displayName: true,
+        forumEnabled: true,
+        mediaEnabled: true,
+        eventsEnabled: true,
+        nfcEnabled: true,
+      },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_VENDOR_FEATURES_PATCHED',
+      targetType: 'Tenant',
+      targetId: tenantId,
+      metadata: {
+        slug: tenant.slug,
+        before: {
+          forumEnabled: tenant.forumEnabled,
+          mediaEnabled: tenant.mediaEnabled,
+          eventsEnabled: tenant.eventsEnabled,
+          nfcEnabled: tenant.nfcEnabled,
+        },
+        after: data,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * God-user only: get or initialize the forum settings for a vendor.
+   * Creates a default settings row if none exists.
+   */
+  async getForumSettings(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Vendor not found');
+
+    let settings = await this.prisma.forumSettings.findUnique({ where: { tenantId } });
+    if (!settings) {
+      settings = await this.prisma.forumSettings.create({ data: { tenantId } });
+    }
+    return settings;
+  }
+
+  /**
+   * God-user only: update the forum sub-settings. Partial — only provided
+   * fields are written.
+   */
+  async patchForumSettings(
+    tenantId: string,
+    dto: import('./dto/vendor-features.dto').PatchForumSettingsDto,
+    actorId: string,
+  ) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Vendor not found');
+
+    // Validate semantic constraint that class-validator can't express cross-field.
+    if (
+      dto.minPostLength !== undefined &&
+      dto.maxPostLength !== undefined &&
+      dto.minPostLength > dto.maxPostLength
+    ) {
+      throw new BadRequestException('minPostLength cannot exceed maxPostLength');
+    }
+
+    const updated = await this.prisma.forumSettings.upsert({
+      where: { tenantId },
+      create: { tenantId, ...dto },
+      update: dto,
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_FORUM_SETTINGS_PATCHED',
+      targetType: 'ForumSettings',
+      targetId: updated.id,
+      metadata: { tenantId, slug: tenant.slug, changes: dto },
+    });
+
+    return updated;
+  }
+
+  /**
    * Permanently delete a vendor and ALL related entities.
    * - Safe by default: refuses if vendor has any orders or payouts.
    * - With `force=true`, cascades through orderItems/shipments/payouts as well.

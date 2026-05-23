@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAdminVendors, usePatchVendorStatus, usePatchCommission, useAdminUpdateTenant, useAdminCreateVendor, useDeleteVendor } from '../../../../hooks/useAdmin';
+import { useAdminVendors, usePatchVendorStatus, usePatchCommission, useAdminUpdateTenant, useAdminCreateVendor, useDeleteVendor, usePatchVendorFeatures, useVendorForumSettings, usePatchVendorForumSettings, type ForumSettings } from '../../../../hooks/useAdmin';
 import { useI18n } from '../../../../lib/i18n';
 import type { Tenant } from '../../../../types';
+import VendorFeaturesModal from '../../../../components/admin/VendorFeaturesModal';
+import ForumSettingsModal from '../../../../components/admin/ForumSettingsModal';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING_REVIEW: 'badge-yellow',
@@ -43,6 +45,10 @@ export default function AdminVendorsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteForce, setDeleteForce] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Feature toggle + forum settings modals
+  const [featuresModal, setFeaturesModal] = useState<Tenant | null>(null);
+  const [forumSettingsModal, setForumSettingsModal] = useState<Tenant | null>(null);
 
   async function confirmDelete() {
     if (!deleteModal) return;
@@ -244,6 +250,13 @@ export default function AdminVendorsPage() {
                         >
                           {t('adminVendor.permissions')}
                         </Link>
+                        <button
+                          onClick={() => setFeaturesModal(vendor)}
+                          className="text-xs bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-800/60 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg transition-colors"
+                          title="Toggle forum / media / events / nfc features for this vendor"
+                        >
+                          Features
+                        </button>
                         <button
                           onClick={() => {
                             setDeleteModal(vendor);
@@ -590,6 +603,26 @@ export default function AdminVendorsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Feature toggles modal ──────────────────────────────────────────── */}
+      {featuresModal && (
+        <VendorFeaturesModal
+          vendor={featuresModal}
+          onClose={() => setFeaturesModal(null)}
+          onOpenForumSettings={() => {
+            setForumSettingsModal(featuresModal);
+            setFeaturesModal(null);
+          }}
+        />
+      )}
+
+      {/* ── Forum sub-settings modal ───────────────────────────────────────── */}
+      {forumSettingsModal && (
+        <ForumSettingsModal
+          vendor={forumSettingsModal}
+          onClose={() => setForumSettingsModal(null)}
+        />
       )}
     </div>
   );

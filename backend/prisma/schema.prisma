@@ -248,6 +248,11 @@ model Tenant {
   logoUrl        String?
   bannerUrl      String?
   brandColor     String?          // hex e.g. "#7c3aed"
+  // ── Feature toggles (god-user controlled from admin panel) ────────────────
+  forumEnabled   Boolean      @default(true)
+  mediaEnabled   Boolean      @default(true)
+  eventsEnabled  Boolean      @default(true)
+  nfcEnabled     Boolean      @default(true)
   createdAt      DateTime     @default(now())
 
   users         User[]
@@ -509,10 +514,59 @@ model ForumSettings {
   enabled         Boolean  @default(true)
   requireApproval Boolean  @default(false)
   allowGuestView  Boolean  @default(true)
+
+  // ── Moderation (god-user / vendor configurable) ─────────────────────────────
+  // OPEN: anyone allowed, no pre-mod; PRE_MODERATED: posts queued for approval;
+  // LOCKED: no new posts/replies, read-only mode.
+  moderationMode  ForumModerationMode  @default(OPEN)
+  allowAnonymous  Boolean  @default(false)
+
+  // ── Content rules ───────────────────────────────────────────────────────────
+  minPostLength   Int      @default(1)
+  maxPostLength   Int      @default(5000)
+  allowImages     Boolean  @default(true)
+  allowLinks      Boolean  @default(true)
+  allowMentions   Boolean  @default(true)
+  allowReactions  Boolean  @default(true)
+  allowReplies    Boolean  @default(true)
+
+  // ── Rate limiting ───────────────────────────────────────────────────────────
+  slowModeSeconds Int      @default(0)  // 0 = disabled. Seconds between posts per user.
+
+  // ── Access & posting policy ─────────────────────────────────────────────────
+  visibility      ForumVisibility    @default(PUBLIC)
+  postingPolicy   ForumPostingPolicy @default(EVERYONE)
+
+  // ── Auto-moderation ─────────────────────────────────────────────────────────
+  bannedKeywords  String[]            // case-insensitive substring match
+  autoArchiveDays Int      @default(0) // 0 = never. Topics archived after N days of inactivity.
+
+  // ── Community ───────────────────────────────────────────────────────────────
+  welcomeMessage  String?  // shown to first-time visitors of the forum
+  rulesText       String?  // markdown, shown on forum landing page
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+enum ForumModerationMode {
+  OPEN
+  PRE_MODERATED
+  LOCKED
+}
+
+enum ForumVisibility {
+  PUBLIC
+  MEMBERS_ONLY
+  FOLLOWERS_ONLY
+}
+
+enum ForumPostingPolicy {
+  EVERYONE
+  VERIFIED_ONLY
+  FOLLOWERS_ONLY
 }
 
 model ForumChannel {
