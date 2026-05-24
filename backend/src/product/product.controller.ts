@@ -43,6 +43,39 @@ export class ProductController {
   }
 
   @Public()
+  @Get('search')
+  @ApiOperation({ summary: 'Full-text search via Meilisearch (falls back to Prisma LIKE)' })
+  async search(
+    @Query('q')          q: string,
+    @Query('tenantId')   tenantId?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('minPrice')   minPrice?: string,
+    @Query('maxPrice')   maxPrice?: string,
+    @Query('currency')   currency?: string,
+    @Query('sortBy')     sortBy?: 'price_asc' | 'price_desc' | 'newest',
+    @Query('page')       page?: string,
+    @Query('limit')      limit?: string,
+    @Query('lang')       lang = 'tr',
+  ) {
+    if (!q || !q.trim()) {
+      return ApiResponse.ok({ items: [], total: 0 }, 'No query provided');
+    }
+    const result = await this.productService.searchProducts({
+      query:      q.trim(),
+      tenantId,
+      categoryId,
+      minPrice:   minPrice   ? parseFloat(minPrice)   : undefined,
+      maxPrice:   maxPrice   ? parseFloat(maxPrice)   : undefined,
+      currency,
+      sortBy,
+      page:       page  ? parseInt(page, 10)  : 1,
+      limit:      limit ? parseInt(limit, 10) : 20,
+      lang,
+    });
+    return ApiResponse.ok(result, 'Search results');
+  }
+
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get single product detail (public, LIVE only)' })
   async findOne(@Param('id') id: string, @Query('lang') lang = 'tr') {

@@ -84,7 +84,7 @@ export default function VerifyPage() {
       sessionStorage.setItem('mfa_cooldown', String(data.cooldownUntil));
       toast('success', t('otp.codeSent'));
     } catch (err: any) {
-      toast('error', err?.response?.data?.message || 'Could not resend code');
+      toast('error', err?.response?.data?.message || t('auth.resendError'));
     }
   }
 

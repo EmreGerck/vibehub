@@ -8,18 +8,20 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Alert } from '../../../components/ui/Alert';
 import { Spinner } from '../../../components/ui/Spinner';
-
-const ARTIST_TYPES = [
-  { value: 'BAND', label: 'Band / Music Artist' },
-  { value: 'COMEDIAN', label: 'Comedian' },
-  { value: 'INFLUENCER', label: 'Influencer / Content Creator' },
-  { value: 'ARTIST', label: 'Visual Artist' },
-  { value: 'OTHER', label: 'Other' },
-];
+import { useI18n } from '../../../lib/i18n';
 
 export default function ApplyVendorPage() {
   const router = useRouter();
   const apply = useApplyVendor();
+  const t = useI18n((s) => s.t);
+
+  const ARTIST_TYPES = [
+    { value: 'BAND', label: t('vendorApply.artistBand') },
+    { value: 'COMEDIAN', label: t('vendorApply.artistComedian') },
+    { value: 'INFLUENCER', label: t('vendorApply.artistInfluencer') },
+    { value: 'ARTIST', label: t('vendorApply.artistVisual') },
+    { value: 'OTHER', label: t('vendorApply.artistOther') },
+  ];
 
   const [form, setForm] = useState({
     displayName: '',
@@ -51,7 +53,7 @@ export default function ApplyVendorPage() {
     e.preventDefault();
     setError('');
     if (form.ownerPassword !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('vendorApply.passwordsNoMatch'));
       return;
     }
     try {
@@ -65,7 +67,7 @@ export default function ApplyVendorPage() {
       });
       setDone(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Something went wrong');
+      setError(err?.response?.data?.message || t('vendorApply.somethingWentWrong'));
     }
   }
 
@@ -76,13 +78,14 @@ export default function ApplyVendorPage() {
           <div className="w-16 h-16 rounded-full bg-green-900/40 border border-green-700 flex items-center justify-center mx-auto text-3xl">
             ✓
           </div>
-          <h1 className="text-2xl font-bold">Application submitted!</h1>
+          <h1 className="text-2xl font-bold">{t('vendorApply.submitted')}</h1>
           <p className="text-gray-400">
-            Your store <span className="text-white font-medium">{form.displayName}</span> is now
-            pending review. We'll email you when it's approved.
+            {t('vendorApply.pendingReview1')}{' '}
+            <span className="text-white font-medium">{form.displayName}</span>{' '}
+            {t('vendorApply.pendingReview2')}
           </p>
           <Link href="/auth/login" className="btn-primary inline-flex mt-4">
-            Sign in to your account
+            {t('vendorApply.signInBtn')}
           </Link>
         </div>
       </div>
@@ -98,9 +101,9 @@ export default function ApplyVendorPage() {
               VibeHub
             </span>
           </Link>
-          <h1 className="mt-4 text-3xl font-bold">Open your store</h1>
+          <h1 className="mt-4 text-3xl font-bold">{t('vendorApply.openStore')}</h1>
           <p className="mt-2 text-gray-400">
-            Apply to sell merchandise on VibeHub. We review applications within 24 hours.
+            {t('vendorApply.applyDesc')}
           </p>
         </div>
 
@@ -110,14 +113,14 @@ export default function ApplyVendorPage() {
 
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Store Details
+                {t('vendorApply.storeDetails')}
               </p>
               <div className="h-px bg-surface-border" />
             </div>
 
             <Input
-              label="Store name"
-              placeholder="e.g. The Rolling Tones"
+              label={t('vendorApply.storeName')}
+              placeholder={t('vendorApply.storeNamePlaceholder')}
               value={form.displayName}
               onChange={set('displayName')}
               required
@@ -125,32 +128,32 @@ export default function ApplyVendorPage() {
 
             <div>
               <Input
-                label="Store URL slug"
-                placeholder="rolling-tones"
+                label={t('vendorApply.storeSlug')}
+                placeholder={t('vendorApply.slugPlaceholder')}
                 value={form.slug}
                 onChange={set('slug')}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">
-                vibehub.io/store/<span className="text-gray-300">{form.slug || 'your-slug'}</span>
+                {t('vendorApply.slugHint')}<span className="text-gray-300">{form.slug || t('vendorApply.yourSlug')}</span>
               </p>
             </div>
 
             <Select
-              label="Artist type"
+              label={t('vendorApply.artistType')}
               options={ARTIST_TYPES}
-              placeholder="Select a category"
+              placeholder={t('vendorApply.selectCategory')}
               value={form.artistType}
               onChange={set('artistType')}
               required
             />
 
             <div>
-              <label className="label">Bio (optional)</label>
+              <label className="label">{t('vendorApply.bio')}</label>
               <textarea
                 className="input resize-none"
                 rows={3}
-                placeholder="Tell fans a bit about you…"
+                placeholder={t('vendorApply.bioPlaceholder')}
                 value={form.bio}
                 onChange={set('bio')}
                 maxLength={500}
@@ -160,31 +163,31 @@ export default function ApplyVendorPage() {
 
             <div className="space-y-1 pt-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Owner Account
+                {t('vendorApply.ownerAccount')}
               </p>
               <div className="h-px bg-surface-border" />
             </div>
 
             <Input
-              label="Email"
+              label={t('vendorApply.ownerEmail')}
               type="email"
-              placeholder="owner@yourbrand.com"
+              placeholder={t('vendorApply.ownerEmailPlaceholder')}
               value={form.ownerEmail}
               onChange={set('ownerEmail')}
               required
             />
 
             <Input
-              label="Password"
+              label={t('vendorApply.ownerPassword')}
               type="password"
-              placeholder="Minimum 8 characters"
+              placeholder={t('vendorApply.ownerPasswordPlaceholder')}
               value={form.ownerPassword}
               onChange={set('ownerPassword')}
               required
             />
 
             <Input
-              label="Confirm password"
+              label={t('vendorApply.confirmPassword')}
               type="password"
               placeholder="••••••••"
               value={form.confirmPassword}
@@ -192,7 +195,7 @@ export default function ApplyVendorPage() {
               required
               error={
                 form.confirmPassword && form.ownerPassword !== form.confirmPassword
-                  ? 'Does not match'
+                  ? t('vendorApply.doesNotMatch')
                   : undefined
               }
             />
@@ -204,19 +207,19 @@ export default function ApplyVendorPage() {
             >
               {apply.isPending ? (
                 <span className="flex items-center justify-center gap-2">
-                  <Spinner size="sm" /> Submitting…
+                  <Spinner size="sm" /> {t('vendorApply.submitting')}
                 </span>
               ) : (
-                'Submit application'
+                t('vendorApply.submit')
               )}
             </button>
           </form>
         </div>
 
         <p className="mt-4 text-center text-sm text-gray-500">
-          Already have an account?{' '}
+          {t('vendorApply.alreadyHaveAccount')}{' '}
           <Link href="/auth/login" className="text-brand-400 hover:text-brand-300 font-medium">
-            Sign in
+            {t('vendorApply.signIn')}
           </Link>
         </p>
       </div>

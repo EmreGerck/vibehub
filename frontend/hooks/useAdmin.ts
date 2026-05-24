@@ -881,3 +881,69 @@ export function useRoleBreakdown() {
     },
   });
 }
+
+// ── Security Monitoring ───────────────────────────────────────────────────────
+
+export interface SecurityEvent {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  actorEmail: string;
+  actorRole: string;
+  metadata: Record<string, any>;
+  createdAt: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
+export interface SecurityOverview {
+  threatLevel: 'low' | 'medium' | 'high' | 'critical';
+  summary: {
+    failedLogins1h: number;
+    failedLogins24h: number;
+    accountLocks24h: number;
+    passwordResets24h: number;
+    suspiciousActions24h: number;
+    totalUsersLocked: number;
+    newUsers24h: number;
+    bruteForceTargets: { targetId: string; attempts: number }[];
+  };
+  systemHealth: Record<string, { ok: boolean; latencyMs?: number; detail?: string }>;
+  recentEvents: SecurityEvent[];
+  generatedAt: string;
+}
+
+export function useSecurityOverview() {
+  return useQuery({
+    queryKey: ['security-overview'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<SecurityOverview>>('/admin/security/overview');
+      return res.data.data;
+    },
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000, // auto-refresh every 30s
+  });
+}
+
+export function useSecurityEvents(params?: {
+  page?: number;
+  limit?: number;
+  action?: string;
+  fromDate?: string;
+  toDate?: string;
+}) {
+  return useQuery({
+    queryKey: ['security-events', params],
+    queryFn: async () => {
+      const res = await api.get('/admin/security/events', { params });
+      return res.data.data as {
+        data: SecurityEvent[];
+        total: number;
+        page: number;
+        pages: number;
+      };
+    },
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+}

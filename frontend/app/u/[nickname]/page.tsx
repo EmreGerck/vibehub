@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../store/auth.store';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useI18n } from '../../../lib/i18n';
 
 function Avatar({ profile }: { profile: { nickname: string; avatarUrl?: string | null } }) {
   if (profile.avatarUrl) {
@@ -30,6 +31,7 @@ export default function PublicProfilePage() {
   const { nickname } = useParams<{ nickname: string }>();
   const { data: profile, isLoading, isError } = usePublicProfile(nickname);
   const user = useAuthStore((s) => s.user);
+  const t = useI18n((s) => s.t);
 
   const isOwnProfile = user && profile && user.id === profile.userId;
 
@@ -80,12 +82,12 @@ export default function PublicProfilePage() {
                     <div>
                       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">@{profile.nickname}</h1>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Member since {new Date(profile.createdAt).toLocaleDateString()}
+                        {t('social.memberSince')} {new Date(profile.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
                       {isOwnProfile ? (
-                        <Link href="/profile/social" className="btn-ghost text-sm px-4 py-2">Edit Profile</Link>
+                        <Link href="/profile/social" className="btn-ghost text-sm px-4 py-2">{t('social.editProfile')}</Link>
                       ) : user ? (
                         <Link
                           href={`/messages/${profile.userId}`}
@@ -94,7 +96,7 @@ export default function PublicProfilePage() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                           </svg>
-                          Message
+                          {t('social.message')}
                         </Link>
                       ) : null}
                     </div>

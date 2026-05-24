@@ -70,6 +70,7 @@ export class CartService {
     });
 
     if (!variant) throw new NotFoundException('Variant not found');
+    if (dto.qty < 1) throw new BadRequestException('Quantity must be at least 1');
     if (variant.product.status !== 'LIVE') throw new BadRequestException('Product is not available');
     if (variant.product.tenant.status !== 'ACTIVE') throw new BadRequestException('Store is not active');
     if (variant.stockQty < dto.qty) {

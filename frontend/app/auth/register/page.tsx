@@ -29,11 +29,11 @@ export default function RegisterPage() {
       return;
     }
     if (!termsAccepted) {
-      setError('You must accept the Terms of Service to continue.');
+      setError(t('auth.termsRequired'));
       return;
     }
     if (!privacyAccepted) {
-      setError('You must accept the Privacy Policy and KVKK disclosure to continue.');
+      setError(t('auth.privacyRequired'));
       return;
     }
     try {
@@ -42,7 +42,7 @@ export default function RegisterPage() {
       await login.mutateAsync({ email, password });
       router.push('/');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Registration failed');
+      setError(err?.response?.data?.message || t('auth.registrationFailed'));
     }
   }
 
@@ -63,7 +63,7 @@ export default function RegisterPage() {
             <Input
               label={t('auth.email')}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -100,9 +100,9 @@ export default function RegisterPage() {
                   required
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  I have read and agree to the{' '}
-                  <Link href="/terms" className="text-purple-600 dark:text-purple-400 hover:underline" target="_blank">Terms of Service</Link>
-                  {' '}(including 14-day withdrawal right){' '}
+                  {t('auth.termsAcceptText')}{' '}
+                  <Link href="/terms" className="text-purple-600 dark:text-purple-400 hover:underline" target="_blank">{t('auth.termsLinkLabel')}</Link>
+                  {' '}{t('auth.terms14day')}{' '}
                   <span className="text-red-500">*</span>
                 </span>
               </label>
@@ -116,10 +116,10 @@ export default function RegisterPage() {
                   required
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  I have read and accept the{' '}
-                  <Link href="/privacy" className="text-purple-600 dark:text-purple-400 hover:underline" target="_blank">Privacy Policy</Link>
-                  {' '}and{' '}
-                  <Link href="/kvkk" className="text-purple-600 dark:text-purple-400 hover:underline" target="_blank">KVKK Disclosure</Link>
+                  {t('auth.termsAcceptText')}{' '}
+                  <Link href="/privacy" className="text-purple-600 dark:text-purple-400 hover:underline" target="_blank">{t('auth.privacyLinkLabel')}</Link>
+                  {' '}{t('auth.and')}{' '}
+                  <Link href="/kvkk" className="text-purple-600 dark:text-purple-400 hover:underline" target="_blank">{t('auth.kvkkLinkLabel')}</Link>
                   {' '}<span className="text-red-500">*</span>
                 </span>
               </label>
@@ -132,7 +132,7 @@ export default function RegisterPage() {
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0"
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  I agree to receive marketing emails, promotions, and updates (optional)
+                  {t('auth.marketingAcceptText')}
                 </span>
               </label>
             </div>

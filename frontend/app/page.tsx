@@ -36,7 +36,7 @@ function useBanners() {
   return useQuery({
     queryKey: ['banners', locale],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<HeroBanner[]>>('/banners');
+      const res = await api.get<ApiResponse<HeroBanner[]>>('/banners', { params: { lang: locale } });
       return res.data.data;
     },
     staleTime: 60_000,
@@ -48,6 +48,7 @@ function useBanners() {
 function HeroSlider({ banners }: { banners: HeroBanner[] }) {
   const [current, setCurrent] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const t = useI18n((s) => s.t);
 
   const next = useCallback(() => {
     setCurrent((c) => (c + 1) % banners.length);
@@ -116,14 +117,14 @@ function HeroSlider({ banners }: { banners: HeroBanner[] }) {
           <button
             onClick={prev}
             className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
-            aria-label="Previous slide"
+            aria-label={t('home.prevSlide')}
           >
             <ChevronLeftIcon />
           </button>
           <button
             onClick={next}
             className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
-            aria-label="Next slide"
+            aria-label={t('home.nextSlide')}
           >
             <ChevronRightIcon />
           </button>
@@ -132,7 +133,7 @@ function HeroSlider({ banners }: { banners: HeroBanner[] }) {
               <button
                 key={i}
                 onClick={() => goTo(i)}
-                aria-label={`Go to slide ${i + 1}`}
+                aria-label={`${t('home.goToSlide')} ${i + 1}`}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   i === current ? 'w-6 bg-white' : 'w-2 bg-white/40'
                 }`}

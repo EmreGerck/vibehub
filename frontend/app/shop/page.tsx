@@ -16,6 +16,7 @@ import { FilterSidebar, DEFAULT_FILTERS, countActiveFilters, type FilterValues }
 import { ProductImage } from '../../components/ui/ProductImage';
 import GifPlayer from '../../components/ui/GifPlayer';
 import { useCategories } from '../../hooks/useCategories';
+import { useProductSearch } from '../../hooks/useSearch';
 import type { Product } from '../../types';
 
 const BENTO_LAYOUTS = [
@@ -278,7 +279,24 @@ function ShopContent() {
     updateParams({ categoryId: id || null });
   }
 
-  const { data: productsData, isLoading: productsLoading } = useProducts({
+  // Search query from URL — e.g. /shop?search=sarki
+  const searchQuery = searchParams.get('search') ?? '';
+
+  // When a search query is present, use Meilisearch; otherwise browse normally
+  const { data: searchData, isLoading: searchLoading } = useProductSearch(
+    {
+      query:      searchQuery,
+      tenantId:   filters.tenantId ?? undefined,
+      categoryId: selectedCategoryId || undefined,
+      minPrice:   filters.minPrice,
+      maxPrice:   filters.maxPrice,
+      sortBy:     SORT_TO_BACKEND[sort] as any,
+      limit:      48,
+    },
+    300,
+  );
+
+  const { data: productsData, isLoading: browseLoading } = useProducts({
     limit: 48,
     tenantId: filters.tenantId ?? undefined,
     sortBy: SORT_TO_BACKEND[sort],
@@ -287,7 +305,11 @@ function ShopContent() {
     tags: filters.tags.length > 0 ? filters.tags : undefined,
     categoryId: selectedCategoryId || undefined,
   });
-  const products = productsData?.items ?? [];
+
+  const productsLoading = searchQuery ? searchLoading : browseLoading;
+  const products = searchQuery
+    ? (searchData?.items ?? [])
+    : (productsData?.items ?? []);
 
   // Client-side filtering for filters that aren't yet supported server-side
   const displayProducts = useMemo(() => {

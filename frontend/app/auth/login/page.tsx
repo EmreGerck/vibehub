@@ -58,7 +58,7 @@ export default function LoginPage() {
         routeToRole(data.user.role);
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Invalid credentials');
+      setError(err?.response?.data?.message || t('auth.invalidCredentials'));
     }
   }
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
             <Input
               label={t('auth.email')}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-300 ${useMfa ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </span>
               <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                Extra security: verify with email code
+                {t('auth.mfaToggle')}
               </span>
             </label>
 

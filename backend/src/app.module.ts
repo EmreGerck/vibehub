@@ -34,6 +34,10 @@ import { FeedModule } from './feed/feed.module';
 import { PushModule } from './push/push.module';
 import { AppConfigModule } from './app-config/app-config.module';
 import { RedisModule } from './redis/redis.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
+import { EInvoiceModule } from './einvoice/einvoice.module';
+import { SearchModule } from './search/search.module';
+import { KargoModule } from './kargo/kargo.module';
 
 @Module({
   imports: [
@@ -71,6 +75,10 @@ import { RedisModule } from './redis/redis.module';
     FeedModule,
     PushModule,
     AppConfigModule,
+    SchedulerModule,
+    EInvoiceModule,
+    SearchModule,
+    KargoModule,
   ],
   providers: [
     // All routes are JWT-protected by default; decorate with @Public() to opt out

@@ -60,6 +60,14 @@ export class OrderController {
     return ApiResponse.ok(result, 'Order cancelled');
   }
 
+  @Patch('my/:id/cancel-preorder')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel a pre-order before it ships (customer-initiated)' })
+  async cancelPreOrder(@Param('id') id: string, @CurrentUser() user: any) {
+    const result = await this.orderService.cancelPreOrder(id, user.id);
+    return ApiResponse.ok(result, 'Pre-order cancelled');
+  }
+
   // ── Vendor ────────────────────────────────────────────────────────────────────
 
   @Get('vendor')

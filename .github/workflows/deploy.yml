@@ -1,0 +1,135 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # never cancel an in-flight deploy
+
+jobs:
+  # ── Guard: must pass CI first ─────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Backend TypeScript check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Frontend TypeScript check
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+  # ── Deploy backend to VPS via SSH ─────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend (VPS)
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          port:     ${{ secrets.VPS_PORT || 22 }}
+          timeout:  120s
+          script: |
+            set -e
+            cd /srv/vibehub
+
+            echo "==> Pulling latest code"
+            git pull origin main
+
+            echo "==> Installing backend dependencies"
+            cd backend && npm ci --omit=dev
+
+            echo "==> Generating Prisma client"
+            npx prisma generate
+
+            echo "==> Running DB migrations"
+            npx prisma migrate deploy
+
+            echo "==> Restarting backend service"
+            cd /srv/vibehub
+            docker compose -f docker-compose.yml up -d --build backend
+
+            echo "==> Waiting for backend health check"
+            sleep 8
+            curl -sf http://localhost:3001/health || (echo "Health check failed" && exit 1)
+
+            echo "==> Backend deploy complete ✓"
+
+  # ── Deploy frontend to VPS via SSH ────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend (VPS)
+    needs: [ci-gate, deploy-backend]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy frontend to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          port:     ${{ secrets.VPS_PORT || 22 }}
+          timeout:  300s
+          script: |
+            set -e
+            cd /srv/vibehub
+
+            echo "==> Pulling latest code"
+            git pull origin main
+
+            echo "==> Building and restarting frontend (bakes in API URL at build time)"
+            NEXT_PUBLIC_API_URL=https://api-production-26a7.up.railway.app \
+            NEXT_PUBLIC_SITE_URL=https://vibehub.com.tr \
+            docker compose -f docker-compose.yml up -d --build frontend
+
+            echo "==> Waiting for frontend to come up"
+            sleep 10
+            curl -sf http://localhost:3000 || (echo "Frontend health check failed" && exit 1)
+
+            echo "==> Frontend deploy complete ✓"
+
+  # ── Notify on failure ─────────────────────────────────────────────────────────
+  notify-failure:
+    name: Notify on Failure
+    needs: [ci-gate, deploy-backend, deploy-frontend]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "Deploy failed for ${{ github.sha }} on ${{ github.ref }}"
+          # Add Slack/email notification here if needed
+          # curl -X POST ${{ secrets.SLACK_WEBHOOK }} -d '{"text":"🚨 VibeHub deploy FAILED on main"}'

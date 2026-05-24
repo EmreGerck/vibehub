@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useMySocialProfile, useUpdateSocialProfile } from '../../../hooks/useSocialProfile';
 import { toast } from '../../../store/toast.store';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useI18n } from '../../../lib/i18n';
 
 export default function SocialProfilePage() {
   const { data: profile, isLoading } = useMySocialProfile();
   const update = useUpdateSocialProfile();
+  const t = useI18n((s) => s.t);
 
   const [form, setForm] = useState({
     nickname: '',
@@ -49,9 +51,9 @@ export default function SocialProfilePage() {
         bannerUrl: form.bannerUrl || undefined,
         ghostMode: form.ghostMode,
       });
-      toast('success', 'Profile updated!');
+      toast('success', t('profile.social.updateSuccess'));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Could not save profile');
+      setError(err?.response?.data?.message ?? t('profile.social.updateFailed'));
     }
   }
 
@@ -59,7 +61,7 @@ export default function SocialProfilePage() {
 
   return (
     <>
-      <h2 className="text-xl font-semibold mb-6">Social Profile</h2>
+      <h2 className="text-xl font-semibold mb-6">{t('profile.social.title')}</h2>
 
       {/* Profile preview link */}
       {profile && (
@@ -86,7 +88,7 @@ export default function SocialProfilePage() {
         )}
 
         <div>
-          <label className="label">Nickname</label>
+          <label className="label">{t('profile.social.nickname')}</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
             <input
@@ -103,31 +105,31 @@ export default function SocialProfilePage() {
         </div>
 
         <div>
-          <label className="label">Bio</label>
+          <label className="label">{t('profile.social.bio')}</label>
           <textarea
             value={form.bio}
             onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
             className="input resize-none"
             rows={3}
             maxLength={500}
-            placeholder="Tell people a bit about yourself…"
+            placeholder={t('profile.social.bioPlaceholder')}
           />
           <p className="text-xs text-gray-500 mt-1">{form.bio.length}/500</p>
         </div>
 
         <div>
-          <label className="label">Interests</label>
+          <label className="label">{t('profile.social.interests')}</label>
           <input
             value={form.interests}
             onChange={(e) => setForm((f) => ({ ...f, interests: e.target.value }))}
             className="input"
-            placeholder="music, concerts, vinyl, travel"
+            placeholder={t('profile.social.interestsPlaceholder')}
           />
-          <p className="text-xs text-gray-500 mt-1">Comma-separated list</p>
+          <p className="text-xs text-gray-500 mt-1">{t('profile.social.interestsHint')}</p>
         </div>
 
         <div>
-          <label className="label">Avatar URL</label>
+          <label className="label">{t('profile.social.avatarUrl')}</label>
           <input
             type="url"
             value={form.avatarUrl}
@@ -146,7 +148,7 @@ export default function SocialProfilePage() {
         </div>
 
         <div>
-          <label className="label">Banner URL</label>
+          <label className="label">{t('profile.social.bannerUrl')}</label>
           <input
             type="url"
             value={form.bannerUrl}
@@ -166,8 +168,8 @@ export default function SocialProfilePage() {
 
         <label className="flex items-center justify-between cursor-pointer group">
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Ghost mode</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Don't show your name in other people's "Who visited me" list</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{t('profile.social.ghostMode')}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('profile.social.ghostModeDesc')}</p>
           </div>
           <button
             type="button"
@@ -179,7 +181,7 @@ export default function SocialProfilePage() {
         </label>
 
         <button type="submit" disabled={update.isPending} className="btn-primary mt-2">
-          {update.isPending ? 'Saving…' : 'Save profile'}
+          {update.isPending ? t('profile.social.saving') : t('profile.social.save')}
         </button>
       </form>
     </>

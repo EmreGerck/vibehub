@@ -1549,4 +1549,183 @@ export class AdminService {
     });
     return settings;
   }
+
+  // ── Security Monitoring ───────────────────────────────────────────────────────
+
+  async getSecurityOverview() {
+    const now = new Date();
+    const last1h  = new Date(now.getTime() - 60 * 60 * 1000);
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const last7d  = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      failedLogins1h,
+      failedLogins24h,
+      accountLocks24h,
+      passwordResets24h,
+      suspiciousActions24h,
+      recentSecurityEvents,
+      totalUsersLocked,
+      newUsers24h,
+    ] = await Promise.all([
+      this.prisma.auditLog.count({ where: { action: 'LOGIN_FAILED', createdAt: { gte: last1h } } }),
+      this.prisma.auditLog.count({ where: { action: 'LOGIN_FAILED', createdAt: { gte: last24h } } }),
+      this.prisma.auditLog.count({ where: { action: 'ACCOUNT_LOCKED', createdAt: { gte: last24h } } }),
+      this.prisma.auditLog.count({ where: { action: 'PASSWORD_RESET', createdAt: { gte: last24h } } }),
+      this.prisma.auditLog.count({
+        where: {
+          action: { in: ['LOGIN_FAILED', 'ACCOUNT_LOCKED', 'PASSWORD_RESET', 'ADMIN_USER_UPDATE', 'ADMIN_RESET_PASSWORD'] },
+          createdAt: { gte: last24h },
+        },
+      }),
+      this.prisma.auditLog.findMany({
+        where: {
+          action: {
+            in: [
+              'LOGIN_FAILED', 'LOGIN_SUCCESS', 'ACCOUNT_LOCKED', 'PASSWORD_RESET',
+              'ADMIN_USER_UPDATE', 'ADMIN_RESET_PASSWORD', 'PLATFORM_SETTINGS_UPDATE',
+              'PAYOUT_REQUEST', 'PAYOUT_APPROVE', 'PAYOUT_REJECT',
+            ],
+          },
+          createdAt: { gte: last7d },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: { actor: { select: { email: true, role: true } } },
+      }),
+      this.prisma.user.count({ where: { lockedUntil: { gt: now } } }),
+      this.prisma.user.count({ where: { createdAt: { gte: last24h } } }),
+    ]);
+
+    // Brute-force targets: emails with 3+ failed logins in last 1h
+    const bruteForceTargets = await this.prisma.auditLog.groupBy({
+      by: ['targetId'],
+      where: { action: 'LOGIN_FAILED', createdAt: { gte: last1h } },
+      _count: { id: true },
+      having: { id: { _count: { gte: 3 } } },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
+    });
+
+    const systemHealth = await this._checkSystemHealth();
+
+    let threatLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    if (failedLogins1h >= 50 || accountLocks24h >= 10) threatLevel = 'critical';
+    else if (failedLogins1h >= 20 || accountLocks24h >= 5) threatLevel = 'high';
+    else if (failedLogins1h >= 5 || accountLocks24h >= 1) threatLevel = 'medium';
+
+    return {
+      threatLevel,
+      summary: {
+        failedLogins1h,
+        failedLogins24h,
+        accountLocks24h,
+        passwordResets24h,
+        suspiciousActions24h,
+        totalUsersLocked,
+        newUsers24h,
+        bruteForceTargets: bruteForceTargets.map(t => ({
+          targetId: t.targetId,
+          attempts: t._count.id,
+        })),
+      },
+      systemHealth,
+      recentEvents: recentSecurityEvents.map(e => ({
+        id: e.id,
+        action: e.action,
+        targetType: e.targetType,
+        targetId: e.targetId,
+        actorEmail: e.actor?.email ?? 'system',
+        actorRole: e.actor?.role ?? 'SYSTEM',
+        metadata: e.metadata,
+        createdAt: e.createdAt,
+        severity: this._getEventSeverity(e.action),
+      })),
+      generatedAt: now,
+    };
+  }
+
+  private async _checkSystemHealth() {
+    const checks: Record<string, { ok: boolean; latencyMs?: number; detail?: string }> = {};
+
+    const dbStart = Date.now();
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      checks.database = { ok: true, latencyMs: Date.now() - dbStart };
+    } catch (e) {
+      checks.database = { ok: false, detail: e.message };
+    }
+
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentOrderCount = await this.prisma.order.count({ where: { createdAt: { gte: last24h } } });
+    checks.orderProcessing = { ok: true, detail: `${recentOrderCount} orders in last 24h` };
+
+    const pendingPayouts = await this.prisma.payout.count({ where: { status: 'PENDING' } });
+    checks.payouts = {
+      ok: pendingPayouts < 20,
+      detail: `${pendingPayouts} pending payout${pendingPayouts !== 1 ? 's' : ''}`,
+    };
+
+    return checks;
+  }
+
+  private _getEventSeverity(action: string): 'info' | 'warning' | 'critical' {
+    const critical = ['ACCOUNT_LOCKED', 'ADMIN_RESET_PASSWORD', 'PLATFORM_SETTINGS_UPDATE'];
+    const warning  = ['LOGIN_FAILED', 'PASSWORD_RESET', 'PAYOUT_APPROVE', 'PAYOUT_REJECT'];
+    if (critical.includes(action)) return 'critical';
+    if (warning.includes(action))  return 'warning';
+    return 'info';
+  }
+
+  async getSecurityEvents(query: {
+    page?: number;
+    limit?: number;
+    action?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    const page  = query.page  ?? 1;
+    const limit = Math.min(query.limit ?? 30, 100);
+    const skip  = (page - 1) * limit;
+
+    const securityActions = [
+      'LOGIN_FAILED', 'LOGIN_SUCCESS', 'ACCOUNT_LOCKED', 'PASSWORD_RESET',
+      'ADMIN_USER_UPDATE', 'ADMIN_RESET_PASSWORD', 'PLATFORM_SETTINGS_UPDATE',
+      'PAYOUT_REQUEST', 'PAYOUT_APPROVE', 'PAYOUT_REJECT',
+    ];
+
+    const where: any = {
+      action: query.action ? { equals: query.action } : { in: securityActions },
+    };
+    if (query.fromDate) where.createdAt = { ...where.createdAt, gte: new Date(query.fromDate) };
+    if (query.toDate)   where.createdAt = { ...where.createdAt, lte: new Date(query.toDate) };
+
+    const [events, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: { actor: { select: { email: true, role: true } } },
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      data: events.map(e => ({
+        id: e.id,
+        action: e.action,
+        targetType: e.targetType,
+        targetId: e.targetId,
+        actorEmail: e.actor?.email ?? 'system',
+        actorRole: e.actor?.role ?? 'SYSTEM',
+        metadata: e.metadata,
+        createdAt: e.createdAt,
+        severity: this._getEventSeverity(e.action),
+      })),
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    };
+  }
 }

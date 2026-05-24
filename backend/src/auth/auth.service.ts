@@ -5,10 +5,12 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from '../common/jwt-payload.interface';
@@ -20,12 +22,15 @@ import { addDays } from '../common/date.util';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly otp: OtpService,
     private readonly mail: MailService,
+    private readonly audit: AuditService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -63,6 +68,14 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
       await this.otp.recordFailedLogin(dto.email);
+      // Log security event — unknown email attempt
+      this.audit.log({
+        actorId: 'system',
+        action: 'LOGIN_FAILED',
+        targetType: 'User',
+        targetId: dto.email,
+        metadata: { reason: 'user_not_found', email: dto.email },
+      }).catch(() => {});
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -72,11 +85,35 @@ export class AuthService {
       if (locked) {
         // Fire-and-forget security alert email
         this.mail.sendSecurityAlert(user.email, Math.ceil(newLockout / 60000)).catch(() => {});
+        // Log account lockout event
+        this.audit.log({
+          actorId: user.id,
+          action: 'ACCOUNT_LOCKED',
+          targetType: 'User',
+          targetId: user.id,
+          metadata: { email: user.email, lockoutMinutes: Math.ceil(newLockout / 60000) },
+        }).catch(() => {});
       }
+      // Log failed login attempt
+      this.audit.log({
+        actorId: user.id,
+        action: 'LOGIN_FAILED',
+        targetType: 'User',
+        targetId: user.id,
+        metadata: { reason: 'wrong_password', email: user.email, locked },
+      }).catch(() => {});
       throw new UnauthorizedException('Invalid credentials');
     }
 
     await this.otp.resetLoginAttempts(dto.email);
+    // Log successful login
+    this.audit.log({
+      actorId: user.id,
+      action: 'LOGIN_SUCCESS',
+      targetType: 'User',
+      targetId: user.id,
+      metadata: { email: user.email },
+    }).catch(() => {});
     return this.issueTokens(user);
   }
 
@@ -362,9 +399,10 @@ export class AuthService {
   }
 
   private async issueTokens(user: { id: string; email: string; role: any; tenantId: string | null }) {
+    // PII minimisation: access token must NOT include email.
+    // If the client needs the user's email, fetch it from /me endpoint using the sub claim.
     const payload: JwtPayload = {
       sub: user.id,
-      email: user.email,
       role: user.role,
       tenantId: user.tenantId,
     };

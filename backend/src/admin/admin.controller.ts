@@ -49,6 +49,8 @@ import { ForumService } from '../forum/forum.service';
 import { UpdateForumSettingsDto } from '../forum/dto/forum.dto';
 import { IsBoolean, IsEmail, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SecurityDigestService } from '../scheduler/security-digest.service';
+import { SearchService } from '../search/search.service';
 
 class UpdatePlatformSettingsDto {
   // Platform Identity
@@ -117,6 +119,8 @@ export class AdminController {
     private readonly permissions: PermissionsService,
     private readonly mediaService: MediaService,
     private readonly forumService: ForumService,
+    private readonly securityDigest: SecurityDigestService,
+    private readonly searchService: SearchService,
   ) {}
 
   // ── Platform overview ─────────────────────────────────────────────────────────
@@ -733,6 +737,67 @@ export class AdminController {
   }
 
   // ── Platform Settings ─────────────────────────────────────────────────────────
+
+  // ── Security Monitoring ───────────────────────────────────────────────────────
+
+  @Throttle({ default: { ttl: 30000, limit: 10 } })
+  @Get('security/overview')
+  @ApiOperation({ summary: 'Security overview — threat level, failed logins, brute-force detection, system health' })
+  async securityOverview() {
+    return ApiResponse.ok(await this.adminService.getSecurityOverview(), 'Security overview');
+  }
+
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  @Post('security/send-digest')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Trigger an ad-hoc security digest email immediately (GOD_USER only)' })
+  @Roles(UserRole.GOD_USER)
+  async triggerSecurityDigest() {
+    const result = await this.securityDigest.sendNow();
+    return ApiResponse.ok(result, `Digest sent to ${result.sent} recipient(s)`);
+  }
+
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @Get('security/events')
+  @ApiOperation({ summary: 'Paginated security event log' })
+  async securityEvents(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('action') action?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    return ApiResponse.ok(
+      await this.adminService.getSecurityEvents({
+        page: page ? +page : 1,
+        limit: limit ? +limit : 30,
+        action,
+        fromDate,
+        toDate,
+      }),
+      'Security events',
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Search index management
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  @Get('search/stats')
+  @ApiOperation({ summary: 'Meilisearch index stats' })
+  async searchStats() {
+    return ApiResponse.ok(await this.searchService.getStats(), 'Search stats');
+  }
+
+  @Throttle({ default: { ttl: 3600000, limit: 5 } })
+  @Post('search/reindex')
+  @Roles(UserRole.GOD_USER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Full reindex of all LIVE products into Meilisearch (GOD_USER only)' })
+  async reindexSearch() {
+    const result = await this.searchService.reindexAll();
+    return ApiResponse.ok(result, `Reindex complete — ${result.indexed} products indexed`);
+  }
 
   @Get('settings')
   @ApiOperation({ summary: 'Get global platform settings' })

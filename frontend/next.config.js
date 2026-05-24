@@ -1,5 +1,9 @@
+// @ts-check
+const { withSentryConfig } = require('@sentry/nextjs');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   images: {
     // Allow images from any source — vendors paste direct-upload URLs from
     // various CDNs (imgbb, Cloudinary, Unsplash, Google, Railway uploads, etc.)
@@ -33,4 +37,14 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Wrap with Sentry only when DSN is configured (avoids source-map noise in local dev)
+const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
+
+module.exports = SENTRY_DSN
+  ? withSentryConfig(nextConfig, {
+      silent: true,          // suppress build output noise
+      disableLogger: true,   // tree-shake Sentry logger in production
+      widenClientFileUpload: true,
+      hideSourceMaps: true,  // don't expose source maps to end users
+    })
+  : nextConfig;

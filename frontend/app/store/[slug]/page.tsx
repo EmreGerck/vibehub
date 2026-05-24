@@ -41,6 +41,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/** Pre-render all active vendor store pages at build time. */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-26a7.up.railway.app';
+    const res = await fetch(`${apiBase}/vendors?limit=500&page=1`, {
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json?.data?.items ?? []).map((v: { slug: string }) => ({ slug: v.slug }));
+  } catch {
+    return [];
+  }
+}
+
 export default function StorePage({ params }: Props) {
   return <StorePageClient />;
 }

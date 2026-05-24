@@ -7,6 +7,7 @@ import { api } from '../../../lib/api';
 import { Input } from '../../../components/ui/Input';
 import { Alert } from '../../../components/ui/Alert';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useI18n } from '../../../lib/i18n';
 
 export default function ResetPasswordPage() {
   return (
@@ -24,16 +25,17 @@ function ResetPasswordContent() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const t = useI18n((s) => s.t);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (password !== confirm) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordsNoMatch'));
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('auth.passwordMinChars'));
       return;
     }
     setLoading(true);
@@ -41,7 +43,7 @@ function ResetPasswordContent() {
       await api.post('/auth/reset-password', { token, newPassword: password });
       setDone(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Invalid or expired reset link');
+      setError(err?.response?.data?.message || t('auth.invalidExpiredLink'));
     } finally {
       setLoading(false);
     }
@@ -51,9 +53,9 @@ function ResetPasswordContent() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-950">
         <div className="text-center space-y-4">
-          <p className="text-gray-500 dark:text-gray-400">Invalid reset link.</p>
+          <p className="text-gray-500 dark:text-gray-400">{t('auth.invalidResetLink')}</p>
           <Link href="/auth/forgot-password" className="btn-primary inline-flex px-6 py-2.5 text-sm">
-            Request a new link
+            {t('auth.requestNewLink')}
           </Link>
         </div>
       </div>
@@ -67,7 +69,7 @@ function ResetPasswordContent() {
           <Link href="/" className="text-2xl font-bold">
             <span className="bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent">VibeHub</span>
           </Link>
-          <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">Set a new password</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">{t('auth.setNewPasswordSubtitle')}</p>
         </div>
 
         <div className="card p-6">
@@ -79,17 +81,17 @@ function ResetPasswordContent() {
                 </svg>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Your password has been reset successfully.
+                {t('auth.passwordResetSuccess')}
               </p>
               <Link href="/auth/login" className="btn-primary inline-flex px-6 py-2.5 text-sm mt-2">
-                Sign in
+                {t('auth.signIn')}
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <Alert type="error" message={error} />}
               <Input
-                label="New password"
+                label={t('auth.newPassword')}
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -98,7 +100,7 @@ function ResetPasswordContent() {
                 autoFocus
               />
               <Input
-                label="Confirm password"
+                label={t('auth.confirmPassword')}
                 type="password"
                 placeholder="••••••••"
                 value={confirm}
@@ -107,9 +109,9 @@ function ResetPasswordContent() {
               />
               <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
                 {loading ? (
-                  <span className="flex items-center justify-center gap-2"><Spinner size="sm" /> Resetting…</span>
+                  <span className="flex items-center justify-center gap-2"><Spinner size="sm" /> {t('auth.resetting')}</span>
                 ) : (
-                  'Reset password'
+                  t('auth.resetPasswordBtn')
                 )}
               </button>
             </form>
@@ -118,7 +120,7 @@ function ResetPasswordContent() {
 
         <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
           <Link href="/auth/login" className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors">
-            Back to sign in
+            {t('auth.backToSignIn')}
           </Link>
         </p>
       </div>

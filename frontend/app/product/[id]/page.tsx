@@ -47,6 +47,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/** Pre-render top 200 products at build time for instant LCP. */
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-26a7.up.railway.app';
+    const res = await fetch(`${apiBase}/products?limit=200&page=1`, {
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json?.data?.items ?? []).map((p: { id: string }) => ({ id: p.id }));
+  } catch {
+    return [];
+  }
+}
+
 export default function ProductPage({ params }: Props) {
   return <ProductPageClient />;
 }

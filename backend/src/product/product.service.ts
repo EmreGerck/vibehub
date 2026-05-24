@@ -16,6 +16,7 @@ import { UpdateVariantDto } from './dto/update-variant.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { ReviewProductDto, ProductDecision } from './dto/review-product.dto';
 import { PermissionsService } from '../permissions/permissions.service';
+import { SearchService } from '../search/search.service';
 
 @Injectable()
 export class ProductService {
@@ -24,6 +25,7 @@ export class ProductService {
     private readonly audit: AuditService,
     private readonly permissions: PermissionsService,
     private readonly push: PushService,
+    private readonly search: SearchService,
   ) {}
 
   // ── Product CRUD ─────────────────────────────────────────────────────────────
@@ -113,6 +115,7 @@ export class ProductService {
 
     if (nextStatus === ProductStatus.LIVE) {
       await this.notifyFollowersNewDrop(productId, product.tenantId, product.title);
+      this.search.indexProduct(productId).catch(() => {});
     }
 
     return updated;
@@ -145,6 +148,10 @@ export class ProductService {
 
     if (newStatus === ProductStatus.LIVE) {
       await this.notifyFollowersNewDrop(productId, product.tenantId, product.title);
+      this.search.indexProduct(productId).catch(() => {});
+    } else {
+      // ARCHIVED / REJECTED → remove from search index
+      this.search.deleteProduct(productId).catch(() => {});
     }
 
     return updated;
@@ -154,10 +161,13 @@ export class ProductService {
     const product = await this.findProductOrThrow(productId);
     this.assertOwnership(product, actor);
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id: productId },
       data: { status: ProductStatus.ARCHIVED },
     });
+
+    this.search.deleteProduct(productId).catch(() => {});
+    return updated;
   }
 
   // ── Public browse ─────────────────────────────────────────────────────────────
@@ -224,6 +234,53 @@ export class ProductService {
     ]);
 
     return { items: items.map((p) => this.applyTranslations(p, lang)), total, page: query.page, limit: query.limit };
+  }
+
+  /** Full-text search via Meilisearch (falls back to Prisma LIKE). */
+  async searchProducts(params: {
+    query: string;
+    tenantId?: string;
+    categoryId?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    currency?: string;
+    sortBy?: 'price_asc' | 'price_desc' | 'newest';
+    page?: number;
+    limit?: number;
+    lang?: string;
+  }) {
+    const { ids, total, processingTimeMs } = await this.search.search({
+      query:      params.query,
+      tenantId:   params.tenantId,
+      categoryId: params.categoryId,
+      minPrice:   params.minPrice,
+      maxPrice:   params.maxPrice,
+      currency:   params.currency,
+      sortBy:     params.sortBy,
+      page:       params.page ?? 1,
+      limit:      params.limit ?? 20,
+    });
+
+    if (ids.length === 0) return { items: [], total, processingTimeMs };
+
+    // Preserve ranking order from Meilisearch
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: ids } },
+      include: {
+        tenant:   { select: { id: true, slug: true, displayName: true, logoUrl: true } },
+        category: { select: { id: true, name: true, slug: true, icon: true } },
+        variants: true,
+        _count:   { select: { reviews: true } },
+      },
+    });
+
+    const lang = params.lang ?? 'tr';
+    const ordered = ids
+      .map(id => products.find(p => p.id === id))
+      .filter(Boolean)
+      .map(p => this.applyTranslations(p!, lang));
+
+    return { items: ordered, total, processingTimeMs };
   }
 
   async findOne(productId: string, adminView = false, lang = 'tr') {

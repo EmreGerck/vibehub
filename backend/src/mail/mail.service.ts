@@ -177,6 +177,166 @@ export class MailService {
     await this.send(to, subject, html, text);
   }
 
+  /**
+   * Daily security digest — sent to all platform admins every morning.
+   * Shows threat summary, brute-force targets, account lockouts, and system health.
+   */
+  async sendDailySecurityDigest(
+    to: string | string[],
+    report: {
+      date: string;
+      threatLevel: 'low' | 'medium' | 'high' | 'critical';
+      failedLogins1h: number;
+      failedLogins24h: number;
+      accountLocks24h: number;
+      passwordResets24h: number;
+      totalUsersLocked: number;
+      bruteForceTargets: { targetId: string; attempts: number }[];
+      systemHealth: Record<string, { ok: boolean; latencyMs?: number; detail?: string }>;
+      topEvents: { action: string; actorEmail: string; targetId: string; createdAt: string; severity: string }[];
+    },
+  ): Promise<void> {
+    const THREAT_COLOR: Record<string, string> = {
+      low:      '#16a34a',
+      medium:   '#d97706',
+      high:     '#ea580c',
+      critical: '#dc2626',
+    };
+    const THREAT_LABEL: Record<string, string> = {
+      low: 'LOW', medium: 'MEDIUM', high: 'HIGH', critical: 'CRITICAL',
+    };
+    const SEV_ICON: Record<string, string> = { info: 'ℹ️', warning: '⚠️', critical: '🚨' };
+
+    const threatColor = THREAT_COLOR[report.threatLevel] ?? '#6b7280';
+    const threatLabel = THREAT_LABEL[report.threatLevel] ?? report.threatLevel.toUpperCase();
+    const hasAlerts   = report.accountLocks24h > 0 || report.bruteForceTargets.length > 0 || report.threatLevel !== 'low';
+
+    const bruteForceRows = report.bruteForceTargets.length
+      ? report.bruteForceTargets.map(t =>
+          `<tr>
+            <td style="padding:6px 8px;font-family:monospace;font-size:13px;color:#1e293b;">${t.targetId}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700;color:#dc2626;">${t.attempts} girişim</td>
+          </tr>`,
+        ).join('')
+      : '<tr><td colspan="2" style="padding:8px;color:#64748b;font-size:13px;">Brute-force hedefi tespit edilmedi ✅</td></tr>';
+
+    const eventRows = report.topEvents.slice(0, 10).map(e =>
+      `<tr>
+        <td style="padding:5px 8px;font-size:12px;">${SEV_ICON[e.severity] ?? ''}</td>
+        <td style="padding:5px 8px;font-size:12px;color:#374151;">${e.action}</td>
+        <td style="padding:5px 8px;font-size:12px;font-family:monospace;color:#374151;">${e.actorEmail}</td>
+        <td style="padding:5px 8px;font-size:12px;color:#9ca3af;">${new Date(e.createdAt).toLocaleTimeString('tr-TR')}</td>
+      </tr>`,
+    ).join('');
+
+    const healthRows = Object.entries(report.systemHealth).map(([key, h]) => {
+      const label = { database: 'Veritabanı', orderProcessing: 'Sipariş İşleme', payouts: 'Ödemeler' }[key] ?? key;
+      return `<tr>
+        <td style="padding:5px 8px;font-size:13px;">${h.ok ? '✅' : '❌'} ${label}</td>
+        <td style="padding:5px 8px;font-size:12px;color:#6b7280;">${h.latencyMs !== undefined ? `${h.latencyMs}ms` : h.detail ?? ''}</td>
+      </tr>`;
+    }).join('');
+
+    const subject = `${hasAlerts ? '🚨 ' : '🛡️ '}Güvenlik Raporu — ${report.date} [${threatLabel}]`;
+    const html = `
+<div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;">
+
+  <!-- Header -->
+  <div style="background:#0b1022;border-radius:12px;padding:24px 28px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#fff;">🛡️ VibeHub Güvenlik Raporu</div>
+        <div style="font-size:13px;color:#94a3b8;margin-top:4px;">${report.date}</div>
+      </div>
+      <div style="background:${threatColor};color:#fff;font-weight:700;font-size:13px;padding:6px 16px;border-radius:999px;letter-spacing:0.05em;">
+        ${threatLabel}
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats grid -->
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">
+    ${[
+      ['Başarısız Giriş (1s)',  report.failedLogins1h,  report.failedLogins1h >= 5],
+      ['Başarısız Giriş (24s)', report.failedLogins24h, report.failedLogins24h >= 20],
+      ['Hesap Kilitleme (24s)', report.accountLocks24h, report.accountLocks24h >= 1],
+      ['Şifre Sıfırlama (24s)', report.passwordResets24h, false],
+      ['Aktif Kilitli Hesap',   report.totalUsersLocked, report.totalUsersLocked >= 1],
+      ['Brute Force Hedefi',    report.bruteForceTargets.length, report.bruteForceTargets.length > 0],
+    ].map(([label, value, alert]) => `
+      <div style="background:${alert ? '#fef2f2' : '#fff'};border:1px solid ${alert ? '#fecaca' : '#e2e8f0'};border-radius:10px;padding:14px 16px;">
+        <div style="font-size:22px;font-weight:700;color:${alert ? '#dc2626' : '#1e293b'};">${value}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">${label}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <!-- Brute force targets -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px;overflow:hidden;">
+    <div style="background:#fef2f2;border-bottom:1px solid #fecaca;padding:10px 16px;">
+      <strong style="font-size:13px;color:#991b1b;">💣 Brute Force Hedefleri (Son 1 Saat)</strong>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">${bruteForceRows}</table>
+  </div>
+
+  <!-- System health -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px;overflow:hidden;">
+    <div style="background:#f1f5f9;border-bottom:1px solid #e2e8f0;padding:10px 16px;">
+      <strong style="font-size:13px;color:#1e293b;">🖥️ Sistem Sağlığı</strong>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">${healthRows}</table>
+  </div>
+
+  <!-- Recent events -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px;overflow:hidden;">
+    <div style="background:#f1f5f9;border-bottom:1px solid #e2e8f0;padding:10px 16px;">
+      <strong style="font-size:13px;color:#1e293b;">📋 Son 10 Güvenlik Olayı</strong>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr style="background:#f8fafc;">
+        <th style="padding:6px 8px;text-align:left;color:#64748b;">Sev.</th>
+        <th style="padding:6px 8px;text-align:left;color:#64748b;">Olay</th>
+        <th style="padding:6px 8px;text-align:left;color:#64748b;">Kullanıcı</th>
+        <th style="padding:6px 8px;text-align:left;color:#64748b;">Saat</th>
+      </tr>
+      ${eventRows || '<tr><td colspan="4" style="padding:8px;color:#64748b;">Son 24 saatte güvenlik olayı yok</td></tr>'}
+    </table>
+  </div>
+
+  <!-- CTA -->
+  <div style="text-align:center;margin-bottom:20px;">
+    <a href="${process.env.FRONTEND_URL ?? 'https://vibehub.io'}/dashboard/admin/security"
+       style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 28px;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;">
+      Güvenlik Monitörünü Aç →
+    </a>
+  </div>
+
+  <div style="text-align:center;font-size:11px;color:#94a3b8;">
+    Bu rapor her gün sabah 08:00'de otomatik olarak gönderilmektedir.<br>
+    VibeHub Platform · ${report.date}
+  </div>
+</div>
+    `.trim();
+
+    const text = [
+      `VibeHub Güvenlik Raporu — ${report.date}`,
+      `Tehdit Seviyesi: ${threatLabel}`,
+      `Başarısız Giriş (1s): ${report.failedLogins1h}`,
+      `Başarısız Giriş (24s): ${report.failedLogins24h}`,
+      `Hesap Kilitleme (24s): ${report.accountLocks24h}`,
+      `Brute Force Hedefi: ${report.bruteForceTargets.length}`,
+      `Kilitli Hesap: ${report.totalUsersLocked}`,
+      '',
+      'Sistem Sağlığı:',
+      ...Object.entries(report.systemHealth).map(([k, h]) => `  ${h.ok ? '✓' : '✗'} ${k}: ${h.detail ?? `${h.latencyMs}ms`}`),
+    ].join('\n');
+
+    const recipients = Array.isArray(to) ? to : [to];
+    for (const recipient of recipients) {
+      await this.send(recipient, subject, html, text);
+    }
+  }
+
   private async send(to: string, subject: string, html: string, text: string): Promise<void> {
     if (!this.resend) {
       this.logger.log(`[MAIL fallback] to=${to} subject="${subject}"\n${text}`);

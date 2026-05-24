@@ -7,6 +7,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import * as crypto from 'crypto';
 import { IyzicoService } from './iyzico.service';
+import { EInvoiceService } from '../einvoice/einvoice.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
@@ -23,6 +24,7 @@ export class PaymentController {
     private readonly iyzico: IyzicoService,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly einvoice: EInvoiceService,
   ) {}
 
   @Throttle({ default: { ttl: 60000, limit: 3 } })
@@ -87,6 +89,12 @@ export class PaymentController {
           },
         });
         this.logger.log(`[PAYMENT] Order ${orderId} confirmed via İyzico callback`);
+
+        // ── Auto-issue e-Arşiv invoice (Turkish legal requirement) ──────────
+        // Fire-and-forget — invoice failure must NOT block payment confirmation
+        this._autoIssueInvoice(orderId, order).catch(err =>
+          this.logger.error(`[EINVOICE] Auto-issue failed for order ${orderId}: ${err.message}`),
+        );
       }
     }
 
@@ -109,5 +117,59 @@ export class PaymentController {
   async refund(@Param('paymentId') paymentId: string, @Body('amount') amount: number) {
     const result = await this.iyzico.refundPayment(paymentId, amount);
     return ApiResponse.ok(result, 'Refund processed');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Private helpers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  private async _autoIssueInvoice(orderId: string, order: any): Promise<void> {
+    // Load the order with customer and items
+    const fullOrder = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: { select: { email: true, name: true } },
+        items: {
+          include: { variant: { include: { product: true } } },
+        },
+      },
+    });
+
+    if (!fullOrder) return;
+
+    const shippingAddr = (fullOrder.shippingAddress ?? {}) as any;
+
+    const result = await this.einvoice.issueEArchive({
+      orderId,
+      buyer: {
+        // Use a generic TC placeholder — in production, collect TC/VKN at checkout
+        identityNumber: '11111111111',
+        name:           fullOrder.customer?.name ?? fullOrder.customer?.email ?? 'Customer',
+        email:          fullOrder.customer?.email ?? '',
+        address:        [shippingAddr.line1, shippingAddr.line2].filter(Boolean).join(' ') || 'Turkey',
+        city:           shippingAddr.city    || 'Istanbul',
+        country:        shippingAddr.country || 'Turkey',
+      },
+      lines: fullOrder.items.map(item => ({
+        description: item.variant?.product?.title ?? `Item ${item.variantId.slice(0, 8)}`,
+        quantity:    item.qty,
+        unitPrice:   Number(item.unitPriceSnapshot),
+        vatRate:     0.20,
+        unit:        'ADET',
+      })),
+      currency:    fullOrder.currency,
+      invoiceDate: new Date(),
+      type:        'EARCHIVE',
+    });
+
+    if (result.success) {
+      this.logger.log(
+        `[EINVOICE] Auto-issued for order ${orderId} | number=${result.invoiceNumber} mock=${result.mock}`,
+      );
+    } else {
+      this.logger.error(
+        `[EINVOICE] Auto-issue failed for order ${orderId} | error=${result.errorMessage}`,
+      );
+    }
   }
 }

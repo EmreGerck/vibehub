@@ -435,4 +435,69 @@ export class OrderService {
 
     return { id: orderId, status: OrderStatus.CANCELLED };
   }
+
+  /**
+   * Pre-order cancel — customer-initiated cancellation of pre-order items.
+   * Unlike a regular cancel, pre-order items don't have real stock to restore.
+   * Instead we decrement the pre-order count and mark items as CANCELLED.
+   *
+   * Allowed while order is PLACED or CONFIRMED and has at least one pre-order item.
+   * The customer can cancel before the pre-order ships (status != SHIPPED/DELIVERED).
+   */
+  async cancelPreOrder(orderId: string, customerId: string) {
+    const order = await this.prisma.order.findUnique({
+      where:   { id: orderId },
+      include: { items: { include: { variant: { include: { product: true } } } } },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.customerId !== customerId) throw new ForbiddenException('Not your order');
+
+    const preOrderItems = order.items.filter((i) => i.isPreOrder);
+    if (preOrderItems.length === 0) {
+      throw new BadRequestException('This order has no pre-order items');
+    }
+
+    // Only allow cancel before shipment
+    const nonCancellableStatuses: OrderStatus[] = [
+      OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED,
+    ];
+    if (nonCancellableStatuses.includes(order.status)) {
+      throw new BadRequestException(
+        `Pre-order cannot be cancelled — order is already ${order.status}`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Mark order cancelled
+      await tx.order.update({
+        where: { id: orderId },
+        data:  { status: OrderStatus.CANCELLED },
+      });
+
+      // For regular (non-pre-order) items in the same order, restore stock
+      const regularItems = order.items.filter((i) => !i.isPreOrder);
+      for (const item of regularItems) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data:  { stockQty: { increment: item.qty } },
+        });
+      }
+      // Pre-order items: no stock to restore — the vendor hadn't reserved physical stock
+    });
+
+    // Audit
+    await this.audit.log({
+      actorId:    customerId,
+      action:     'PRE_ORDER_CANCELLED',
+      targetType: 'Order',
+      targetId:   orderId,
+      metadata:   {
+        preOrderItemCount: preOrderItems.length,
+        products:          preOrderItems.map((i) => i.variant?.product?.title).filter(Boolean),
+      },
+    });
+
+    return { id: orderId, status: OrderStatus.CANCELLED, preOrderItemsCancelled: preOrderItems.length };
+  }
 }

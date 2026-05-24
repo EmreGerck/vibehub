@@ -6,12 +6,14 @@ import { api } from '../../../lib/api';
 import { Input } from '../../../components/ui/Input';
 import { Alert } from '../../../components/ui/Alert';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useI18n } from '../../../lib/i18n';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const t = useI18n((s) => s.t);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,7 +23,7 @@ export default function ForgotPasswordPage() {
       await api.post('/auth/forgot-password', { email });
       setSent(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Something went wrong');
+      setError(err?.response?.data?.message || t('common.somethingWentWrong'));
     } finally {
       setLoading(false);
     }
@@ -34,7 +36,7 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="text-2xl font-bold">
             <span className="bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent">VibeHub</span>
           </Link>
-          <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">Reset your password</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">{t('auth.forgotPasswordSubtitle')}</p>
         </div>
 
         <div className="card p-6">
@@ -46,22 +48,22 @@ export default function ForgotPasswordPage() {
                 </svg>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                If an account exists for <strong>{email}</strong>, we've sent a password reset link.
+                {t('auth.resetSentBody')}
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                Check your inbox and spam folder. The link expires in 1 hour.
+                {t('auth.resetSentSpam')}
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <Alert type="error" message={error} />}
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Enter your email address and we'll send you a link to reset your password.
+                {t('auth.forgotPasswordHint')}
               </p>
               <Input
-                label="Email"
+                label={t('auth.email')}
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -69,9 +71,9 @@ export default function ForgotPasswordPage() {
               />
               <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
                 {loading ? (
-                  <span className="flex items-center justify-center gap-2"><Spinner size="sm" /> Sending…</span>
+                  <span className="flex items-center justify-center gap-2"><Spinner size="sm" /> {t('auth.sendingAction')}</span>
                 ) : (
-                  'Send reset link'
+                  t('auth.sendResetLinkAction')
                 )}
               </button>
             </form>
@@ -80,7 +82,7 @@ export default function ForgotPasswordPage() {
 
         <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
           <Link href="/auth/login" className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors">
-            Back to sign in
+            {t('auth.backToSignIn')}
           </Link>
         </p>
       </div>
