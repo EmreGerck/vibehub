@@ -186,15 +186,13 @@ export function Navbar() {
                       <p className="text-[10px] uppercase font-semibold text-purple-500 dark:text-purple-400 tracking-wider">Signed in</p>
                       <p className="text-xs font-medium text-gray-900 dark:text-white truncate mt-0.5">{user.email}</p>
                     </div>
-                    {!dashboardHref && (
-                      <Link
-                        href="/profile"
-                        onClick={() => setUserOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-300 hover:pl-5 transition-all duration-200 animate-fade-in-down"
-                      >
-                        {t('nav.profile')}
-                      </Link>
-                    )}
+                    <Link
+                      href="/profile"
+                      onClick={() => setUserOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-300 hover:pl-5 transition-all duration-200 animate-fade-in-down"
+                    >
+                      {t('nav.profile')}
+                    </Link>
                     {dashboardHref && (
                       <Link
                         href={dashboardHref}
@@ -255,9 +253,7 @@ export function Navbar() {
           ))}
           {user ? (
             <>
-              {!dashboardHref && (
-                <Link href="/profile" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm text-purple-600 dark:text-purple-400 font-medium hover:pl-2 transition-all">{t('nav.profile')}</Link>
-              )}
+              <Link href="/profile" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm text-purple-600 dark:text-purple-400 font-medium hover:pl-2 transition-all">{t('nav.profile')}</Link>
               {dashboardHref && (
                 <Link href={dashboardHref} onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm text-purple-600 dark:text-purple-400 font-medium hover:pl-2 transition-all">{t('nav.dashboard')}</Link>
               )}
