@@ -53,15 +53,16 @@ jobs:
         with:
           host:     ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           port:     ${{ secrets.VPS_PORT || 22 }}
           timeout:  120s
           script: |
             set -e
-            cd /srv/vibehub
+            cd /root/vibehub
 
-            echo "==> Pulling latest code"
-            git pull origin main
+            echo "==> Syncing repo to origin/main (discarding local drift)"
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "==> Installing backend dependencies"
             cd backend && npm ci --omit=dev
@@ -73,7 +74,7 @@ jobs:
             npx prisma migrate deploy
 
             echo "==> Restarting backend service"
-            cd /srv/vibehub
+            cd /root/vibehub
             docker compose -f docker-compose.yml up -d --build backend
 
             echo "==> Waiting for backend health check"
@@ -97,15 +98,16 @@ jobs:
         with:
           host:     ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          key:      ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           port:     ${{ secrets.VPS_PORT || 22 }}
           timeout:  300s
           script: |
             set -e
-            cd /srv/vibehub
+            cd /root/vibehub
 
-            echo "==> Pulling latest code"
-            git pull origin main
+            echo "==> Syncing repo to origin/main (discarding local drift)"
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "==> Building and restarting frontend (bakes in API URL at build time)"
             NEXT_PUBLIC_API_URL=https://api-production-26a7.up.railway.app \
