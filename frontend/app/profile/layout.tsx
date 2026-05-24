@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { Navbar } from '../../components/layout/Navbar';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
+import { useMySocialProfile } from '../../hooks/useSocialProfile';
 import { useI18n } from '../../lib/i18n';
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   const { user, _hasHydrated } = useAuthStore();
   const { logout } = useAuth();
   const t = useI18n((s) => s.t);
+  const { data: socialProfile } = useMySocialProfile({ enabled: !!user });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -55,6 +57,30 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
         <div className="flex flex-col md:flex-row gap-8">
           {/* Sidebar */}
           <aside className="w-full md:w-64 shrink-0">
+            {/* User identity card */}
+            <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+              <div className="h-10 w-10 rounded-full overflow-hidden bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                {socialProfile?.avatarUrl ? (
+                  <img
+                    src={socialProfile.avatarUrl}
+                    alt="avatar"
+                    className="h-full w-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="text-purple-600 dark:text-purple-400 font-bold text-sm">
+                    {user.email?.[0]?.toUpperCase() ?? '?'}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  {socialProfile?.nickname ? `@${socialProfile.nickname}` : user.email?.split('@')[0]}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
+
             <nav className="space-y-1">
               {NAV.map((item) => {
                 const active = pathname.startsWith(item.href);

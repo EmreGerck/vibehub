@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { ApiResponse, UserSocialProfile, ProfileVisitor } from '../types';
 
-export function useMySocialProfile() {
+export function useMySocialProfile({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['social-profile', 'me'],
     queryFn: async () => {
@@ -12,6 +12,7 @@ export function useMySocialProfile() {
       return res.data.data;
     },
     staleTime: 60 * 1000 * 5,
+    enabled,
   });
 }
 
