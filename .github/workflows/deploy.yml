@@ -56,6 +56,7 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port:     ${{ secrets.VPS_PORT || 22 }}
           timeout:  120s
+          command_timeout: 20m
           script: |
             set -e
             cd /root/vibehub
@@ -105,6 +106,10 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port:     ${{ secrets.VPS_PORT || 22 }}
           timeout:  300s
+          # Next.js production build (npm install + compile + static-page
+          # generation) takes ~7-10 min on this VPS. The default 10-minute
+          # command_timeout was killing the build right before completion.
+          command_timeout: 30m
           script: |
             set -e
             cd /root/vibehub

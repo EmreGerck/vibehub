@@ -4,7 +4,7 @@ WORKDIR /app
 # build context doesn't include it, so use `npm install` (matches the
 # backend Dockerfile). `npm ci` would fail with "missing package-lock.json".
 COPY package.json ./
-RUN npm install
+RUN npm install --no-audit --no-fund --prefer-offline
 
 FROM node:20-alpine AS builder
 WORKDIR /app
