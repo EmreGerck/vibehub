@@ -90,6 +90,33 @@
     overscroll-behavior: contain;
   }
 
+  /* Lightweight typography for /legal/* pages — comparable to prose without
+     pulling in @tailwindcss/typography. */
+  .legal-prose h2 {
+    @apply text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-3;
+  }
+  .legal-prose h3 {
+    @apply text-base sm:text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-2;
+  }
+  .legal-prose p { @apply mb-3; }
+  .legal-prose ul { @apply list-disc list-outside pl-6 space-y-1.5 mb-3; }
+  .legal-prose ol { @apply list-decimal list-outside pl-6 space-y-1.5 mb-3; }
+  .legal-prose a  { @apply text-purple-600 dark:text-purple-400 underline hover:text-purple-700 dark:hover:text-purple-300; }
+  .legal-prose strong { @apply text-gray-900 dark:text-white font-semibold; }
+  .legal-prose table {
+    @apply w-full border-collapse text-xs sm:text-sm my-4;
+  }
+  .legal-prose th, .legal-prose td {
+    @apply border border-gray-300 dark:border-gray-700 px-3 py-2 align-top;
+  }
+  .legal-prose th { @apply bg-gray-100 dark:bg-gray-800 font-semibold text-left; }
+  .legal-prose .callout {
+    @apply rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/20 p-4 my-4 text-amber-900 dark:text-amber-200;
+  }
+  .legal-prose .info-callout {
+    @apply rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 p-4 my-4 text-blue-900 dark:text-blue-200;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
   }

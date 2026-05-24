@@ -23,6 +23,10 @@ export default function CheckoutPage() {
     state: '', postalCode: '', country: 'TR', phone: '',
   });
 
+  // Mandatory legal consents (Mesafeli Sözleşmeler Yönetmeliği m. 5)
+  const [agreedPreInfo, setAgreedPreInfo] = useState(false);
+  const [agreedDistanceContract, setAgreedDistanceContract] = useState(false);
+
   function setField(field: string) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -31,6 +35,10 @@ export default function CheckoutPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!agreedPreInfo || !agreedDistanceContract) {
+      setError('Devam etmek için Ön Bilgilendirme Formu ve Mesafeli Satış Sözleşmesi\'ni onaylamanız gerekir.');
+      return;
+    }
     try {
       const order = await placeOrder.mutateAsync({
         shippingAddress: {
@@ -119,20 +127,52 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 14-day withdrawal right notice (Mesafeli Satış Sözleşmesi) */}
-            <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-300">
-              <p className="font-semibold mb-1">⚖️ Cayma Hakkı / Right of Withdrawal</p>
-              <p>
-                By placing this order, you acknowledge that you have a <strong>14-day right of withdrawal</strong> (cayma hakkı)
-                under Turkish Consumer Protection Law. Custom-made or personalised items may be exempt.
-                To exercise this right, contact us at <a href="mailto:support@vibehub.com" className="underline">support@vibehub.com</a>.
+            {/* ── Mandatory legal consents (Mesafeli Sözleşmeler Yönetmeliği) ── */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 space-y-3">
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Yasal onay
+              </p>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedPreInfo}
+                  onChange={(e) => setAgreedPreInfo(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  <Link href="/legal/on-bilgilendirme" target="_blank" className="text-purple-600 dark:text-purple-400 underline font-medium">
+                    Ön Bilgilendirme Formu
+                  </Link>
+                  'nu okudum, anladım ve onaylıyorum.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedDistanceContract}
+                  onChange={(e) => setAgreedDistanceContract(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  <Link href="/legal/mesafeli-satis" target="_blank" className="text-purple-600 dark:text-purple-400 underline font-medium">
+                    Mesafeli Satış Sözleşmesi
+                  </Link>
+                  'ni okudum, anladım ve onaylıyorum.
+                </span>
+              </label>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-800 mt-3">
+                ⚖️ Tüketici olarak <Link href="/legal/cayma-hakki" target="_blank" className="underline">14 günlük cayma hakkınız</Link> saklıdır.
+                Kişiselleştirilmiş ürünler bu haktan istisnadır.
               </p>
             </div>
 
             <button
               type="submit"
-              disabled={placeOrder.isPending}
-              className="btn-primary w-full py-3 text-base"
+              disabled={placeOrder.isPending || !agreedPreInfo || !agreedDistanceContract}
+              className="btn-primary w-full py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {placeOrder.isPending
                 ? <span className="flex items-center justify-center gap-2"><Spinner size="sm" />{t('checkout.processing')}</span>
