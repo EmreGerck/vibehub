@@ -1,7 +1,10 @@
 FROM node:20-alpine AS base
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+# Workspaces monorepo — only the root has a package-lock.json. The frontend
+# build context doesn't include it, so use `npm install` (matches the
+# backend Dockerfile). `npm ci` would fail with "missing package-lock.json".
+COPY package.json ./
+RUN npm install
 
 FROM node:20-alpine AS builder
 WORKDIR /app
