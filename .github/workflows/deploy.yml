@@ -70,8 +70,10 @@ jobs:
             docker compose -f docker-compose.yml up -d --build backend
 
             echo "==> Waiting for backend health check"
+            # There is no /health endpoint — hit /app-config (a real public
+            # endpoint that returns 200 once Nest is fully booted)
             for i in $(seq 1 20); do
-              if curl -sf http://localhost:3001/health >/dev/null 2>&1; then
+              if curl -sf http://localhost:3001/app-config >/dev/null 2>&1; then
                 echo "Backend healthy"
                 break
               fi
