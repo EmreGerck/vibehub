@@ -1,7 +1,10 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
+# Copy package manifest AND prisma schema before install — the postinstall
+# script runs `prisma generate` and needs prisma/schema.prisma to exist.
 COPY package.json ./
+COPY prisma ./prisma
 RUN npm install
 COPY . .
 RUN npx prisma generate

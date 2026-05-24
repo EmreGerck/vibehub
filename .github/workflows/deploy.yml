@@ -65,18 +65,9 @@ jobs:
             git reset --hard origin/main
 
             echo "==> Rebuilding & restarting backend container"
+            # The container's CMD runs `prisma migrate deploy` on startup,
+            # so migrations apply automatically as soon as the new image boots.
             docker compose -f docker-compose.yml up -d --build backend
-
-            echo "==> Waiting for backend container to become responsive"
-            for i in $(seq 1 30); do
-              if docker compose -f docker-compose.yml exec -T backend node -e "process.exit(0)" 2>/dev/null; then
-                break
-              fi
-              sleep 1
-            done
-
-            echo "==> Running DB migrations (inside backend container — postgres host resolves there)"
-            docker compose -f docker-compose.yml exec -T backend npx prisma migrate deploy
 
             echo "==> Waiting for backend health check"
             for i in $(seq 1 20); do
