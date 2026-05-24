@@ -21,10 +21,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install backend deps
-        working-directory: backend
+      - name: Install dependencies (all workspaces)
         run: npm ci
 
       - name: Generate Prisma client
@@ -37,9 +36,7 @@ jobs:
 
       - name: Frontend TypeScript check
         working-directory: frontend
-        run: |
-          npm ci
-          npx tsc --noEmit
+        run: npx tsc --noEmit
 
   # ── Deploy backend to VPS via SSH ─────────────────────────────────────────────
   deploy-backend:
