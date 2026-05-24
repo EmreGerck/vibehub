@@ -63,7 +63,7 @@ export default function VisitorsPage() {
               </div>
               {v.nickname && (
                 <Link
-                  href={`/messages/${v.userId}`}
+                  href={`/profile/messages/${v.userId}`}
                   className="text-xs btn-ghost px-3 py-1.5 shrink-0"
                 >
                   Message

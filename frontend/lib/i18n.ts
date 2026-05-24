@@ -478,6 +478,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'footer.termsOfService': 'Kullanım Koşulları',
     'footer.kvkk': 'KVKK Aydınlatma',
     'footer.cookieSettings': 'Çerez Ayarları',
+    'footer.allAgreements': 'Tüm Sözleşmeler',
+    'footer.distanceSales': 'Mesafeli Satış Sözleşmesi',
+    'footer.preInformation': 'Ön Bilgilendirme Formu',
+    'footer.rightToWithdraw': 'Cayma Hakkı',
+    'footer.returnAndCancel': 'İade ve İptal',
+    'footer.sellerAgreement': 'Satıcı Sözleşmesi',
 
     // ── 404 ──
     'notFound.title': 'Sayfa Bulunamadı',
@@ -1558,6 +1564,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'footer.termsOfService': 'Terms of Service',
     'footer.kvkk': 'KVKK Disclosure',
     'footer.cookieSettings': 'Cookie Settings',
+    'footer.allAgreements': 'All Agreements',
+    'footer.distanceSales': 'Distance Sales Agreement',
+    'footer.preInformation': 'Pre-Information Form',
+    'footer.rightToWithdraw': 'Right of Withdrawal',
+    'footer.returnAndCancel': 'Returns & Cancellations',
+    'footer.sellerAgreement': 'Seller Agreement',
 
     // ── 404 ──
     'notFound.title': 'Page Not Found',

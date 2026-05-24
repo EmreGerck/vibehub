@@ -90,7 +90,7 @@ export default function PublicProfilePage() {
                         <Link href="/profile/social" className="btn-ghost text-sm px-4 py-2">{t('social.editProfile')}</Link>
                       ) : user ? (
                         <Link
-                          href={`/messages/${profile.userId}`}
+                          href={`/profile/messages/${profile.userId}`}
                           className="btn-primary text-sm px-4 py-2 flex items-center gap-2"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -64,12 +64,12 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('footer.legal')}</h4>
             <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-              <li><Link href="/legal" className="hover:text-gray-900 dark:hover:text-white transition-colors">Tüm Sözleşmeler</Link></li>
-              <li><Link href="/legal/mesafeli-satis" className="hover:text-gray-900 dark:hover:text-white transition-colors">Mesafeli Satış Sözleşmesi</Link></li>
-              <li><Link href="/legal/on-bilgilendirme" className="hover:text-gray-900 dark:hover:text-white transition-colors">Ön Bilgilendirme Formu</Link></li>
-              <li><Link href="/legal/cayma-hakki" className="hover:text-gray-900 dark:hover:text-white transition-colors">Cayma Hakkı</Link></li>
-              <li><Link href="/legal/iade-iptal" className="hover:text-gray-900 dark:hover:text-white transition-colors">İade ve İptal</Link></li>
-              <li><Link href="/legal/satici-sozlesmesi" className="hover:text-gray-900 dark:hover:text-white transition-colors">Satıcı Sözleşmesi</Link></li>
+              <li><Link href="/legal" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.allAgreements')}</Link></li>
+              <li><Link href="/legal/mesafeli-satis" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.distanceSales')}</Link></li>
+              <li><Link href="/legal/on-bilgilendirme" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.preInformation')}</Link></li>
+              <li><Link href="/legal/cayma-hakki" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.rightToWithdraw')}</Link></li>
+              <li><Link href="/legal/iade-iptal" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.returnAndCancel')}</Link></li>
+              <li><Link href="/legal/satici-sozlesmesi" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.sellerAgreement')}</Link></li>
               <li><Link href="/privacy" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.privacyPolicy')}</Link></li>
               <li><Link href="/terms" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.termsOfService')}</Link></li>
               <li><Link href="/kvkk" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.kvkk')}</Link></li>
