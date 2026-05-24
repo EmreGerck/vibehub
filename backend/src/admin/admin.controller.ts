@@ -19,6 +19,7 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { PatchVendorStatusDto, PatchCommissionDto } from './dto/patch-vendor.dto';
 import { PatchVendorFeaturesDto, PatchForumSettingsDto } from './dto/vendor-features.dto';
+import { PatchPreOrderStatusDto } from './dto/admin-product.dto';
 import { CreateAdminUserDto } from './dto/create-admin.dto';
 import { QueryAuditDto } from './dto/query-audit.dto';
 import { QueryVendorsDto } from '../vendor/dto/query-vendors.dto';
@@ -218,6 +219,43 @@ export class AdminController {
   ) {
     const data = await this.adminService.patchForumSettings(id, dto, actorId);
     return ApiResponse.ok(data, 'Forum settings updated');
+  }
+
+  // ── Pre-orders ─────────────────────────────────────────────────────────────
+
+  @Get('pre-orders')
+  @ApiOperation({
+    summary:
+      'List pre-order line items across all orders. Filter by status (AWAITING_APPROVAL, APPROVED, PRODUCTION, SHIPPED, CANCELLED) and/or tenant.',
+  })
+  async listPreOrders(
+    @Query('status') status: any,
+    @Query('tenantId') tenantId: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+  ) {
+    const data = await this.adminService.listPreOrders({
+      status,
+      tenantId,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 50,
+    });
+    return ApiResponse.ok(data, 'Pre-orders retrieved');
+  }
+
+  @Patch('pre-orders/:itemId/status')
+  @ApiOperation({
+    summary:
+      'Change the status of a pre-order line item (AWAITING_APPROVAL → APPROVED → PRODUCTION → SHIPPED, or CANCELLED). ' +
+      'On APPROVED, an email is dispatched to the customer.',
+  })
+  async patchPreOrderStatus(
+    @Param('itemId') itemId: string,
+    @Body() dto: PatchPreOrderStatusDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const data = await this.adminService.patchPreOrderStatus(itemId, dto, actorId);
+    return ApiResponse.ok(data, 'Pre-order status updated');
   }
 
   // ── Orders ────────────────────────────────────────────────────────────────────

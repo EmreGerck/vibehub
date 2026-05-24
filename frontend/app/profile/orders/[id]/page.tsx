@@ -183,6 +183,13 @@ export default function OrderDetailPage() {
                   </Link>
                   {attrs && <p className="text-xs text-gray-500">{attrs}</p>}
                   <p className="text-xs text-gray-500">{item.tenant?.displayName} · ×{item.qty}</p>
+                  {/* Pre-order status badge + ship date */}
+                  {item.isPreOrder && (
+                    <PreOrderItemBadge
+                      status={item.preOrderStatus}
+                      shipDate={item.preOrderShipDate}
+                    />
+                  )}
                 </div>
                 <p className="text-sm font-medium">{formatPrice(Number(item.unitPriceSnapshot) * item.qty)}</p>
               </div>
@@ -260,5 +267,30 @@ export default function OrderDetailPage() {
         </div>
       )}
     </>
+  );
+}
+
+// ── Pre-order line item badge ────────────────────────────────────────────────
+
+function PreOrderItemBadge({ status, shipDate }: { status: string | null; shipDate: string | null }) {
+  const map: Record<string, { label: string; cls: string; icon: string }> = {
+    AWAITING_APPROVAL: { label: 'Awaiting approval', cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300', icon: '⏳' },
+    APPROVED:          { label: 'Approved',          cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',    icon: '✓' },
+    PRODUCTION:        { label: 'In production',     cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',        icon: '🏭' },
+    SHIPPED:           { label: 'Shipped',           cls: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300', icon: '🚚' },
+    CANCELLED:         { label: 'Cancelled',         cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',            icon: '✕' },
+  };
+  const m = (status && map[status]) || map.AWAITING_APPROVAL;
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${m.cls}`}>
+        🕐 Pre-order · {m.icon} {m.label}
+      </span>
+      {shipDate && (
+        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+          Ships ~{new Date(shipDate).toLocaleDateString()}
+        </span>
+      )}
+    </div>
   );
 }

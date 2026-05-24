@@ -69,7 +69,13 @@ export function ProductPageClient() {
 
   const variant = selectedVariant ?? product.variants?.[0] ?? null;
   const price = variant?.priceOverride ?? product.price;
-  const inStock = (variant?.stockQty ?? 0) > 0;
+  const isPreOrder = !!(product as any).isPreOrder;
+  const preOrderEndsAt = (product as any).preOrderEndsAt ? new Date((product as any).preOrderEndsAt) : null;
+  const preOrderClosed = !!(preOrderEndsAt && preOrderEndsAt < new Date());
+  // Stock is irrelevant for pre-orders — sales are based on the pre-order
+  // window, not on inventory.
+  const inStock = isPreOrder ? !preOrderClosed : (variant?.stockQty ?? 0) > 0;
+  const canPurchase = isPreOrder ? !preOrderClosed : inStock;
 
   async function handleAddToCart() {
     if (!variant) return;
@@ -240,12 +246,41 @@ export function ProductPageClient() {
               </div>
               <button
                 onClick={handleAddToCart}
-                disabled={!inStock || !variant || addToCart.isPending}
-                className={`flex-1 btn-primary py-2.5 ${!inStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!canPurchase || !variant || addToCart.isPending}
+                className={`flex-1 btn-primary py-2.5 ${!canPurchase ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {addToCart.isPending ? t('pdp.adding') : added ? '✓' : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
+                {addToCart.isPending
+                  ? t('pdp.adding')
+                  : added
+                    ? '✓'
+                    : isPreOrder
+                      ? preOrderClosed ? 'Pre-order closed' : '🕐 Pre-order now'
+                      : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
               </button>
             </div>
+
+            {/* Pre-order info card */}
+            {isPreOrder && (
+              <div className="mt-3 rounded-xl border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-900/20 p-4 text-sm">
+                <p className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                  <span>🕐</span> This is a pre-order
+                </p>
+                <ul className="mt-2 space-y-1 text-purple-800 dark:text-purple-200 text-xs">
+                  {(product as any).preOrderShipDate && (
+                    <li>📦 Estimated ship date: <b>{new Date((product as any).preOrderShipDate).toLocaleDateString()}</b></li>
+                  )}
+                  {preOrderEndsAt && (
+                    <li>⏳ {preOrderClosed ? 'Closed' : 'Open until'}: <b>{preOrderEndsAt.toLocaleDateString()}</b></li>
+                  )}
+                  {(product as any).preOrderLimit && (
+                    <li>📊 Limited to <b>{(product as any).preOrderLimit}</b> units total</li>
+                  )}
+                  <li className="text-purple-700/80 dark:text-purple-300/80 mt-1">
+                    You'll receive a confirmation email once your pre-order is approved by the seller.
+                  </li>
+                </ul>
+              </div>
+            )}
 
             {/* Description */}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
@@ -295,10 +330,16 @@ export function ProductPageClient() {
         </div>
         <button
           onClick={handleAddToCart}
-          disabled={!inStock || !variant || addToCart.isPending}
-          className={`flex-shrink-0 btn-primary px-5 py-3 ${!inStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!canPurchase || !variant || addToCart.isPending}
+          className={`flex-shrink-0 btn-primary px-5 py-3 ${!canPurchase ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          {addToCart.isPending ? t('pdp.adding') : added ? '✓' : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
+          {addToCart.isPending
+            ? t('pdp.adding')
+            : added
+              ? '✓'
+              : isPreOrder
+                ? preOrderClosed ? 'Closed' : '🕐 Pre-order'
+                : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
         </button>
       </div>
       {/* Spacer so content isn't hidden behind the sticky bar on mobile */}

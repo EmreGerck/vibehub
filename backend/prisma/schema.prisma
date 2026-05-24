@@ -338,6 +338,11 @@ model Product {
   previewVideoUrl String?
   shippingNote    String?          // e.g. "Ships in 3–5 business days via DHL"
   imageSettings   Json?
+  // ── Pre-order ──────────────────────────────────────────────────────────────
+  isPreOrder        Boolean   @default(false)
+  preOrderShipDate  DateTime?            // estimated ship date shown to customer
+  preOrderEndsAt    DateTime?            // when the pre-order window closes (null = open)
+  preOrderLimit     Int?                 // max units accepted (null = unlimited)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -400,6 +405,12 @@ model OrderItem {
   unitPriceSnapshot      Decimal @db.Decimal(12, 2)
   commissionRateSnapshot Decimal @db.Decimal(5, 4)
   vendorPayoutAmount     Decimal @db.Decimal(12, 2)
+  // ── Pre-order snapshot (copied from Product at order time) ────────────────
+  isPreOrder       Boolean         @default(false)
+  preOrderStatus   PreOrderStatus? // null for non-pre-order items
+  preOrderShipDate DateTime?       // snapshot of product.preOrderShipDate
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   order   Order          @relation(fields: [orderId], references: [id])
   tenant  Tenant         @relation(fields: [tenantId], references: [id])
@@ -408,6 +419,15 @@ model OrderItem {
   @@index([orderId])
   @@index([tenantId])
   @@index([variantId])
+  @@index([isPreOrder, preOrderStatus])
+}
+
+enum PreOrderStatus {
+  AWAITING_APPROVAL  // customer placed order; awaiting admin/vendor confirmation
+  APPROVED           // confirmed by admin/vendor; in production / waiting for ship date
+  PRODUCTION         // optional intermediate; actively being produced
+  SHIPPED            // shipment created; tracking via Shipment row
+  CANCELLED          // pre-order cancelled (refund handled separately)
 }
 
 model Shipment {

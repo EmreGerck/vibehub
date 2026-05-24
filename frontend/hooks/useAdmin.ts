@@ -195,6 +195,74 @@ export function usePatchVendorForumSettings() {
   });
 }
 
+// ── Pre-orders ────────────────────────────────────────────────────────────────
+
+export type PreOrderStatus =
+  | 'AWAITING_APPROVAL'
+  | 'APPROVED'
+  | 'PRODUCTION'
+  | 'SHIPPED'
+  | 'CANCELLED';
+
+export interface PreOrderItem {
+  id: string;
+  orderId: string;
+  tenantId: string;
+  qty: number;
+  isPreOrder: boolean;
+  preOrderStatus: PreOrderStatus;
+  preOrderShipDate: string | null;
+  createdAt: string;
+  order: {
+    id: string;
+    createdAt: string;
+    shippingAddress: any;
+    customer: { id: string; email: string };
+  };
+  tenant: { id: string; slug: string; displayName: string };
+  variant: {
+    id: string;
+    sku: string;
+    attributes: any;
+    product: {
+      id: string;
+      title: string;
+      images: string[];
+      isPreOrder: boolean;
+      preOrderShipDate: string | null;
+      preOrderEndsAt: string | null;
+      preOrderLimit: number | null;
+    };
+  };
+}
+
+export function useAdminPreOrders(params?: { status?: PreOrderStatus; tenantId?: string; page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['admin-pre-orders', params],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<{ items: PreOrderItem[]; total: number; page: number; limit: number }>>(
+        '/admin/pre-orders',
+        { params },
+      );
+      return res.data.data;
+    },
+  });
+}
+
+export function usePatchPreOrderStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, status, note }: { itemId: string; status: PreOrderStatus; note?: string }) => {
+      const res = await api.patch<ApiResponse<PreOrderItem>>(`/admin/pre-orders/${itemId}/status`, { status, note });
+      return res.data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-pre-orders'] });
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+    },
+  });
+}
+
 // ── Products ──────────────────────────────────────────────────────────────────
 
 export function useAdminPendingProducts(params?: { page?: number; limit?: number }) {

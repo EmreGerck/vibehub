@@ -45,12 +45,24 @@ export interface Tenant {
   createdAt: string;
 }
 
+export type PreOrderStatus =
+  | 'AWAITING_APPROVAL'
+  | 'APPROVED'
+  | 'PRODUCTION'
+  | 'SHIPPED'
+  | 'CANCELLED';
+
 export interface Product {
   id: string;
   tenantId: string;
   title: string;
   description: string;
   price: number;
+  // Pre-order metadata
+  isPreOrder?: boolean;
+  preOrderShipDate?: string | null;
+  preOrderEndsAt?: string | null;
+  preOrderLimit?: number | null;
   currency: string;
   status: ProductStatus;
   images: string[];

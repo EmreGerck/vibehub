@@ -7,8 +7,14 @@ import {
   MaxLength,
   MinLength,
   IsObject,
+  IsBoolean,
+  IsInt,
+  Min,
+  IsDateString,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PreOrderStatus } from '@prisma/client';
 
 export class AdminCreateProductDto {
   @IsString()
@@ -55,6 +61,12 @@ export class AdminCreateProductDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  // ── Pre-order ────────────────────────────────────────────────────────────
+  @IsOptional() @IsBoolean() isPreOrder?: boolean;
+  @IsOptional() @IsDateString() preOrderShipDate?: string;
+  @IsOptional() @IsDateString() preOrderEndsAt?: string;
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) preOrderLimit?: number;
 }
 
 export class AdminUpdateProductDto {
@@ -106,4 +118,22 @@ export class AdminUpdateProductDto {
   @IsOptional()
   @IsObject()
   imageSettings?: Record<string, { x: number; y: number }>;
+
+  // ── Pre-order ────────────────────────────────────────────────────────────
+  @IsOptional() @IsBoolean() isPreOrder?: boolean;
+  @IsOptional() @IsDateString() preOrderShipDate?: string | null;
+  @IsOptional() @IsDateString() preOrderEndsAt?: string | null;
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) preOrderLimit?: number | null;
+}
+
+// ── Admin pre-order status patch ────────────────────────────────────────────
+
+export class PatchPreOrderStatusDto {
+  @IsEnum(PreOrderStatus)
+  status: PreOrderStatus;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }

@@ -267,6 +267,11 @@ function StoreProductCard({ product, vendorSlug }: { product: Product; vendorSlu
           tenantSlug={vendorSlug}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
+        {(product as any).isPreOrder && (
+          <span className="absolute top-2 left-2 z-10 text-[10px] font-bold px-2 py-1 rounded-full bg-purple-600 text-white shadow-md">
+            🕐 PRE-ORDER
+          </span>
+        )}
         {defaultVariant && (
           <button
             onClick={handleQuickAdd}

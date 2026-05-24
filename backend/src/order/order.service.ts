@@ -55,7 +55,31 @@ export class OrderService {
       if (!v) throw new BadRequestException(`Variant ${entry.variantId} no longer exists`);
       if (v.product.status !== 'LIVE') throw new BadRequestException(`"${v.product.title}" is no longer available`);
       if (v.product.tenant.status !== 'ACTIVE') throw new BadRequestException(`Store "${v.product.tenant.displayName}" is not active`);
-      if (v.stockQty < entry.qty) {
+
+      if (v.product.isPreOrder) {
+        // Pre-order: skip stock check (units are produced after sale). Validate
+        // window + limit instead.
+        if (v.product.preOrderEndsAt && new Date(v.product.preOrderEndsAt) < new Date()) {
+          throw new BadRequestException(`Pre-order window for "${v.product.title}" has closed`);
+        }
+        if (v.product.preOrderLimit != null) {
+          // Hard cap across all approved/awaiting pre-orders for this product variant
+          const taken = await this.prisma.orderItem.aggregate({
+            where: {
+              variantId: v.id,
+              isPreOrder: true,
+              preOrderStatus: { in: ['AWAITING_APPROVAL', 'APPROVED', 'PRODUCTION', 'SHIPPED'] },
+            },
+            _sum: { qty: true },
+          });
+          const used = taken._sum.qty ?? 0;
+          if (used + entry.qty > v.product.preOrderLimit) {
+            throw new BadRequestException(
+              `Pre-order limit reached for "${v.product.title}" — only ${v.product.preOrderLimit - used} left`,
+            );
+          }
+        }
+      } else if (v.stockQty < entry.qty) {
         throw new BadRequestException(
           `Not enough stock for "${v.product.title}" — ${v.stockQty} available, ${entry.qty} requested`,
         );
@@ -84,6 +108,11 @@ export class OrderService {
         unitPriceSnapshot: unitPrice,
         commissionRateSnapshot: commissionRate,
         vendorPayoutAmount: vendorPayout,
+        // Pre-order snapshot — frozen at order time so future product edits
+        // don't retroactively change an order's status semantics.
+        isPreOrder: v.product.isPreOrder,
+        preOrderStatus: v.product.isPreOrder ? ('AWAITING_APPROVAL' as const) : null,
+        preOrderShipDate: v.product.isPreOrder ? v.product.preOrderShipDate : null,
         // for stock deduction
         variant: v,
       };
@@ -112,8 +141,9 @@ export class OrderService {
         },
       });
 
-      // Deduct stock for each variant
+      // Deduct stock for each variant — skip pre-order items (no stock kept).
       for (const item of lineItems) {
+        if (item.isPreOrder) continue;
         await tx.productVariant.update({
           where: { id: item.variantId },
           data: { stockQty: { decrement: item.qty } },

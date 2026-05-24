@@ -127,6 +127,43 @@ export class MailService {
     await this.send(to, subject, html, text);
   }
 
+  /**
+   * Sent to the customer when a pre-order line item is approved by admin.
+   * `shipDate` is the estimated ship date (may be null if unknown).
+   */
+  async sendPreOrderApproved(
+    to: string,
+    args: {
+      orderId: string;
+      productTitle: string;
+      qty: number;
+      shipDate?: Date | null;
+      orderUrl?: string;
+    },
+  ): Promise<void> {
+    const shipText = args.shipDate
+      ? `<p>Estimated ship date: <strong>${args.shipDate.toDateString()}</strong></p>`
+      : '';
+    const cta = args.orderUrl
+      ? `<p><a href="${args.orderUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">View order</a></p>`
+      : '';
+    const subject = `Your pre-order is confirmed — ${args.productTitle}`;
+    const html = `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
+        <h1 style="margin:0 0 8px;">Your pre-order is confirmed 🎉</h1>
+        <p>We've approved your pre-order for <strong>${args.productTitle}</strong> (×${args.qty}).</p>
+        ${shipText}
+        <p>You'll receive a shipping notification with tracking info as soon as your order is on its way.</p>
+        ${cta}
+        <p style="color:#888;font-size:12px;margin-top:24px;">VibeHub · order ${args.orderId.slice(0, 8).toUpperCase()}</p>
+      </div>
+    `.trim();
+    const text = `Your VibeHub pre-order for "${args.productTitle}" (×${args.qty}) has been approved. ${
+      args.shipDate ? `Estimated ship date: ${args.shipDate.toDateString()}.` : ''
+    } We'll email you again when it ships.`;
+    await this.send(to, subject, html, text);
+  }
+
   async sendOrderConfirmation(to: string, orderId: string): Promise<void> {
     const subject = `VibeHub order ${orderId.slice(0, 8).toUpperCase()} confirmed`;
     const html = `

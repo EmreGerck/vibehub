@@ -37,6 +37,10 @@ interface ProductFormState {
   images: string;
   previewVideoUrl: string;
   categoryId: string;
+  isPreOrder: boolean;
+  preOrderShipDate: string;
+  preOrderEndsAt: string;
+  preOrderLimit: string;
 }
 
 const EMPTY_FORM: ProductFormState = {
@@ -51,6 +55,10 @@ const EMPTY_FORM: ProductFormState = {
   images: '',
   previewVideoUrl: '',
   categoryId: '',
+  isPreOrder: false,
+  preOrderShipDate: '',
+  preOrderEndsAt: '',
+  preOrderLimit: '',
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -378,11 +386,21 @@ function ProductFormModal({
           images: (editingProduct.images ?? []).join('\n'),
           previewVideoUrl: editingProduct.previewVideoUrl ?? '',
           categoryId: editingProduct.categoryId ?? '',
+          isPreOrder: (editingProduct as any).isPreOrder ?? false,
+          preOrderShipDate: (editingProduct as any).preOrderShipDate
+            ? new Date((editingProduct as any).preOrderShipDate).toISOString().slice(0, 10)
+            : '',
+          preOrderEndsAt: (editingProduct as any).preOrderEndsAt
+            ? new Date((editingProduct as any).preOrderEndsAt).toISOString().slice(0, 10)
+            : '',
+          preOrderLimit: (editingProduct as any).preOrderLimit
+            ? String((editingProduct as any).preOrderLimit)
+            : '',
         }
       : EMPTY_FORM,
   );
 
-  function set(field: keyof ProductFormState, value: string) {
+  function set(field: keyof ProductFormState, value: any) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
@@ -405,6 +423,17 @@ function ProductFormModal({
     try {
       const previewVideoUrl = form.previewVideoUrl.trim() || undefined;
       const categoryId = form.categoryId || undefined;
+      // Pre-order payload (omit fields if pre-order is off so backend doesn't store stale dates)
+      const preOrderFields: any = { isPreOrder: form.isPreOrder };
+      if (form.isPreOrder) {
+        if (form.preOrderShipDate) preOrderFields.preOrderShipDate = new Date(form.preOrderShipDate).toISOString();
+        if (form.preOrderEndsAt)   preOrderFields.preOrderEndsAt   = new Date(form.preOrderEndsAt).toISOString();
+        if (form.preOrderLimit)    preOrderFields.preOrderLimit    = Number(form.preOrderLimit);
+      } else {
+        preOrderFields.preOrderShipDate = null;
+        preOrderFields.preOrderEndsAt = null;
+        preOrderFields.preOrderLimit = null;
+      }
       if (editingProduct) {
         await updateProduct.mutateAsync({
           id: editingProduct.id,
@@ -417,6 +446,7 @@ function ProductFormModal({
           translations,
           previewVideoUrl,
           categoryId,
+          ...preOrderFields,
         });
       } else {
         await createProduct.mutateAsync({
@@ -430,6 +460,7 @@ function ProductFormModal({
           translations,
           previewVideoUrl,
           categoryId,
+          ...preOrderFields,
         });
       }
       onClose();
@@ -575,6 +606,61 @@ function ProductFormModal({
               Use an MP4/WebM for best results — it plays once then stops, and replays on hover.
               GIF files play on hover and loop while the mouse is over the card.
             </p>
+          </div>
+
+          {/* ── Pre-order ────────────────────────────────────────────────── */}
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 bg-gray-50/40 dark:bg-gray-900/30">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isPreOrder}
+                onChange={(e) => set('isPreOrder', e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                  <span>🕐</span> Sell as pre-order
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Customers can order before production. Stock isn't deducted. Each line waits for admin approval; on approval, the buyer is emailed.
+                </p>
+              </div>
+            </label>
+
+            {form.isPreOrder && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="block">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">Estimated ship date</span>
+                  <input
+                    type="date"
+                    value={form.preOrderShipDate}
+                    onChange={(e) => set('preOrderShipDate', e.target.value)}
+                    className="input w-full mt-1"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">Pre-order ends</span>
+                  <input
+                    type="date"
+                    value={form.preOrderEndsAt}
+                    onChange={(e) => set('preOrderEndsAt', e.target.value)}
+                    className="input w-full mt-1"
+                  />
+                  <span className="text-[10px] text-gray-400">Leave blank for open window</span>
+                </label>
+                <label className="block">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">Max units (limit)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.preOrderLimit}
+                    onChange={(e) => set('preOrderLimit', e.target.value)}
+                    placeholder="Unlimited"
+                    className="input w-full mt-1"
+                  />
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

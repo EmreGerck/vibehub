@@ -30,6 +30,7 @@ import {
   AdminCreateVendorDto,
 } from './dto/admin-extras.dto';
 import { PermissionsService } from '../permissions/permissions.service';
+import { MailService } from '../mail/mail.service';
 import { OrderStatus, ProductStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -41,6 +42,7 @@ export class AdminService {
     private readonly audit: AuditService,
     private readonly vendor: VendorService,
     private readonly permissions: PermissionsService,
+    private readonly mail: MailService,
   ) {}
 
   // ── Platform overview stats ───────────────────────────────────────────────────
@@ -339,6 +341,121 @@ export class AdminService {
       targetId: updated.id,
       metadata: { tenantId, slug: tenant.slug, changes: dto },
     });
+
+    return updated;
+  }
+
+  // ── Pre-orders ──────────────────────────────────────────────────────────────
+
+  /**
+   * List pre-order order items with optional status filter. Includes related
+   * order, customer, product (via variant), and tenant info needed by the UI.
+   */
+  async listPreOrders(query: {
+    status?: import('@prisma/client').PreOrderStatus;
+    tenantId?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 50, 100);
+    const where: any = { isPreOrder: true };
+    if (query.status) where.preOrderStatus = query.status;
+    if (query.tenantId) where.tenantId = query.tenantId;
+
+    const [items, total] = await Promise.all([
+      this.prisma.orderItem.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          order: {
+            select: {
+              id: true,
+              createdAt: true,
+              shippingAddress: true,
+              customer: { select: { id: true, email: true } },
+            },
+          },
+          tenant: { select: { id: true, slug: true, displayName: true } },
+          variant: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  title: true,
+                  images: true,
+                  isPreOrder: true,
+                  preOrderShipDate: true,
+                  preOrderEndsAt: true,
+                  preOrderLimit: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.orderItem.count({ where }),
+    ]);
+
+    return { items, total, page, limit };
+  }
+
+  /**
+   * Move a pre-order line item to a new status. When transitioning to
+   * APPROVED, sends the customer an email.
+   */
+  async patchPreOrderStatus(
+    itemId: string,
+    dto: { status: import('@prisma/client').PreOrderStatus; note?: string },
+    actorId: string,
+  ) {
+    const item = await this.prisma.orderItem.findUnique({
+      where: { id: itemId },
+      include: {
+        order: { include: { customer: { select: { id: true, email: true } } } },
+        variant: { include: { product: { select: { title: true, preOrderShipDate: true } } } },
+      },
+    });
+    if (!item) throw new NotFoundException('Order item not found');
+    if (!item.isPreOrder) throw new BadRequestException('This order item is not a pre-order');
+
+    const updated = await this.prisma.orderItem.update({
+      where: { id: itemId },
+      data: { preOrderStatus: dto.status },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_PRE_ORDER_STATUS_PATCHED',
+      targetType: 'OrderItem',
+      targetId: itemId,
+      metadata: {
+        orderId: item.orderId,
+        from: item.preOrderStatus,
+        to: dto.status,
+        note: dto.note,
+      },
+    });
+
+    // Notify the customer on approval (fire-and-forget — don't fail the API call
+    // if email delivery has a hiccup).
+    if (dto.status === 'APPROVED' && item.order.customer?.email) {
+      const orderUrl = `${process.env.FRONTEND_URL ?? ''}/profile/orders/${item.orderId}`;
+      void this.mail
+        .sendPreOrderApproved(item.order.customer.email, {
+          orderId: item.orderId,
+          productTitle: item.variant.product.title,
+          qty: item.qty,
+          shipDate: item.preOrderShipDate ?? item.variant.product.preOrderShipDate ?? null,
+          orderUrl,
+        })
+        .catch((err) =>
+          // eslint-disable-next-line no-console
+          console.error('[pre-order email]', err),
+        );
+    }
 
     return updated;
   }
@@ -671,6 +788,11 @@ export class AdminService {
         tags: dto.tags ?? [],
         translations: (dto.translations ?? undefined) as any,
         status: ProductStatus.DRAFT,
+        categoryId: dto.categoryId ?? null,
+        isPreOrder: dto.isPreOrder ?? false,
+        preOrderShipDate: dto.preOrderShipDate ? new Date(dto.preOrderShipDate) : null,
+        preOrderEndsAt: dto.preOrderEndsAt ? new Date(dto.preOrderEndsAt) : null,
+        preOrderLimit: dto.preOrderLimit ?? null,
       },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });
@@ -703,6 +825,14 @@ export class AdminService {
         ...(dto.translations !== undefined && { translations: dto.translations as any }),
         ...(dto.imageSettings !== undefined && { imageSettings: dto.imageSettings as any }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.isPreOrder !== undefined && { isPreOrder: dto.isPreOrder }),
+        ...(dto.preOrderShipDate !== undefined && {
+          preOrderShipDate: dto.preOrderShipDate ? new Date(dto.preOrderShipDate) : null,
+        }),
+        ...(dto.preOrderEndsAt !== undefined && {
+          preOrderEndsAt: dto.preOrderEndsAt ? new Date(dto.preOrderEndsAt) : null,
+        }),
+        ...(dto.preOrderLimit !== undefined && { preOrderLimit: dto.preOrderLimit }),
       },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });
