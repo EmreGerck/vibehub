@@ -21,7 +21,10 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@/*": ["src/*"],
-      "meilisearch": ["../node_modules/meilisearch/dist/index.d.ts"]
+      "meilisearch": [
+        "./node_modules/meilisearch/dist/index.d.ts",
+        "../node_modules/meilisearch/dist/index.d.ts"
+      ]
     }
   },
   "include": ["src/**/*"],
