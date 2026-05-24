@@ -269,7 +269,7 @@ function StoreProductCard({ product, vendorSlug }: { product: Product; vendorSlu
         />
         {(product as any).isPreOrder && (
           <span className="absolute top-2 left-2 z-10 text-[10px] font-bold px-2 py-1 rounded-full bg-purple-600 text-white shadow-md">
-            🕐 PRE-ORDER
+            {t('preOrder.badge')}
           </span>
         )}
         {defaultVariant && (

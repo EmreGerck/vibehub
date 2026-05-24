@@ -7,6 +7,7 @@ import {
   usePatchVendorForumSettings,
   type ForumSettings,
 } from '../../hooks/useAdmin';
+import { useI18n } from '../../lib/i18n';
 
 interface Props {
   vendor: Tenant;
@@ -51,6 +52,7 @@ function ToggleField({ label, checked, onChange, hint }: { label: string; checke
 export default function ForumSettingsModal({ vendor, onClose }: Props) {
   const { data: settings, isLoading } = useVendorForumSettings(vendor.id);
   const patch = usePatchVendorForumSettings();
+  const t = useI18n((s) => s.t);
 
   const [form, setForm] = useState<Partial<ForumSettings>>({});
   const [error, setError] = useState('');
@@ -91,7 +93,7 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
       await patch.mutateAsync({ id: vendor.id, settings: form });
       onClose();
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Failed to save forum settings');
+      setError(e?.response?.data?.message ?? t('forumSettings.saveFailed'));
     }
   }
 
@@ -101,92 +103,92 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <span>💬</span> Forum settings
+              <span>💬</span> {t('forumSettings.title')}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {vendor.displayName} (@{vendor.slug}) — settings inherited from Discourse / Reddit / Discord
+              {vendor.displayName} (@{vendor.slug}) — {t('forumSettings.subtitle')}
             </p>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             ×
           </button>
         </div>
 
         {isLoading || !settings ? (
-          <p className="text-sm text-gray-500 py-8 text-center">Loading…</p>
+          <p className="text-sm text-gray-500 py-8 text-center">{t('common.loading')}</p>
         ) : (
           <div className="space-y-6">
             {/* Moderation */}
-            <Section title="🛡️ Moderation" description="Control who can post and how content flows in.">
+            <Section title={t('forumSettings.section.moderation')} description={t('forumSettings.section.moderationDesc')}>
               <label className="block">
-                <span className="text-sm text-gray-700 dark:text-gray-300">Moderation mode</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t('forumSettings.moderationMode')}</span>
                 <select
                   value={form.moderationMode ?? 'OPEN'}
                   onChange={(e) => update('moderationMode', e.target.value as any)}
                   className="mt-1 input w-full"
                 >
-                  <option value="OPEN">Open — anyone can post freely</option>
-                  <option value="PRE_MODERATED">Pre-moderated — posts queued for approval</option>
-                  <option value="LOCKED">Locked — read-only, no new posts</option>
+                  <option value="OPEN">{t('forumSettings.modeOpen')}</option>
+                  <option value="PRE_MODERATED">{t('forumSettings.modePreModerated')}</option>
+                  <option value="LOCKED">{t('forumSettings.modeLocked')}</option>
                 </select>
               </label>
               <ToggleField
-                label="Allow anonymous posts"
+                label={t('forumSettings.allowAnonymous')}
                 checked={!!form.allowAnonymous}
                 onChange={(v) => update('allowAnonymous', v)}
-                hint="Logged-in users can hide their identity on posts."
+                hint={t('forumSettings.allowAnonymousHint')}
               />
               <ToggleField
-                label="Require approval for new posts"
+                label={t('forumSettings.requireApproval')}
                 checked={!!form.requireApproval}
                 onChange={(v) => update('requireApproval', v)}
-                hint="Legacy moderation flag. Overrides anything below if moderation mode is OPEN."
+                hint={t('forumSettings.requireApprovalHint')}
               />
             </Section>
 
             {/* Access & Posting Policy */}
-            <Section title="🔒 Access & posting policy">
+            <Section title={t('forumSettings.section.access')}>
               <label className="block">
-                <span className="text-sm text-gray-700 dark:text-gray-300">Visibility</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t('forumSettings.visibility')}</span>
                 <select
                   value={form.visibility ?? 'PUBLIC'}
                   onChange={(e) => update('visibility', e.target.value as any)}
                   className="mt-1 input w-full"
                 >
-                  <option value="PUBLIC">Public — anyone can view</option>
-                  <option value="MEMBERS_ONLY">Members only — must be logged in</option>
-                  <option value="FOLLOWERS_ONLY">Followers only — must follow this vendor</option>
+                  <option value="PUBLIC">{t('forumSettings.visPublic')}</option>
+                  <option value="MEMBERS_ONLY">{t('forumSettings.visMembers')}</option>
+                  <option value="FOLLOWERS_ONLY">{t('forumSettings.visFollowers')}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="text-sm text-gray-700 dark:text-gray-300">Who can post?</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t('forumSettings.postingPolicy')}</span>
                 <select
                   value={form.postingPolicy ?? 'EVERYONE'}
                   onChange={(e) => update('postingPolicy', e.target.value as any)}
                   className="mt-1 input w-full"
                 >
-                  <option value="EVERYONE">Everyone (logged in)</option>
-                  <option value="VERIFIED_ONLY">Verified users only</option>
-                  <option value="FOLLOWERS_ONLY">Followers of this vendor only</option>
+                  <option value="EVERYONE">{t('forumSettings.policyEveryone')}</option>
+                  <option value="VERIFIED_ONLY">{t('forumSettings.policyVerified')}</option>
+                  <option value="FOLLOWERS_ONLY">{t('forumSettings.policyFollowers')}</option>
                 </select>
               </label>
               <ToggleField
-                label="Allow guests to view"
+                label={t('forumSettings.allowGuestView')}
                 checked={!!form.allowGuestView}
                 onChange={(v) => update('allowGuestView', v)}
-                hint="If off, anonymous visitors see a login wall."
+                hint={t('forumSettings.allowGuestViewHint')}
               />
             </Section>
 
             {/* Content rules */}
-            <Section title="📝 Content rules" description="What's allowed inside posts and replies.">
+            <Section title={t('forumSettings.section.content')} description={t('forumSettings.section.contentDesc')}>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Min post length</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('forumSettings.minPostLength')}</span>
                   <input
                     type="number"
                     min={1}
@@ -197,7 +199,7 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Max post length</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t('forumSettings.maxPostLength')}</span>
                   <input
                     type="number"
                     min={10}
@@ -208,18 +210,18 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
                   />
                 </label>
               </div>
-              <ToggleField label="Allow images" checked={!!form.allowImages} onChange={(v) => update('allowImages', v)} />
-              <ToggleField label="Allow links" checked={!!form.allowLinks} onChange={(v) => update('allowLinks', v)} />
-              <ToggleField label="Allow @mentions" checked={!!form.allowMentions} onChange={(v) => update('allowMentions', v)} />
-              <ToggleField label="Allow reactions" checked={!!form.allowReactions} onChange={(v) => update('allowReactions', v)} />
-              <ToggleField label="Allow replies" checked={!!form.allowReplies} onChange={(v) => update('allowReplies', v)} hint="If off, only top-level topics are accepted." />
+              <ToggleField label={t('forumSettings.allowImages')}   checked={!!form.allowImages}    onChange={(v) => update('allowImages', v)} />
+              <ToggleField label={t('forumSettings.allowLinks')}    checked={!!form.allowLinks}     onChange={(v) => update('allowLinks', v)} />
+              <ToggleField label={t('forumSettings.allowMentions')} checked={!!form.allowMentions}  onChange={(v) => update('allowMentions', v)} />
+              <ToggleField label={t('forumSettings.allowReactions')} checked={!!form.allowReactions} onChange={(v) => update('allowReactions', v)} />
+              <ToggleField label={t('forumSettings.allowReplies')}  checked={!!form.allowReplies}   onChange={(v) => update('allowReplies', v)} hint={t('forumSettings.allowRepliesHint')} />
             </Section>
 
             {/* Rate limit */}
-            <Section title="⏱️ Rate limit (slow mode)">
+            <Section title={t('forumSettings.section.rate')}>
               <label className="block">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Slow mode (seconds between posts per user)
+                  {t('forumSettings.slowModeLabel')}
                 </span>
                 <input
                   type="number"
@@ -229,15 +231,15 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
                   onChange={(e) => update('slowModeSeconds', Number(e.target.value))}
                   className="mt-1 input w-full"
                 />
-                <p className="text-xs text-gray-500 mt-1">0 = disabled. 30 = users must wait 30s between posts.</p>
+                <p className="text-xs text-gray-500 mt-1">{t('forumSettings.slowModeHint')}</p>
               </label>
             </Section>
 
             {/* Auto-moderation */}
-            <Section title="🤖 Auto-moderation">
+            <Section title={t('forumSettings.section.automod')}>
               <label className="block">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Banned keywords (one per line)
+                  {t('forumSettings.bannedKeywords')}
                 </span>
                 <textarea
                   value={(form.bannedKeywords ?? []).join('\n')}
@@ -252,12 +254,12 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
                   className="mt-1 input w-full font-mono text-xs"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Case-insensitive substring match. Posts containing any of these are rejected.
+                  {t('forumSettings.bannedKeywordsHint')}
                 </p>
               </label>
               <label className="block">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Auto-archive topics after N days of inactivity
+                  {t('forumSettings.autoArchive')}
                 </span>
                 <input
                   type="number"
@@ -267,30 +269,30 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
                   onChange={(e) => update('autoArchiveDays', Number(e.target.value))}
                   className="mt-1 input w-full"
                 />
-                <p className="text-xs text-gray-500 mt-1">0 = never archive.</p>
+                <p className="text-xs text-gray-500 mt-1">{t('forumSettings.autoArchiveHint')}</p>
               </label>
             </Section>
 
             {/* Community */}
-            <Section title="💌 Community">
+            <Section title={t('forumSettings.section.community')}>
               <label className="block">
-                <span className="text-sm text-gray-700 dark:text-gray-300">Welcome message</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t('forumSettings.welcomeMessage')}</span>
                 <textarea
                   value={form.welcomeMessage ?? ''}
                   onChange={(e) => update('welcomeMessage', e.target.value || null)}
                   rows={2}
-                  placeholder="Welcome to our community!"
+                  placeholder={t('forumSettings.welcomePlaceholder')}
                   className="mt-1 input w-full"
                   maxLength={1000}
                 />
               </label>
               <label className="block">
-                <span className="text-sm text-gray-700 dark:text-gray-300">Rules (markdown)</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t('forumSettings.rulesText')}</span>
                 <textarea
                   value={form.rulesText ?? ''}
                   onChange={(e) => update('rulesText', e.target.value || null)}
                   rows={4}
-                  placeholder="1. Be respectful&#10;2. No spam&#10;3. Stay on topic"
+                  placeholder={t('forumSettings.rulesPlaceholder')}
                   className="mt-1 input w-full font-mono text-xs"
                   maxLength={20000}
                 />
@@ -307,10 +309,10 @@ export default function ForumSettingsModal({ vendor, onClose }: Props) {
             disabled={isLoading || patch.isPending}
             className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {patch.isPending ? 'Saving…' : 'Save'}
+            {patch.isPending ? t('common.saving') : t('common.save')}
           </button>
           <button onClick={onClose} className="flex-1 btn-ghost">
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>

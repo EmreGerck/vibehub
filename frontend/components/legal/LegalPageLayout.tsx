@@ -1,5 +1,8 @@
+'use client';
+
 import { Navbar } from '../layout/Navbar';
 import { Footer } from '../layout/Footer';
+import { useI18n } from '../../lib/i18n';
 
 interface Props {
   title: string;
@@ -13,6 +16,7 @@ interface Props {
  * "last updated" badge, and adds the standard navbar + footer.
  */
 export default function LegalPageLayout({ title, subtitle, updated, children }: Props) {
+  const t = useI18n((s) => s.t);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors flex flex-col">
       <Navbar />
@@ -28,7 +32,7 @@ export default function LegalPageLayout({ title, subtitle, updated, children }: 
               )}
               {updated && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                  Son güncelleme: <time>{updated}</time>
+                  {t('legal.lastUpdated')}: <time>{updated}</time>
                 </p>
               )}
             </header>

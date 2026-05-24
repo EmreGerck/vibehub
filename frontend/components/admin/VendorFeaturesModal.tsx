@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { Tenant } from '../../types';
 import { usePatchVendorFeatures, type VendorFeatures } from '../../hooks/useAdmin';
+import { useI18n } from '../../lib/i18n';
 
 interface Props {
   vendor: Tenant;
@@ -52,6 +53,7 @@ function FeatureRow({ icon, title, description, enabled, onChange, extraAction }
 
 export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettings }: Props) {
   const patch = usePatchVendorFeatures();
+  const t = useI18n((s) => s.t);
 
   const [features, setFeatures] = useState<VendorFeatures>({
     forumEnabled: vendor.forumEnabled ?? true,
@@ -84,7 +86,7 @@ export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettin
       await patch.mutateAsync({ id: vendor.id, features });
       onClose();
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Failed to update features');
+      setError(e?.response?.data?.message ?? t('vendorFeatures.saveFailed'));
     }
   }
 
@@ -94,7 +96,7 @@ export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettin
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              Vendor features
+              {t('vendorFeatures.title')}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {vendor.displayName} (@{vendor.slug})
@@ -103,22 +105,21 @@ export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettin
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             ×
           </button>
         </div>
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Turn individual features on or off for this vendor. Disabled features
-          are hidden from the storefront ribbon and their APIs return no data.
+          {t('vendorFeatures.intro')}
         </p>
 
         <div className="space-y-3">
           <FeatureRow
             icon="💬"
-            title="Forum"
-            description="Topics, replies, reactions, channels. Independent sub-settings (moderation, slow mode, content rules) when enabled."
+            title={t('vendorFeatures.forum')}
+            description={t('vendorFeatures.forumDesc')}
             enabled={features.forumEnabled}
             onChange={(v) => setFeatures((f) => ({ ...f, forumEnabled: v }))}
             extraAction={
@@ -128,7 +129,7 @@ export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettin
                   onClick={onOpenForumSettings}
                   className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
                 >
-                  Configure forum settings →
+                  {t('vendorFeatures.configureForum')}
                 </button>
               ) : null
             }
@@ -136,24 +137,24 @@ export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettin
 
           <FeatureRow
             icon="🎵"
-            title="Media"
-            description="Spotify / YouTube embeds shown on the vendor's storefront."
+            title={t('vendorFeatures.media')}
+            description={t('vendorFeatures.mediaDesc')}
             enabled={features.mediaEnabled}
             onChange={(v) => setFeatures((f) => ({ ...f, mediaEnabled: v }))}
           />
 
           <FeatureRow
             icon="🎫"
-            title="Events"
-            description="Concert / tour listings on the vendor's storefront."
+            title={t('vendorFeatures.events')}
+            description={t('vendorFeatures.eventsDesc')}
             enabled={features.eventsEnabled}
             onChange={(v) => setFeatures((f) => ({ ...f, eventsEnabled: v }))}
           />
 
           <FeatureRow
             icon="🏷️"
-            title="NFC tags"
-            description="Physical NFC tag management for this vendor."
+            title={t('vendorFeatures.nfc')}
+            description={t('vendorFeatures.nfcDesc')}
             enabled={features.nfcEnabled}
             onChange={(v) => setFeatures((f) => ({ ...f, nfcEnabled: v }))}
           />
@@ -169,10 +170,10 @@ export default function VendorFeaturesModal({ vendor, onClose, onOpenForumSettin
             disabled={!dirty || patch.isPending}
             className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {patch.isPending ? 'Saving…' : 'Save'}
+            {patch.isPending ? t('common.saving') : t('common.save')}
           </button>
           <button onClick={onClose} className="flex-1 btn-ghost">
-            Close
+            {t('common.close')}
           </button>
         </div>
       </div>

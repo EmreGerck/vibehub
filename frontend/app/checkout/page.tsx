@@ -36,7 +36,7 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError('');
     if (!agreedPreInfo || !agreedDistanceContract) {
-      setError('Devam etmek için Ön Bilgilendirme Formu ve Mesafeli Satış Sözleşmesi\'ni onaylamanız gerekir.');
+      setError(t('checkout.consent.required'));
       return;
     }
     try {
@@ -130,7 +130,7 @@ export default function CheckoutPage() {
             {/* ── Mandatory legal consents (Mesafeli Sözleşmeler Yönetmeliği) ── */}
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 space-y-3">
               <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                Yasal onay
+                {t('checkout.legalSectionTitle')}
               </p>
 
               <label className="flex items-start gap-3 cursor-pointer">
@@ -141,10 +141,11 @@ export default function CheckoutPage() {
                   className="mt-1 h-4 w-4 shrink-0"
                 />
                 <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  {t('checkout.consent.preInfo.before')}
                   <Link href="/legal/on-bilgilendirme" target="_blank" className="text-purple-600 dark:text-purple-400 underline font-medium">
-                    Ön Bilgilendirme Formu
+                    {t('checkout.consent.preInfo.link')}
                   </Link>
-                  'nu okudum, anladım ve onaylıyorum.
+                  {t('checkout.consent.preInfo.after')}
                 </span>
               </label>
 
@@ -156,16 +157,18 @@ export default function CheckoutPage() {
                   className="mt-1 h-4 w-4 shrink-0"
                 />
                 <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  {t('checkout.consent.contract.before')}
                   <Link href="/legal/mesafeli-satis" target="_blank" className="text-purple-600 dark:text-purple-400 underline font-medium">
-                    Mesafeli Satış Sözleşmesi
+                    {t('checkout.consent.contract.link')}
                   </Link>
-                  'ni okudum, anladım ve onaylıyorum.
+                  {t('checkout.consent.contract.after')}
                 </span>
               </label>
 
               <p className="text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-800 mt-3">
-                ⚖️ Tüketici olarak <Link href="/legal/cayma-hakki" target="_blank" className="underline">14 günlük cayma hakkınız</Link> saklıdır.
-                Kişiselleştirilmiş ürünler bu haktan istisnadır.
+                {t('checkout.consent.note.before')}
+                <Link href="/legal/cayma-hakki" target="_blank" className="underline">{t('checkout.consent.note.link')}</Link>
+                {t('checkout.consent.note.after')}
               </p>
             </div>
 

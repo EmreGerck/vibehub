@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useI18n } from '../../../../lib/i18n';
 import { usePageSize } from '../../../../hooks/usePageSize';
 import { PageSizeSelector } from '../../../../components/ui/PageSizeSelector';
 import {
@@ -359,6 +360,7 @@ function ProductFormModal({
   editingProduct: any | null;
   onClose: () => void;
 }) {
+  const t = useI18n((s) => s.t);
   const createProduct = useAdminCreateProduct();
   const updateProduct = useAdminUpdateProduct();
   // Fetch vendors inside the modal so it always loads fresh when opened
@@ -619,10 +621,10 @@ function ProductFormModal({
               />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-2">
-                  <span>🕐</span> Sell as pre-order
+                  {t('productForm.preOrder.toggle')}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Customers can order before production. Stock isn't deducted. Each line waits for admin approval; on approval, the buyer is emailed.
+                  {t('productForm.preOrder.description')}
                 </p>
               </div>
             </label>
@@ -630,7 +632,7 @@ function ProductFormModal({
             {form.isPreOrder && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <label className="block">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Estimated ship date</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{t('productForm.preOrder.shipDate')}</span>
                   <input
                     type="date"
                     value={form.preOrderShipDate}
@@ -639,23 +641,23 @@ function ProductFormModal({
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Pre-order ends</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{t('productForm.preOrder.endsAt')}</span>
                   <input
                     type="date"
                     value={form.preOrderEndsAt}
                     onChange={(e) => set('preOrderEndsAt', e.target.value)}
                     className="input w-full mt-1"
                   />
-                  <span className="text-[10px] text-gray-400">Leave blank for open window</span>
+                  <span className="text-[10px] text-gray-400">{t('productForm.preOrder.endsHint')}</span>
                 </label>
                 <label className="block">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">Max units (limit)</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{t('productForm.preOrder.limit')}</span>
                   <input
                     type="number"
                     min={1}
                     value={form.preOrderLimit}
                     onChange={(e) => set('preOrderLimit', e.target.value)}
-                    placeholder="Unlimited"
+                    placeholder={t('productForm.preOrder.limitPlaceholder')}
                     className="input w-full mt-1"
                   />
                 </label>

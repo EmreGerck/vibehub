@@ -254,7 +254,7 @@ export function ProductPageClient() {
                   : added
                     ? '✓'
                     : isPreOrder
-                      ? preOrderClosed ? 'Pre-order closed' : '🕐 Pre-order now'
+                      ? preOrderClosed ? t('preOrder.cta.closed') : t('preOrder.cta.now')
                       : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
               </button>
             </div>
@@ -263,20 +263,20 @@ export function ProductPageClient() {
             {isPreOrder && (
               <div className="mt-3 rounded-xl border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-900/20 p-4 text-sm">
                 <p className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
-                  <span>🕐</span> This is a pre-order
+                  <span>🕐</span> {t('preOrder.info.title')}
                 </p>
                 <ul className="mt-2 space-y-1 text-purple-800 dark:text-purple-200 text-xs">
                   {(product as any).preOrderShipDate && (
-                    <li>📦 Estimated ship date: <b>{new Date((product as any).preOrderShipDate).toLocaleDateString()}</b></li>
+                    <li>{t('preOrder.info.shipDate')} <b>{new Date((product as any).preOrderShipDate).toLocaleDateString()}</b></li>
                   )}
                   {preOrderEndsAt && (
-                    <li>⏳ {preOrderClosed ? 'Closed' : 'Open until'}: <b>{preOrderEndsAt.toLocaleDateString()}</b></li>
+                    <li>{preOrderClosed ? t('preOrder.info.endsClosed') : t('preOrder.info.endsOpen')} <b>{preOrderEndsAt.toLocaleDateString()}</b></li>
                   )}
                   {(product as any).preOrderLimit && (
-                    <li>📊 Limited to <b>{(product as any).preOrderLimit}</b> units total</li>
+                    <li>{t('preOrder.info.limit')} <b>{(product as any).preOrderLimit}</b> {t('preOrder.info.limitSuffix')}</li>
                   )}
                   <li className="text-purple-700/80 dark:text-purple-300/80 mt-1">
-                    You'll receive a confirmation email once your pre-order is approved by the seller.
+                    {t('preOrder.info.note')}
                   </li>
                 </ul>
               </div>
@@ -338,7 +338,7 @@ export function ProductPageClient() {
             : added
               ? '✓'
               : isPreOrder
-                ? preOrderClosed ? 'Closed' : '🕐 Pre-order'
+                ? preOrderClosed ? t('preOrder.cta.shortClosed') : t('preOrder.cta.short')
                 : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
         </button>
       </div>

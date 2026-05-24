@@ -14,12 +14,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isGodUser = user?.role === 'GOD_USER';
 
   const NAV = [
-    { href: '/dashboard/admin', label: 'Overview', icon: '📊' },
+    { href: '/dashboard/admin', label: t('admin.overview'), icon: '📊' },
     { href: '/dashboard/admin/vendors', label: t('admin.vendors'), icon: '🏪' },
     { href: '/dashboard/admin/products', label: t('admin.pendingProducts'), icon: '📦' },
-    { href: '/dashboard/admin/categories', label: 'Kategoriler', icon: '🏷️' },
+    { href: '/dashboard/admin/categories', label: t('admin.categoriesNav'), icon: '🏷️' },
     { href: '/dashboard/admin/orders', label: t('admin.orders'), icon: '🧾' },
-    { href: '/dashboard/admin/pre-orders', label: 'Pre-Orders', icon: '🕐' },
+    { href: '/dashboard/admin/pre-orders', label: t('admin.preOrdersNav'), icon: '🕐' },
     { href: '/dashboard/admin/reviews', label: t('admin.reviewsNav'), icon: '⭐' },
     { href: '/dashboard/admin/payouts', label: t('admin.payoutsNav'), icon: '💸' },
     { href: '/dashboard/admin/financials', label: t('admin.financials'), icon: '📊' },
@@ -30,8 +30,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/dashboard/admin/settings', label: t('admin.platformSettings'), icon: '⚙️' },
     { href: '/dashboard/admin/users', label: t('admin.users'), icon: '👤' },
     { href: '/dashboard/admin/audit-log', label: t('admin.auditLog'), icon: '🔍' },
-    { href: '/dashboard/admin/mobile', label: 'Mobile App', icon: '📱' },
-    ...(isGodUser ? [{ href: '/dashboard/admin/analytics', label: 'Analytics', icon: '📈' }] : []),
+    { href: '/dashboard/admin/mobile', label: t('admin.mobileApp'), icon: '📱' },
+    ...(isGodUser ? [{ href: '/dashboard/admin/analytics', label: t('admin.analyticsNav'), icon: '📈' }] : []),
   ];
 
   useEffect(() => {

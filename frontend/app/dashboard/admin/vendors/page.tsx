@@ -253,9 +253,9 @@ export default function AdminVendorsPage() {
                         <button
                           onClick={() => setFeaturesModal(vendor)}
                           className="text-xs bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-800/60 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg transition-colors"
-                          title="Toggle forum / media / events / nfc features for this vendor"
+                          title={t('admin.featuresTooltip')}
                         >
-                          Features
+                          {t('admin.features')}
                         </button>
                         <button
                           onClick={() => {
@@ -265,9 +265,9 @@ export default function AdminVendorsPage() {
                             setDeleteError('');
                           }}
                           className="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg transition-colors"
-                          title="Permanently delete this vendor and all their data"
+                          title={t('vendorDelete.title')}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>
@@ -523,10 +523,10 @@ export default function AdminVendorsPage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Delete vendor permanently?
+                  {t('vendorDelete.title')}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  This action cannot be undone.
+                  {t('vendorDelete.warning')}
                 </p>
               </div>
             </div>
@@ -536,20 +536,16 @@ export default function AdminVendorsPage() {
                 "{deleteModal.displayName}" (@{deleteModal.slug})
               </p>
               <p className="text-xs leading-relaxed">
-                Will permanently delete: all products, variants, reviews, wishlist entries,
-                forum channels/topics, vendor media, events, NFC tags, hero banners (detached),
-                followers, and permissions. Members (users) are released to customer accounts —
-                not deleted.
+                {t('vendorDelete.detailsText')}
               </p>
             </div>
 
             <label className="block mb-3">
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                Type the vendor slug{' '}
+                {t('vendorDelete.confirmPrompt')}{' '}
                 <span className="font-mono font-bold text-red-600 dark:text-red-400">
                   {deleteModal.slug}
-                </span>{' '}
-                to confirm:
+                </span>
               </span>
               <input
                 type="text"
@@ -569,9 +565,8 @@ export default function AdminVendorsPage() {
                 className="mt-0.5"
               />
               <span className="text-xs text-gray-700 dark:text-gray-300">
-                <span className="font-semibold text-red-600 dark:text-red-400">Force delete</span>{' '}
-                — also wipe order items, shipments, and payouts. Required if the vendor has any
-                financial history. <span className="font-bold">Cannot be undone.</span>
+                <span className="font-semibold text-red-600 dark:text-red-400">{t('vendorDelete.forceTitle')}</span>{' '}
+                — {t('vendorDelete.forceDescription')}
               </span>
             </label>
 
@@ -587,7 +582,7 @@ export default function AdminVendorsPage() {
                 }
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2 rounded-lg transition-colors"
               >
-                {deleteVendor.isPending ? 'Deleting…' : 'Delete forever'}
+                {deleteVendor.isPending ? t('vendorDelete.submitting') : t('vendorDelete.submit')}
               </button>
               <button
                 onClick={() => {
