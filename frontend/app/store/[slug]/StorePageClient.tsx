@@ -83,7 +83,7 @@ export function StorePageClient() {
       {vendor && (
         <>
           {/* ── Hero Banner — full-bleed, supports real image ── */}
-          <div className="relative overflow-hidden" style={{ minHeight: 340 }}>
+          <div className="relative overflow-hidden min-h-[260px] sm:min-h-[340px]">
             {(vendor as any).bannerUrl ? (
               <img
                 src={(vendor as any).bannerUrl}
@@ -103,7 +103,7 @@ export function StorePageClient() {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
 
-            <div className="relative mx-auto max-w-screen-2xl px-6 sm:px-10 pt-20 pb-10 flex flex-col sm:flex-row items-end gap-6">
+            <div className="relative mx-auto max-w-screen-2xl px-4 sm:px-10 pt-16 sm:pt-20 pb-6 sm:pb-10 flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
               {/* Avatar / Logo */}
               <div className="shrink-0">
                 {(vendor as any).logoUrl ? (
@@ -143,8 +143,8 @@ export function StorePageClient() {
                 )}
               </div>
 
-              {/* Stats + follow button */}
-              <div className="shrink-0 flex items-end gap-8">
+              {/* Stats + follow button — full width on mobile, right-aligned on desktop */}
+              <div className="w-full sm:w-auto sm:shrink-0 flex items-center sm:items-end gap-4 sm:gap-8">
                 <div className="hidden sm:flex gap-8 text-center">
                   <div>
                     <p className="text-2xl font-bold text-white">{products?.total ?? 0}</p>
@@ -155,9 +155,14 @@ export function StorePageClient() {
                     <p className="text-xs text-white/60 uppercase tracking-wider">{t('store.followers')}</p>
                   </div>
                 </div>
+                {/* Mobile-only compact stats */}
+                <div className="flex sm:hidden gap-4 text-white/80 text-xs">
+                  <span><b className="text-white">{products?.total ?? 0}</b> {t('store.products')}</span>
+                  <span><b className="text-white">{(vendor as any)._count?.followers ?? 0}</b> {t('store.followers')}</span>
+                </div>
                 <button
                   onClick={handleFollow}
-                  className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-xl ${
+                  className={`ml-auto sm:ml-0 px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all shadow-xl ${
                     isFollowing
                       ? 'bg-white/20 backdrop-blur text-white border border-white/30 hover:bg-white/30'
                       : 'bg-white text-gray-900 hover:bg-gray-50'
@@ -172,13 +177,13 @@ export function StorePageClient() {
           </div>
 
           {/* ── Tab navigation + content — wider layout ── */}
-          <div className="mx-auto max-w-screen-2xl px-6 sm:px-10 py-8 flex-1">
+          <div className="mx-auto max-w-screen-2xl px-3 sm:px-10 py-6 sm:py-8 flex-1">
             <StoreTabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
             {activeTab === 'products' && (
               <>
                 {productsLoading && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div key={i} className="rounded-2xl bg-gray-200 dark:bg-gray-800 animate-pulse aspect-[3/4]" />
                     ))}
@@ -190,7 +195,7 @@ export function StorePageClient() {
                   </div>
                 )}
                 {products && products.items.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
                     {products.items.map((p) => (
                       <StoreProductCard key={p.id} product={p} vendorSlug={vendor.slug} />
                     ))}
@@ -275,11 +280,11 @@ function StoreProductCard({ product, vendorSlug }: { product: Product; vendorSlu
           </button>
         )}
       </div>
-      <div className="p-4 flex flex-col gap-1">
-        <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors line-clamp-1">
+      <div className="p-2.5 sm:p-4 flex flex-col gap-1">
+        <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors line-clamp-1">
           {product.title}
         </h3>
-        <p className="text-purple-600 dark:text-purple-400 font-bold">{formatPrice(price)}</p>
+        <p className="text-purple-600 dark:text-purple-400 font-bold text-sm sm:text-base">{formatPrice(price)}</p>
         {product.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {product.tags.slice(0, 3).map((t) => (
@@ -315,7 +320,7 @@ function StoreEventsTab({ tenantId }: { tenantId: string }) {
       {upcoming.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('event.upcoming')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {upcoming.map(ev => <EventCard key={ev.id} ev={ev} t={t} />)}
           </div>
         </div>
@@ -323,7 +328,7 @@ function StoreEventsTab({ tenantId }: { tenantId: string }) {
       {past.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('event.past')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 opacity-60">
             {past.map(ev => <EventCard key={ev.id} ev={ev} t={t} />)}
           </div>
         </div>
@@ -346,7 +351,7 @@ function EventCard({ ev, t }: { ev: VendorEvent; t: (k: string) => string }) {
         <p className="font-semibold text-gray-900 dark:text-white line-clamp-1">{ev.title}</p>
         <p className="text-xs text-gray-500">{new Date(ev.date).toLocaleDateString()} {ev.venue ? `· ${ev.venue}` : ''}</p>
         {ev.description && <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{ev.description}</p>}
-        <div className="mt-auto flex items-center justify-between">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">{ev.provider}</span>
           <a href={ev.href} target="_blank" rel="noreferrer" className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">
             {t('event.getTickets')} →
@@ -357,31 +362,137 @@ function EventCard({ ev, t }: { ev: VendorEvent; t: (k: string) => string }) {
   );
 }
 
-// ── Media Strip — compact floating overlay in top-right of hero ──────────────
+// ── Media Strip — desktop overlay + mobile slide-out edge panel ──────────────
+//
+// Desktop (md+): same as before — compact floating overlay top-right of hero.
+// Mobile (<md): a small "🎵 Medya" pill anchored to the right edge of the
+// screen; tapping it slides a full-height panel in from the right with the
+// embedded media. Tapping the backdrop or close button slides it back.
+//
 
 function StoreMediaStrip({ tenantId }: { tenantId: string }) {
   const { data: media } = useVendorMedia(tenantId);
+  const [open, setOpen] = useState(false);
+  const t = useI18n((s) => s.t);
+
+  // Lock body scroll while the mobile panel is open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', esc);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
   if (!media?.length) return null;
 
   return (
-    <div className="absolute top-4 right-4 z-10 w-64 space-y-2 max-h-48 overflow-y-auto">
-      {media.slice(0, 3).map((m: VendorMedia) => (
-        <div key={m.id} className="rounded-xl overflow-hidden shadow-xl bg-black/30 backdrop-blur">
-          {m.title && (
-            <p className="text-xs font-medium text-white/70 px-2 pt-1.5 truncate">{m.title}</p>
-          )}
-          <iframe
-            src={m.url}
-            width="100%"
-            height={m.type === 'SPOTIFY' ? 80 : 112}
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            allowFullScreen
-            className="w-full"
-          />
+    <>
+      {/* ── Desktop overlay (unchanged behaviour) ──────────────────────────── */}
+      <div className="hidden md:block absolute top-4 right-4 z-10 w-64 space-y-2 max-h-48 overflow-y-auto">
+        {media.slice(0, 3).map((m: VendorMedia) => (
+          <div key={m.id} className="rounded-xl overflow-hidden shadow-xl bg-black/30 backdrop-blur">
+            {m.title && (
+              <p className="text-xs font-medium text-white/70 px-2 pt-1.5 truncate">{m.title}</p>
+            )}
+            <iframe
+              src={m.url}
+              width="100%"
+              height={m.type === 'SPOTIFY' ? 80 : 112}
+              frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+              className="w-full"
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Mobile edge-tab trigger ────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="md:hidden fixed top-1/2 right-0 -translate-y-1/2 z-30 bg-black/70 backdrop-blur text-white pl-3 pr-2 py-2 rounded-l-xl shadow-2xl flex items-center gap-1.5 text-xs font-semibold border-l border-y border-white/10 active:scale-95 transition-transform"
+        aria-label="Open media panel"
+      >
+        <span className="text-base leading-none">🎵</span>
+        <span>{t('store.tabMedia')}</span>
+      </button>
+
+      {/* ── Mobile slide-out panel + backdrop ──────────────────────────────── */}
+      <div
+        className={`md:hidden fixed inset-0 z-40 transition-opacity duration-200 ${
+          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-hidden={!open}
+      >
+        {/* Backdrop: tap anywhere outside to close */}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+
+        {/* Panel: slides in from the right */}
+        <div
+          className={`absolute top-0 right-0 h-full w-[88vw] max-w-sm bg-gray-950 text-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+            open ? 'translate-x-0' : 'translate-x-full'
+          }`}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <span>🎵</span> {t('store.tabMedia')}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-white/70 hover:text-white text-2xl leading-none px-2"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </header>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {media.map((m: VendorMedia) => (
+              <div key={m.id} className="rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                {m.title && (
+                  <p className="text-xs font-medium text-white/80 px-3 pt-2 truncate">{m.title}</p>
+                )}
+                {m.type === 'SPOTIFY' ? (
+                  <iframe
+                    src={m.url}
+                    width="100%"
+                    height={80}
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    className="w-full"
+                  />
+                ) : (
+                  /* YouTube: responsive 16:9 wrapper */
+                  <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                    <iframe
+                      src={m.url}
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -400,19 +511,32 @@ function StoreMediaTab({ tenantId }: { tenantId: string }) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {media.map((m: VendorMedia) => (
-        <div key={m.id} className="card p-4">
-          {m.title && <p className="font-medium text-gray-900 dark:text-white mb-3">{m.title}</p>}
-          <iframe
-            src={m.url}
-            width="100%"
-            height={m.type === 'SPOTIFY' ? 80 : 315}
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            allowFullScreen
-            className="rounded-lg"
-          />
+        <div key={m.id} className="card p-3 sm:p-4">
+          {m.title && <p className="font-medium text-gray-900 dark:text-white mb-2 sm:mb-3 text-sm sm:text-base">{m.title}</p>}
+          {m.type === 'SPOTIFY' ? (
+            <iframe
+              src={m.url}
+              width="100%"
+              height={80}
+              frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+              className="rounded-lg"
+            />
+          ) : (
+            /* YouTube: responsive 16:9 wrapper */
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                src={m.url}
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full rounded-lg"
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>

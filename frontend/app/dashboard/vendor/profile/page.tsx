@@ -173,9 +173,11 @@ export default function VendorProfilePage() {
               value={form.bannerUrl}
               onChange={e => setForm(f => ({ ...f, bannerUrl: e.target.value }))}
               className="input"
-              placeholder="https://cdn.example.com/banner.jpg"
+              placeholder="https://cdn.example.com/banner.gif"
             />
-            <p className="text-xs text-gray-400 mt-1">Önerilen boyut: 1400×280px veya daha geniş, yatay oran</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Önerilen boyut: 1400×280px veya daha geniş, yatay oran. JPG, PNG, WebP, AVIF ve <b>animasyonlu GIF</b> destekleniyor.
+            </p>
             {form.bannerUrl && (
               <div className="mt-2">
                 <img
