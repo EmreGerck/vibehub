@@ -1,27 +1,41 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 
 /**
- * Thin wrapper around Resend. Falls back to logging the email body when
- * RESEND_API_KEY is unset (local dev), so the rest of the system doesn't
- * need to special-case "no transport".
+ * Sends transactional email via SMTP (nodemailer).
+ * Falls back to logging the email body when SMTP_HOST is unset (local dev),
+ * so the rest of the system doesn't need to special-case "no transport".
  */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly resend: Resend | null;
+  private readonly transporter: Transporter | null;
   private readonly from: string;
 
   constructor(private readonly config: ConfigService) {
-    const key = this.config.get<string>('RESEND_API_KEY');
-    this.resend = key ? new Resend(key) : null;
-    this.from = this.config.get<string>('MAIL_FROM') ?? 'VibeHub <onboarding@resend.dev>';
-    if (!this.resend) {
+    const host = this.config.get<string>('SMTP_HOST');
+    const port = this.config.get<number>('SMTP_PORT');
+    const user = this.config.get<string>('SMTP_USER');
+    const pass = this.config.get<string>('SMTP_PASS');
+
+    if (host && user && pass) {
+      this.transporter = nodemailer.createTransport({
+        host,
+        port: port ?? 587,
+        secure: (port ?? 587) === 465, // true for 465, false for 587 (STARTTLS)
+        auth: { user, pass },
+      });
+      this.logger.log(`SMTP transport configured → ${host}:${port ?? 587}`);
+    } else {
+      this.transporter = null;
       this.logger.warn(
-        'RESEND_API_KEY not set — emails will be logged to stdout instead of sent.',
+        'SMTP_HOST / SMTP_USER / SMTP_PASS not set — emails will be logged to stdout instead of sent.',
       );
     }
+
+    this.from = this.config.get<string>('MAIL_FROM') ?? 'VibeHub <info@vibehub.com.tr>';
   }
 
   async sendOtp(to: string, code: string, ttlSeconds: number): Promise<void> {
@@ -338,23 +352,22 @@ export class MailService {
   }
 
   private async send(to: string, subject: string, html: string, text: string): Promise<void> {
-    if (!this.resend) {
+    if (!this.transporter) {
       this.logger.log(`[MAIL fallback] to=${to} subject="${subject}"\n${text}`);
       return;
     }
-    const result = await this.resend.emails.send({
-      from: this.from,
-      to,
-      subject,
-      html,
-      text,
-    });
-    if (result.error) {
-      this.logger.error(
-        `Resend send failed to ${to}: ${result.error.name} - ${result.error.message}`,
-      );
-      throw new Error(`Email send failed: ${result.error.message}`);
+    try {
+      const info = await this.transporter.sendMail({
+        from: this.from,
+        to,
+        subject,
+        html,
+        text,
+      });
+      this.logger.log(`[MAIL] sent to=${to} messageId=${info.messageId} subject="${subject}"`);
+    } catch (err: any) {
+      this.logger.error(`SMTP send failed to ${to}: ${err.message}`);
+      throw new Error(`Email send failed: ${err.message}`);
     }
-    this.logger.log(`[MAIL] sent to=${to} id=${result.data?.id} subject="${subject}"`);
   }
 }
