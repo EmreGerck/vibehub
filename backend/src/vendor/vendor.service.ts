@@ -25,6 +25,22 @@ export class VendorService {
   ) {}
 
   async apply(dto: ApplyVendorDto) {
+    // Honeypot — see RegisterDto. Reject + audit, return a generic error.
+    if (dto.website && dto.website.trim().length > 0) {
+      this.audit.log({
+        actorId: null,
+        action: 'HONEYPOT_HIT',
+        targetType: 'VendorApply',
+        targetId: null,
+        metadata: {
+          emailAttempted: dto.ownerEmail,
+          slug: dto.slug,
+          honeypotValue: dto.website.slice(0, 100),
+        },
+      }).catch(() => {});
+      throw new ConflictException('This email is already registered');
+    }
+
     const [slugExists, emailExists] = await Promise.all([
       this.prisma.tenant.findUnique({ where: { slug: dto.slug } }),
       this.prisma.user.findUnique({ where: { email: dto.ownerEmail } }),

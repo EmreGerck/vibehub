@@ -74,6 +74,8 @@ export function useAuth() {
       termsAccepted: boolean;
       privacyAccepted: boolean;
       marketingConsent?: boolean;
+      /** Honeypot — must stay empty for real users; bots fill it and get 409. */
+      website?: string;
     }) => {
       const res = await api.post<ApiResponse<User>>('/auth/register', body);
       return res.data.data;

@@ -38,6 +38,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { EInvoiceModule } from './einvoice/einvoice.module';
 import { SearchModule } from './search/search.module';
 import { KargoModule } from './kargo/kargo.module';
+import { TrapModule } from './trap/trap.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { KargoModule } from './kargo/kargo.module';
     EInvoiceModule,
     SearchModule,
     KargoModule,
+    TrapModule,
   ],
   providers: [
     // All routes are JWT-protected by default; decorate with @Public() to opt out

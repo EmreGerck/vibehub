@@ -31,6 +31,8 @@ export default function ApplyVendorPage() {
     ownerEmail: '',
     ownerPassword: '',
     confirmPassword: '',
+    // Honeypot — see register page for rationale
+    website: '',
   });
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -64,6 +66,7 @@ export default function ApplyVendorPage() {
         bio: form.bio || undefined,
         ownerEmail: form.ownerEmail,
         ownerPassword: form.ownerPassword,
+        website: form.website,
       });
       setDone(true);
     } catch (err: any) {
@@ -109,6 +112,20 @@ export default function ApplyVendorPage() {
 
         <div className="card p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Honeypot — see register page for rationale */}
+            <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
+              <label htmlFor="vendor-website">Your website (leave blank)</label>
+              <input
+                id="vendor-website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={form.website}
+                onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
+              />
+            </div>
+
             {error && <Alert type="error" message={error} />}
 
             <div className="space-y-1">

@@ -40,4 +40,10 @@ export class ApplyVendorDto {
   @MinLength(8)
   @MaxLength(72)
   ownerPassword: string;
+
+  /** Honeypot — see RegisterDto for rationale. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  website?: string;
 }

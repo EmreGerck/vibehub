@@ -2,10 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface AuditEntry {
-  actorId: string;
+  /** Null for anonymous security events (failed login on unknown email, honeypot, trap routes). */
+  actorId: string | null;
   action: string;
   targetType: string;
-  targetId: string;
+  /** Null when the event has no concrete target (e.g. trap-route scans). */
+  targetId: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -26,9 +28,9 @@ export class AuditService {
           metadata: entry.metadata ?? {},
         },
       });
-    } catch (err) {
+    } catch (err: any) {
       // Audit failures must never crash the calling operation
-      this.logger.error(`Audit log failed: ${err.message}`, entry);
+      this.logger.error(`Audit log failed: ${err?.message ?? err}`, entry);
     }
   }
 }

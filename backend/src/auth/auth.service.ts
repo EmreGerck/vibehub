@@ -34,6 +34,20 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    // Honeypot — if a bot filled the hidden `website` field, reject and audit.
+    // Return the same generic error a duplicate email would so we don't reveal
+    // the trap to the bot author.
+    if (dto.website && dto.website.trim().length > 0) {
+      this.audit.log({
+        actorId: null,
+        action: 'HONEYPOT_HIT',
+        targetType: 'Register',
+        targetId: null,
+        metadata: { emailAttempted: dto.email, honeypotValue: dto.website.slice(0, 100) },
+      }).catch(() => {});
+      throw new ConflictException('Email already registered');
+    }
+
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email already registered');
 
@@ -68,13 +82,13 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
       await this.otp.recordFailedLogin(dto.email);
-      // Log security event — unknown email attempt
+      // Log security event — unknown email attempt (actorId null because no real user)
       this.audit.log({
-        actorId: 'system',
+        actorId: null,
         action: 'LOGIN_FAILED',
         targetType: 'User',
-        targetId: dto.email,
-        metadata: { reason: 'user_not_found', email: dto.email },
+        targetId: null,
+        metadata: { reason: 'user_not_found', emailAttempted: dto.email },
       }).catch(() => {});
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -137,6 +151,13 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
       await this.otp.recordFailedLogin(dto.email);
+      this.audit.log({
+        actorId: null,
+        action: 'LOGIN_FAILED',
+        targetType: 'User',
+        targetId: null,
+        metadata: { reason: 'user_not_found', emailAttempted: dto.email, mfa: true },
+      }).catch(() => {});
       throw new UnauthorizedException('Invalid credentials');
     }
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -144,7 +165,21 @@ export class AuthService {
       const { locked, lockoutMs: newLockout } = await this.otp.recordFailedLogin(dto.email);
       if (locked) {
         this.mail.sendSecurityAlert(user.email, Math.ceil(newLockout / 60000)).catch(() => {});
+        this.audit.log({
+          actorId: user.id,
+          action: 'ACCOUNT_LOCKED',
+          targetType: 'User',
+          targetId: user.id,
+          metadata: { email: user.email, lockoutMinutes: Math.ceil(newLockout / 60000), mfa: true },
+        }).catch(() => {});
       }
+      this.audit.log({
+        actorId: user.id,
+        action: 'LOGIN_FAILED',
+        targetType: 'User',
+        targetId: user.id,
+        metadata: { reason: 'wrong_password', email: user.email, locked, mfa: true },
+      }).catch(() => {});
       throw new UnauthorizedException('Invalid credentials');
     }
     await this.otp.resetLoginAttempts(dto.email);
@@ -206,6 +241,14 @@ export class AuthService {
         data: { token: deviceToken, userId: user.id, expiresAt },
       });
     }
+
+    this.audit.log({
+      actorId: user.id,
+      action: 'LOGIN_SUCCESS',
+      targetType: 'User',
+      targetId: user.id,
+      metadata: { email: user.email, mfa: true, trustedDevice: !!trustDevice },
+    }).catch(() => {});
 
     return { ...tokens, deviceToken };
   }

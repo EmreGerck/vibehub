@@ -75,6 +75,8 @@ export function useApplyVendor() {
       bio?: string;
       ownerEmail: string;
       ownerPassword: string;
+      /** Honeypot — must stay empty for real users. */
+      website?: string;
     }) => {
       const res = await api.post<ApiResponse<Tenant>>('/vendors/apply', body);
       return res.data.data;

@@ -24,4 +24,15 @@ export class RegisterDto {
   @IsOptional()
   @IsBoolean()
   marketingConsent?: boolean;
+
+  /**
+   * Honeypot — a hidden form field legitimate users never see or fill.
+   * Bots that auto-fill every input will populate it; the service layer
+   * rejects the request and audits HONEYPOT_HIT. Loose validation on
+   * purpose so we don't reveal what we're checking.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  website?: string;
 }

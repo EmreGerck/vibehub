@@ -18,6 +18,9 @@ export default function RegisterPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
+  // Honeypot — hidden field bots fill but humans can't see. Backend rejects
+  // the request and audits HONEYPOT_HIT when this is non-empty.
+  const [website, setWebsite] = useState('');
   const [error, setError] = useState('');
   const t = useI18n((s) => s.t);
 
@@ -37,7 +40,7 @@ export default function RegisterPage() {
       return;
     }
     try {
-      await register.mutateAsync({ email, password, termsAccepted, privacyAccepted, marketingConsent });
+      await register.mutateAsync({ email, password, termsAccepted, privacyAccepted, marketingConsent, website });
       // Auto-login after registration
       await login.mutateAsync({ email, password });
       router.push('/');
@@ -58,6 +61,26 @@ export default function RegisterPage() {
 
         <div className="card p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/*
+              Honeypot — invisible to humans (off-screen + aria-hidden +
+              tabIndex=-1 + autoComplete=off). Bots that fill every input get
+              their request rejected server-side and audited as HONEYPOT_HIT.
+              Do NOT translate the label or remove the autoComplete hint —
+              both increase the chance bots target it.
+            */}
+            <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
+              <label htmlFor="website">Your website (leave blank)</label>
+              <input
+                id="website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
+
             {error && <Alert type="error" message={error} />}
 
             <Input
