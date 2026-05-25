@@ -1670,7 +1670,7 @@ export class AdminService {
   }
 
   private _getEventSeverity(action: string): 'info' | 'warning' | 'critical' {
-    const critical = ['ACCOUNT_LOCKED', 'ADMIN_RESET_PASSWORD', 'PLATFORM_SETTINGS_UPDATE'];
+    const critical = ['ACCOUNT_LOCKED', 'ADMIN_RESET_PASSWORD', 'PLATFORM_SETTINGS_UPDATE', 'SYSTEM_DISK_WARNING'];
     const warning  = ['LOGIN_FAILED', 'PASSWORD_RESET', 'PAYOUT_APPROVE', 'PAYOUT_REJECT', 'HONEYPOT_HIT', 'TRAP_ROUTE_HIT'];
     if (critical.includes(action)) return 'critical';
     if (warning.includes(action))  return 'warning';
@@ -1692,7 +1692,7 @@ export class AdminService {
       'LOGIN_FAILED', 'LOGIN_SUCCESS', 'ACCOUNT_LOCKED', 'PASSWORD_RESET',
       'ADMIN_USER_UPDATE', 'ADMIN_RESET_PASSWORD', 'PLATFORM_SETTINGS_UPDATE',
       'PAYOUT_REQUEST', 'PAYOUT_APPROVE', 'PAYOUT_REJECT',
-      'HONEYPOT_HIT', 'TRAP_ROUTE_HIT',
+      'HONEYPOT_HIT', 'TRAP_ROUTE_HIT', 'SYSTEM_DISK_WARNING',
     ];
 
     const where: any = {

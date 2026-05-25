@@ -65,6 +65,13 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            echo "==> Pruning stale Docker build cache + dangling images (>72h old)"
+            # Each redeploy leaves ~1.5GB of build cache behind. On 2026-05-25
+            # we hit a disk-full outage (100% / used) after ~11 redeploys filled
+            # /var with 22GB of cache. This keeps that under control.
+            docker builder prune -af --filter "until=72h" 2>&1 | tail -3 || true
+            docker image prune -f 2>&1 | tail -3 || true
+
             echo "==> Rebuilding & restarting backend container"
             # The container's CMD runs `prisma migrate deploy` on startup,
             # so migrations apply automatically as soon as the new image boots.
