@@ -76,7 +76,7 @@ export class CartService {
 
     // Pre-order products are sold based on the time window, not inventory.
     // Only enforce stock checks for regular (non-pre-order) products.
-    const isPreOrder = variant.product.isPreOrder;
+    const isPreOrder = variant.product.preOrderEndsAt !== null && variant.product.preOrderEndsAt !== undefined;
     if (!isPreOrder && variant.stockQty < dto.qty) {
       throw new BadRequestException(`Only ${variant.stockQty} in stock`);
     }
@@ -112,10 +112,11 @@ export class CartService {
 
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: variantId },
-      include: { product: { select: { isPreOrder: true } } },
+      include: { product: { select: { preOrderEndsAt: true } } },
     });
     if (!variant) throw new NotFoundException('Variant no longer exists');
-    if (!variant.product.isPreOrder && dto.qty > variant.stockQty) {
+    const isPreOrder = variant.product.preOrderEndsAt !== null && variant.product.preOrderEndsAt !== undefined;
+    if (!isPreOrder && dto.qty > variant.stockQty) {
       throw new BadRequestException(`Only ${variant.stockQty} available`);
     }
 
