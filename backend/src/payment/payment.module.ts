@@ -3,9 +3,10 @@ import { IyzicoService } from './iyzico.service';
 import { PaymentController } from './payment.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EInvoiceModule } from '../einvoice/einvoice.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [PrismaModule, EInvoiceModule],
+  imports: [PrismaModule, EInvoiceModule, MailModule],
   controllers: [PaymentController],
   providers: [IyzicoService],
   exports: [IyzicoService],

@@ -10,12 +10,23 @@ import { formatPrice } from '../../../lib/format';
 import { useI18n } from '../../../lib/i18n';
 
 const STATUS_BADGE: Record<string, string> = {
-  PLACED:     'badge-blue',
-  CONFIRMED:  'badge-purple',
-  SHIPPED:    'badge-yellow',
-  DELIVERED:  'badge-green',
-  CANCELLED:  'badge-gray',
-  REFUNDED:   'badge-red',
+  PLACED:            'badge-blue',
+  CONFIRMED:         'badge-purple',
+  SHIPPED:           'badge-yellow',
+  DELIVERED:         'badge-green',
+  CANCELLED:         'badge-gray',
+  REFUND_REQUESTED:  'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs px-2 py-0.5 rounded-full font-semibold',
+  REFUNDED:          'badge-red',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  PLACED:            'Alındı',
+  CONFIRMED:         'Onaylandı',
+  SHIPPED:           'Kargoda',
+  DELIVERED:         'Teslim Edildi',
+  CANCELLED:         'İptal',
+  REFUND_REQUESTED:  '↩️ İade Talebi',
+  REFUNDED:          'İade Edildi',
 };
 
 export default function ProfileOrdersPage() {
@@ -58,7 +69,7 @@ export default function ProfileOrdersPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={STATUS_BADGE[order.status] ?? 'badge-gray'}>
-                    {order.status}
+                    {STATUS_LABEL[order.status] ?? order.status}
                   </span>
                   <span className="font-bold">{formatPrice(order.totalAmount)}</span>
                 </div>

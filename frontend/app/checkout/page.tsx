@@ -49,7 +49,8 @@ export default function CheckoutPage() {
           country: form.country, phone: form.phone || undefined,
         },
       });
-      router.push(`/order-confirmation/${order.id}`);
+      // Redirect to payment page instead of confirmation
+      router.push(`/payment?orderId=${order.id}`);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to place order');
     }
@@ -119,12 +120,17 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Payfix placeholder */}
+            {/* Payment step preview */}
             <div className="card p-5">
               <h2 className="font-semibold mb-3">{t('checkout.paymentSection')}</h2>
-              <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/30 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                <p className="font-medium text-gray-600 dark:text-gray-400 mb-1">{t('checkout.iyzicoGateway')}</p>
-                <p>{t('checkout.iyzicoDesc')}</p>
+              <div className="flex items-center gap-3 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 p-4">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-2xl">💳</span>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">{t('checkout.iyzicoGateway')}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('checkout.iyzicoDesc')}</p>
+                </div>
               </div>
             </div>
 
@@ -180,7 +186,10 @@ export default function CheckoutPage() {
             >
               {placeOrder.isPending
                 ? <span className="flex items-center justify-center gap-2"><Spinner size="sm" />{t('checkout.processing')}</span>
-                : `${t('checkout.placeOrder')} · ${formatPrice(cart.total)}`
+                : <span className="flex items-center justify-center gap-2">
+                    <span>💳</span>
+                    <span>{t('checkout.proceedToPayment')} · {formatPrice(cart.total)}</span>
+                  </span>
               }
             </button>
           </form>

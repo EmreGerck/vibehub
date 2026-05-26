@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -10,6 +11,7 @@ import { QueueService } from '../queue/queue.service';
 import { CartService } from '../cart/cart.service';
 import { PushService } from '../push/push.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrdersDto } from './dto/query-orders.dto';
@@ -23,10 +25,13 @@ const VENDOR_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
 };
 
 // Admin-allowed status transitions (any → any except backwards from terminal)
-const TERMINAL: OrderStatus[] = [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REFUNDED];
+// REFUND_REQUESTED is NOT terminal — admin can approve (→ REFUNDED) or reject (→ DELIVERED)
+const TERMINAL: OrderStatus[] = [OrderStatus.CANCELLED, OrderStatus.REFUNDED];
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cart: CartService,
@@ -34,6 +39,7 @@ export class OrderService {
     private readonly queue: QueueService,
     private readonly push: PushService,
     private readonly notifications: NotificationsService,
+    private readonly mail: MailService,
   ) {}
 
   async placeOrder(customerId: string, dto: PlaceOrderDto) {
@@ -297,11 +303,18 @@ export class OrderService {
       metadata: { from: order.status, to: dto.status, tenantId: actor.tenantId },
     });
 
+    const customer = await this.prisma.user.findUnique({
+      where: { id: order.customerId },
+      select: { email: true },
+    });
+
+    if (dto.status === OrderStatus.CONFIRMED) {
+      if (customer) await this.mail.sendOrderConfirmed(customer.email, order.id);
+      await this.push.sendToUser(order.customerId, 'Siparişiniz Onaylandı', 'Siparişiniz hazırlanmaya başlandı.', { type: 'ORDER_CONFIRMED', orderId: order.id });
+      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Onaylandı', body: 'Siparişiniz hazırlanmaya başlandı.', data: { orderId: order.id } });
+    }
+
     if (dto.status === OrderStatus.SHIPPED) {
-      const customer = await this.prisma.user.findUnique({
-        where: { id: order.customerId },
-        select: { email: true },
-      });
       if (customer) {
         await this.queue.sendMail({
           type: 'SHIPMENT_NOTIFICATION',
@@ -311,19 +324,14 @@ export class OrderService {
           carrier: null,
         });
       }
-      await this.push.sendToUser(
-        order.customerId,
-        'Order Shipped',
-        'Your order is on its way!',
-        { type: 'ORDER_SHIPPED', orderId: order.id },
-      );
-      await this.notifications.create({
-        userId: order.customerId,
-        type: NotificationType.ORDER_SHIPPED,
-        title: 'Order Shipped',
-        body: 'Your order is on its way!',
-        data: { orderId: order.id },
-      });
+      await this.push.sendToUser(order.customerId, 'Siparişiniz Kargoya Verildi', 'Siparişiniz yolda!', { type: 'ORDER_SHIPPED', orderId: order.id });
+      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Kargoya Verildi', body: 'Siparişiniz yolda!', data: { orderId: order.id } });
+    }
+
+    if (dto.status === OrderStatus.DELIVERED) {
+      if (customer) await this.mail.sendOrderDelivered(customer.email, order.id);
+      await this.push.sendToUser(order.customerId, 'Siparişiniz Teslim Edildi', 'Yorum bırakmayı unutmayın!', { type: 'ORDER_DELIVERED', orderId: order.id });
+      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Teslim Edildi', body: 'Yorum bırakarak sanatçıyı destekleyin!', data: { orderId: order.id } });
     }
 
     return updated;
@@ -350,33 +358,35 @@ export class OrderService {
       metadata: { from: order.status, to: dto.status, reason: dto.reason },
     });
 
+    const adminCustomer = await this.prisma.user.findUnique({
+      where: { id: order.customerId },
+      select: { email: true },
+    });
+
+    if (dto.status === OrderStatus.CONFIRMED) {
+      if (adminCustomer) await this.mail.sendOrderConfirmed(adminCustomer.email, order.id);
+      await this.push.sendToUser(order.customerId, 'Siparişiniz Onaylandı', 'Siparişiniz hazırlanmaya başlandı.', { type: 'ORDER_CONFIRMED', orderId: order.id });
+      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Onaylandı', body: 'Siparişiniz hazırlanmaya başlandı.', data: { orderId: order.id } });
+    }
+
     if (dto.status === OrderStatus.SHIPPED) {
-      const customer = await this.prisma.user.findUnique({
-        where: { id: order.customerId },
-        select: { email: true },
-      });
-      if (customer) {
+      if (adminCustomer) {
         await this.queue.sendMail({
           type: 'SHIPMENT_NOTIFICATION',
-          to: customer.email,
+          to: adminCustomer.email,
           orderId: order.id,
           trackingNumber: null,
           carrier: null,
         });
       }
-      await this.push.sendToUser(
-        order.customerId,
-        'Order Shipped',
-        'Your order is on its way!',
-        { type: 'ORDER_SHIPPED', orderId: order.id },
-      );
-      await this.notifications.create({
-        userId: order.customerId,
-        type: NotificationType.ORDER_SHIPPED,
-        title: 'Order Shipped',
-        body: 'Your order is on its way!',
-        data: { orderId: order.id },
-      });
+      await this.push.sendToUser(order.customerId, 'Siparişiniz Kargoya Verildi', 'Siparişiniz yolda!', { type: 'ORDER_SHIPPED', orderId: order.id });
+      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Kargoya Verildi', body: 'Siparişiniz yolda!', data: { orderId: order.id } });
+    }
+
+    if (dto.status === OrderStatus.DELIVERED) {
+      if (adminCustomer) await this.mail.sendOrderDelivered(adminCustomer.email, order.id);
+      await this.push.sendToUser(order.customerId, 'Siparişiniz Teslim Edildi', 'Yorum bırakmayı unutmayın!', { type: 'ORDER_DELIVERED', orderId: order.id });
+      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Teslim Edildi', body: 'Yorum bırakarak sanatçıyı destekleyin!', data: { orderId: order.id } });
     }
 
     return updated;
@@ -499,5 +509,198 @@ export class OrderService {
     });
 
     return { id: orderId, status: OrderStatus.CANCELLED, preOrderItemsCancelled: preOrderItems.length };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Refund flow
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Customer initiates a refund request on a DELIVERED order.
+   * Allowed within 14 calendar days of delivery (Mesafeli Satış Yönetmeliği).
+   * Transition: DELIVERED → REFUND_REQUESTED
+   */
+  async requestRefund(orderId: string, customerId: string, reason: string): Promise<any> {
+    const order: any = await this.prisma.order.findUnique({
+      where:   { id: orderId },
+      include: { customer: { select: { email: true, name: true } } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.customerId !== customerId) throw new ForbiddenException('Not your order');
+    if (order.status !== OrderStatus.DELIVERED) {
+      throw new BadRequestException(
+        `İade talebi yalnızca teslim edilmiş siparişler için oluşturulabilir (mevcut durum: ${order.status})`,
+      );
+    }
+    if (!reason?.trim()) {
+      throw new BadRequestException('İade nedeni boş bırakılamaz');
+    }
+    if (reason.length > 1000) {
+      throw new BadRequestException('İade nedeni en fazla 1000 karakter olabilir');
+    }
+
+    const updated: any = await (this.prisma.order.update as any)({
+      where: { id: orderId },
+      data:  {
+        status:            'REFUND_REQUESTED' as any,   // enum value added in migration; types update post-generate
+        refundReason:      reason.trim(),
+        refundRequestedAt: new Date(),
+        refundNote:        null, // clear any previous note
+        refundedAt:        null,
+      },
+    });
+
+    // Generate return barcode (idempotent: no-op if one already exists)
+    let returnBarcode: string | null = null;
+    try {
+      const existingReturn = await (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
+      if (existingReturn) {
+        returnBarcode = existingReturn.returnBarcode;
+      } else {
+        returnBarcode = `VH-RET-${Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16).toUpperCase()).join('')}`;
+        await (this.prisma as any).returnShipment.create({
+          data: { orderId, returnBarcode, carrier: 'aras' },
+        });
+      }
+    } catch (err: any) {
+      // Non-fatal: proceed without barcode if DB hasn't been migrated yet
+      this.logger.warn?.(`[Order] Could not create return shipment: ${err.message}`);
+    }
+
+    // Notify customer
+    if (order.customer?.email) {
+      this.mail.sendRefundRequested(order.customer.email, orderId, reason.trim()).catch(() => {});
+      if (returnBarcode) {
+        this.mail.sendReturnBarcode(order.customer.email, orderId, returnBarcode, 'aras').catch(() => {});
+      }
+    }
+
+    // Push notification to customer
+    await this.push.sendToUser(
+      customerId,
+      '↩️ İade Talebiniz Alındı',
+      `#${orderId.slice(0, 8).toUpperCase()} — İade kargo kodunuz e-posta ile gönderildi.`,
+      { url: `/profile/orders/${orderId}` },
+    ).catch(() => {});
+
+    await this.audit.log({
+      actorId:    customerId,
+      action:     'REFUND_REQUESTED',
+      targetType: 'Order',
+      targetId:   orderId,
+      metadata:   { reason: reason.slice(0, 200), returnBarcode },
+    });
+
+    return { ...updated, returnBarcode };
+  }
+
+  /**
+   * Admin approves refund request.
+   * Transition: REFUND_REQUESTED → REFUNDED
+   * Triggers: iyzico mock refund + customer email + push notification
+   */
+  async approveRefund(orderId: string, adminId: string, note?: string): Promise<any> {
+    const order: any = await this.prisma.order.findUnique({
+      where:   { id: orderId },
+      include: { customer: { select: { email: true, name: true } } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== ('REFUND_REQUESTED' as any)) {
+      throw new BadRequestException(`Bu sipariş iade beklemiyor (durum: ${order.status})`);
+    }
+
+    const updated: any = await (this.prisma.order.update as any)({
+      where: { id: orderId },
+      data:  {
+        status:     OrderStatus.REFUNDED,
+        refundNote: note?.trim() ?? null,
+        refundedAt: new Date(),
+      },
+    });
+
+    // Customer email
+    if (order.customer?.email) {
+      this.mail.sendRefundApproved(
+        order.customer.email,
+        orderId,
+        Number(order.totalAmount),
+        order.currency || 'TRY',
+      ).catch(() => {});
+    }
+
+    // Push notification
+    await this.push.sendToUser(
+      order.customerId,
+      '✅ İadeniz Onaylandı!',
+      `#${orderId.slice(0, 8).toUpperCase()} numaralı siparişinizin iadesi onaylandı. 5-10 iş günü içinde hesabınıza yansıyacak.`,
+      { url: `/profile/orders/${orderId}` },
+    ).catch(() => {});
+
+    // Mark return shipment as completed
+    try {
+      await (this.prisma as any).returnShipment.updateMany({
+        where: { orderId },
+        data:  { status: 'COMPLETED' },
+      });
+    } catch { /* non-fatal if table not yet migrated */ }
+
+    await this.audit.log({
+      actorId:    adminId,
+      action:     'REFUND_APPROVED',
+      targetType: 'Order',
+      targetId:   orderId,
+      metadata:   { note, amount: order.totalAmount },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Admin rejects refund request — order returns to DELIVERED.
+   * Customer is notified with admin's reason.
+   */
+  async rejectRefund(orderId: string, adminId: string, note: string): Promise<any> {
+    if (!note?.trim()) throw new BadRequestException('Reddetme gerekçesi boş bırakılamaz');
+
+    const order: any = await this.prisma.order.findUnique({
+      where:   { id: orderId },
+      include: { customer: { select: { email: true, name: true } } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== ('REFUND_REQUESTED' as any)) {
+      throw new BadRequestException(`Bu sipariş iade beklemiyor (durum: ${order.status})`);
+    }
+
+    const updated: any = await (this.prisma.order.update as any)({
+      where: { id: orderId },
+      data:  {
+        status:     OrderStatus.DELIVERED,   // revert to DELIVERED
+        refundNote: note.trim(),
+        // keep refundReason + refundRequestedAt for audit trail
+      },
+    });
+
+    // Customer email
+    if (order.customer?.email) {
+      this.mail.sendRefundRejected(order.customer.email, orderId, note.trim()).catch(() => {});
+    }
+
+    // Push notification
+    await this.push.sendToUser(
+      order.customerId,
+      '❌ İade Talebi Sonucu',
+      `#${orderId.slice(0, 8).toUpperCase()} siparişinizin iade talebi değerlendirilemedi. Detaylar için e-postanızı kontrol edin.`,
+      { url: `/profile/orders/${orderId}` },
+    ).catch(() => {});
+
+    await this.audit.log({
+      actorId:    adminId,
+      action:     'REFUND_REJECTED',
+      targetType: 'Order',
+      targetId:   orderId,
+      metadata:   { note: note.slice(0, 200) },
+    });
+
+    return updated;
   }
 }

@@ -179,16 +179,162 @@ export class MailService {
   }
 
   async sendOrderConfirmation(to: string, orderId: string): Promise<void> {
-    const subject = `VibeHub order ${orderId.slice(0, 8).toUpperCase()} confirmed`;
-    const html = `
-      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
-        <h1 style="margin:0 0 8px;">Thanks for your order</h1>
-        <p>We received your order <strong>${orderId}</strong> and will email you again when it ships.</p>
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const subject = `VibeHub Siparişiniz Alındı — #${shortId}`;
+    const html = this.orderEmailHtml(
+      '🎉 Siparişiniz alındı!',
+      `Sipariş numaranız: <strong>#${shortId}</strong><br/>Satıcı onayladıktan sonra kargoya verileceğini e-posta ile bildireceğiz.`,
+      'Siparişlerimi Görüntüle',
+      `https://vibehub.com.tr/profile/orders`,
+    );
+    await this.send(to, subject, html, `VibeHub siparişiniz alındı: #${shortId}`);
+  }
+
+  async sendOrderConfirmed(to: string, orderId: string): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const subject = `VibeHub Siparişiniz Onaylandı — #${shortId}`;
+    const html = this.orderEmailHtml(
+      '✅ Siparişiniz onaylandı!',
+      `#${shortId} numaralı siparişiniz satıcı tarafından onaylandı ve hazırlanmaya başlandı. Kargoya verildiğinde tekrar bildirim alacaksınız.`,
+      'Sipariş Durumunu Gör',
+      `https://vibehub.com.tr/profile/orders`,
+    );
+    await this.send(to, subject, html, `Siparişiniz onaylandı: #${shortId}`);
+  }
+
+  async sendOrderDelivered(to: string, orderId: string): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const subject = `VibeHub Siparişiniz Teslim Edildi — #${shortId}`;
+    const html = this.orderEmailHtml(
+      '📦 Siparişiniz teslim edildi!',
+      `#${shortId} numaralı siparişiniz teslim edildi. Ürünlerinizi beğendiyseniz yorum bırakarak sanatçıyı destekleyebilirsiniz.`,
+      'Yorum Yaz',
+      `https://vibehub.com.tr/profile/orders`,
+    );
+    await this.send(to, subject, html, `Siparişiniz teslim edildi: #${shortId}`);
+  }
+
+  async sendRefundRequested(to: string, orderId: string, reason: string): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const subject = `VibeHub İade Talebiniz Alındı — #${shortId}`;
+    const html = this.orderEmailHtml(
+      '↩️ İade talebiniz alındı',
+      `#${shortId} numaralı siparişiniz için iade talebiniz başarıyla iletildi.<br/><br/>
+      <strong>Belirttiğiniz neden:</strong><br/>
+      <em style="color:#ccc;">"${reason}"</em><br/><br/>
+      Ekibimiz 1-3 iş günü içinde talebinizi inceleyecek ve size bilgi verecektir.
+      Onaylanması halinde ödemeniz orijinal ödeme yönteminize 5-10 iş günü içinde iade edilecektir.`,
+      'Sipariş Durumumu Gör',
+      `https://vibehub.com.tr/profile/orders/${orderId}`,
+    );
+    await this.send(to, subject, html, `İade talebiniz alındı: #${shortId}`);
+  }
+
+  async sendRefundApproved(to: string, orderId: string, amount: number, currency: string): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const formattedAmount = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(amount);
+    const subject = `VibeHub İadeniz Onaylandı — #${shortId}`;
+    const html = this.orderEmailHtml(
+      '✅ İadeniz onaylandı!',
+      `#${shortId} numaralı siparişinizin iade talebi onaylandı.<br/><br/>
+      <strong style="color:#a855f7;font-size:20px;">${formattedAmount}</strong> tutarındaki iade,
+      orijinal ödeme yönteminize <strong>5-10 iş günü</strong> içinde yansıyacaktır.<br/><br/>
+      Banka işlem süreleri nedeniyle hesabınıza geçiş süresi değişiklik gösterebilir.
+      Herhangi bir sorunuz için <a href="mailto:support@vibehub.com.tr" style="color:#a855f7;">support@vibehub.com.tr</a> adresine yazabilirsiniz.`,
+      'Siparişlerime Dön',
+      `https://vibehub.com.tr/profile/orders`,
+    );
+    await this.send(to, subject, html, `İadeniz onaylandı: ${formattedAmount} — #${shortId}`);
+  }
+
+  async sendRefundRejected(to: string, orderId: string, note: string): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const subject = `VibeHub İade Talebi Sonucu — #${shortId}`;
+    const html = this.orderEmailHtml(
+      '❌ İade talebi değerlendirilemedi',
+      `#${shortId} numaralı siparişinizin iade talebi, aşağıdaki gerekçe nedeniyle onaylanamadı:<br/><br/>
+      <div style="background:#1a1a2e;border-left:3px solid #ec4899;padding:12px 16px;border-radius:0 8px 8px 0;margin:8px 0 16px;">
+        <em style="color:#ccc;">"${note}"</em>
+      </div>
+      Değerlendirmemizi haksız buluyorsanız veya ek bilgi sunmak istiyorsanız lütfen bize ulaşın:<br/>
+      <a href="mailto:support@vibehub.com.tr" style="color:#a855f7;">support@vibehub.com.tr</a>`,
+      'Destek ile İletişime Geç',
+      `https://vibehub.com.tr/support`,
+    );
+    await this.send(to, subject, html, `İade talebi reddedildi: #${shortId}`);
+  }
+
+  async sendShipmentCreated(
+    to: string,
+    orderId: string,
+    trackingNumber: string,
+    carrier: string,
+    estimatedDelivery?: Date,
+  ): Promise<void> {
+    const shortId       = orderId.slice(0, 8).toUpperCase();
+    const carrierLabel  = carrier === 'aras' ? 'Aras Kargo' : carrier === 'yurtici' ? 'Yurtiçi Kargo' : carrier;
+    const estLine       = estimatedDelivery
+      ? `<br/>Tahmini teslimat tarihi: <strong>${estimatedDelivery.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</strong>`
+      : '';
+    const subject = `VibeHub Siparişiniz Kargoya Verildi — #${shortId}`;
+    const html    = this.orderEmailHtml(
+      '🚚 Siparişiniz yola çıktı!',
+      `#${shortId} numaralı siparişiniz <strong>${carrierLabel}</strong> aracılığıyla kargoya verildi.<br/><br/>
+      Kargo takip numaranız: <code style="background:#1a1a2e;padding:4px 10px;border-radius:6px;font-size:16px;letter-spacing:2px;">${trackingNumber}</code>${estLine}<br/><br/>
+      Siparişinizin durumunu profilinizden takip edebilirsiniz.`,
+      'Kargo Durumunu Takip Et',
+      `https://vibehub.com.tr/profile/orders/${orderId}`,
+    );
+    await this.send(to, subject, html, `Siparişiniz kargoya verildi — #${shortId} / ${trackingNumber}`);
+  }
+
+  async sendReturnBarcode(
+    to: string,
+    orderId: string,
+    returnBarcode: string,
+    carrier: string,
+  ): Promise<void> {
+    const shortId      = orderId.slice(0, 8).toUpperCase();
+    const carrierLabel = carrier === 'aras' ? 'Aras Kargo' : carrier === 'yurtici' ? 'Yurtiçi Kargo' : carrier;
+    const subject      = `VibeHub İade Kargo Kodunuz — #${shortId}`;
+    const html         = this.orderEmailHtml(
+      '📦 İade kargo kodunuz hazır',
+      `#${shortId} numaralı siparişiniz için iade kargo kodunuz:<br/><br/>
+      <div style="text-align:center;margin:20px 0;">
+        <div style="display:inline-block;background:#1a0533;border:2px solid #a855f7;border-radius:12px;padding:16px 32px;">
+          <p style="margin:0 0 4px;font-size:12px;color:#a855f7;letter-spacing:1px;text-transform:uppercase;">İade Kargo Kodunuz</p>
+          <p style="margin:0;font-size:28px;font-weight:800;letter-spacing:4px;color:#fff;font-family:monospace;">${returnBarcode}</p>
+        </div>
+      </div>
+      <strong>Nasıl kullanılır?</strong><br/>
+      1. Ürünü sağlam bir kutuda paketleyin.<br/>
+      2. En yakın <strong>${carrierLabel}</strong> şubesine gidin.<br/>
+      3. Şubedeki personele bu kodu gösterin: <strong>${returnBarcode}</strong><br/>
+      4. Paketiniz VibeHub deposuna yönlendirilecektir.<br/><br/>
+      Paketiniz depoya ulaştığında, ekibimiz ürünü inceleyerek iade işlemini gerçekleştirecektir.<br/>
+      İade onaylandığında ödemeniz 5-10 iş günü içinde hesabınıza aktarılacaktır.`,
+      'İade Durumumu Gör',
+      `https://vibehub.com.tr/profile/orders/${orderId}`,
+    );
+    await this.send(to, subject, html, `İade kargo kodunuz: ${returnBarcode} — #${shortId}`);
+  }
+
+  private orderEmailHtml(title: string, body: string, ctaText: string, ctaUrl: string): string {
+    return `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;background:#0B1022;color:#fff;border-radius:16px;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#1a0533,#2d0a4e);padding:32px 24px;text-align:center;">
+          <h1 style="margin:0;font-size:28px;font-weight:800;background:linear-gradient(90deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">VibeHub</h1>
+        </div>
+        <div style="padding:32px 24px;">
+          <h2 style="margin:0 0 16px;font-size:20px;">${title}</h2>
+          <p style="margin:0 0 24px;color:#aaa;line-height:1.6;">${body}</p>
+          <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(90deg,#a855f7,#ec4899);color:#fff;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:12px;">${ctaText}</a>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid #222;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#555;">vibehub.com.tr · <a href="mailto:support@vibehub.com.tr" style="color:#555;">support@vibehub.com.tr</a></p>
+        </div>
       </div>
     `.trim();
-    const text = `Thanks — we received your VibeHub order ${orderId}.`;
-
-    await this.send(to, subject, html, text);
   }
 
   /**
@@ -349,6 +495,11 @@ export class MailService {
     for (const recipient of recipients) {
       await this.send(recipient, subject, html, text);
     }
+  }
+
+  /** Generic send for one-off emails (contact form, admin notifications, etc.) */
+  async sendGeneric(to: string, subject: string, html: string, text = ''): Promise<void> {
+    return this.send(to, subject, html, text || subject);
   }
 
   private async send(to: string, subject: string, html: string, text: string): Promise<void> {

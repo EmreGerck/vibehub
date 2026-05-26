@@ -739,6 +739,7 @@ function ImageSettingsModal({ product, onClose }: { product: any; onClose: () =>
 
 function PreOrderModal({ product, onClose }: { product: any; onClose: () => void }) {
   const setPreOrder = useAdminSetProductPreOrder();
+  const createVariant = useAdminCreateVariant();
   const existing = {
     endsAt: product.preOrderEndsAt ? new Date(product.preOrderEndsAt).toISOString().slice(0, 10) : '',
     shipDate: product.preOrderShipDate ? new Date(product.preOrderShipDate).toISOString().slice(0, 10) : '',
@@ -749,11 +750,22 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
   const [saved, setSaved] = useState(false);
 
   const isActive = !!product.preOrderEndsAt;
+  const hasNoVariants = !product.variants || product.variants.length === 0;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setSaved(false);
     try {
+      // If enabling pre-order but the product has no variants, auto-create a
+      // "One Size" default variant so customers can actually add it to cart.
+      if (form.endsAt && hasNoVariants) {
+        await createVariant.mutateAsync({
+          productId: product.id,
+          sku: `${product.id.slice(0, 8).toUpperCase()}-OS`,
+          attributes: { size: 'One Size' },
+          stockQty: 9999,
+        });
+      }
       await setPreOrder.mutateAsync({
         id: product.id,
         preOrderEndsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
@@ -794,6 +806,13 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
           </div>
         )}
 
+        {hasNoVariants && (
+          <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+            <span className="shrink-0 mt-0.5">⚠️</span>
+            <span>This product has no variants. Saving will auto-create a <b>One Size</b> variant so customers can add it to cart.</span>
+          </div>
+        )}
+
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         {saved && <p className="text-sm text-green-600 dark:text-green-400">✓ Saved</p>}
 
@@ -812,11 +831,11 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
             <input type="number" min={1} value={form.limit} onChange={(e) => setFormState((f) => ({ ...f, limit: e.target.value }))} placeholder="e.g. 100" className="input w-full mt-1" />
           </label>
           <div className="flex gap-3 pt-1">
-            <button type="submit" disabled={setPreOrder.isPending} className="flex-1 btn-primary text-sm">
-              {setPreOrder.isPending ? 'Saving…' : 'Save'}
+            <button type="submit" disabled={setPreOrder.isPending || createVariant.isPending} className="flex-1 btn-primary text-sm">
+              {(setPreOrder.isPending || createVariant.isPending) ? 'Saving…' : 'Save'}
             </button>
             {isActive && (
-              <button type="button" onClick={disable} disabled={setPreOrder.isPending} className="text-sm px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+              <button type="button" onClick={disable} disabled={setPreOrder.isPending || createVariant.isPending} className="text-sm px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                 Disable
               </button>
             )}

@@ -95,17 +95,19 @@ export class KargoService {
     }
 
     if (result.success) {
+      const estimatedDelivery = result.estimatedDays
+        ? new Date(Date.now() + result.estimatedDays * 86_400_000)
+        : null;
+
       // Persist to DB
       await this.prisma.shipment.create({
         data: {
-          tenantId:      params.tenantId,
-          orderId:       params.orderId,
-          carrier:       result.carrier,
-          trackingNumber: result.trackingNumber,
-          status:        'CREATED',
-          estimatedDelivery: result.estimatedDays
-            ? new Date(Date.now() + result.estimatedDays * 86_400_000)
-            : null,
+          tenantId:         params.tenantId,
+          orderId:          params.orderId,
+          carrier:          result.carrier,
+          trackingNumber:   result.trackingNumber,
+          status:           'CREATED',
+          estimatedDelivery,
         },
       });
 
@@ -114,6 +116,23 @@ export class KargoService {
         where: { id: params.orderId },
         data:  { status: 'SHIPPED' as any },
       });
+
+      // Email customer with tracking number
+      try {
+        const order: any = await this.prisma.order.findUnique({
+          where:   { id: params.orderId },
+          include: { customer: { select: { email: true } } },
+        });
+        if (order?.customer?.email) {
+          this.mail.sendShipmentCreated(
+            order.customer.email,
+            params.orderId,
+            result.trackingNumber,
+            result.carrier,
+            estimatedDelivery ?? undefined,
+          ).catch(() => {});
+        }
+      } catch { /* non-fatal */ }
 
       this.logger.log(
         `[Kargo] Shipment created — order=${params.orderId} carrier=${result.carrier} tracking=${result.trackingNumber}`,
@@ -137,6 +156,57 @@ export class KargoService {
   /** Get all shipments for an order. */
   async getOrderShipments(orderId: string) {
     return this.prisma.shipment.findMany({ where: { orderId } });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Return Shipment
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /** Generate a return barcode for a refund request. Creates a ReturnShipment record. */
+  async generateReturnBarcode(orderId: string, carrier = 'aras'): Promise<{ returnBarcode: string; carrier: string }> {
+    // Idempotent: if one already exists, return it
+    const existing = await (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
+    if (existing) return { returnBarcode: existing.returnBarcode, carrier: existing.carrier };
+
+    // Generate a unique human-friendly barcode: VH-RET-{8UPPER}
+    const returnBarcode = `VH-RET-${Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16).toUpperCase()).join('')}`;
+
+    await (this.prisma as any).returnShipment.create({
+      data: { orderId, returnBarcode, carrier },
+    });
+
+    this.logger.log(`[Kargo] Return barcode generated — order=${orderId} barcode=${returnBarcode}`);
+    return { returnBarcode, carrier };
+  }
+
+  /** Get the return shipment for an order. */
+  async getReturnShipment(orderId: string) {
+    return (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
+  }
+
+  /** Admin: mark a return shipment as arrived at the depot. */
+  async confirmDepotArrival(orderId: string, adminNote?: string) {
+    const rs = await (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
+    if (!rs) throw new Error('No return shipment found for this order');
+
+    return (this.prisma as any).returnShipment.update({
+      where: { orderId },
+      data: {
+        status: 'ARRIVED_AT_DEPOT',
+        arrivedAtDepotAt: new Date(),
+        ...(adminNote ? { adminNote } : {}),
+      },
+    });
+  }
+
+  /** Mark a return shipment as completed (after admin refund decision). */
+  async completeReturnShipment(orderId: string) {
+    const rs = await (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
+    if (!rs) return;
+    return (this.prisma as any).returnShipment.update({
+      where: { orderId },
+      data: { status: 'COMPLETED' },
+    });
   }
 
   /** Get all shipments for a tenant. */

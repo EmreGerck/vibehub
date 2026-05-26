@@ -321,6 +321,26 @@ export function useAdminUpdateProduct() {
   });
 }
 
+export function useAdminCreateVariant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ productId, ...body }: {
+      productId: string;
+      sku: string;
+      attributes: Record<string, string>;
+      stockQty: number;
+      priceOverride?: number;
+    }) => {
+      const res = await api.post(`/admin/products/${productId}/variants`, body);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-all-products'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
 export function useAdminSetProductDiscount() {
   const qc = useQueryClient();
   return useMutation({

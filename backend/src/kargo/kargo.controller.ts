@@ -1,8 +1,9 @@
 import {
-  Controller, Post, Get, Body, Param, Query,
-  HttpCode, HttpStatus, ForbiddenException,
+  Controller, Post, Get, Patch, Body, Param, Query,
+  HttpCode, HttpStatus, ForbiddenException, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { KargoService } from './kargo.service';
 import { CreateShipmentDto } from './dto/kargo.dto';
@@ -10,6 +11,10 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { Roles } from '../common/roles.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { PrismaService } from '../prisma/prisma.service';
+
+class DepotArrivalDto {
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
+}
 
 @ApiTags('Shipping (Kargo)')
 @ApiBearerAuth()
@@ -23,7 +28,7 @@ export class KargoController {
   // ── Vendor: create shipment for their own order ────────────────────────────
 
   @Post('shipments')
-  @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
+  @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER, UserRole.PLATFORM_ADMIN, UserRole.GOD_USER)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new shipment for an order' })
   async createShipment(
@@ -102,6 +107,43 @@ export class KargoController {
   ) {
     const result = await this.kargo.getTenantShipments(user.tenantId, +page, +limit);
     return ApiResponse.ok(result, 'Shipments');
+  }
+
+  // ── Return shipment: get for an order ─────────────────────────────────────
+
+  @Get('return/:orderId')
+  @ApiOperation({ summary: 'Get return shipment info for an order' })
+  async getReturnShipment(
+    @Param('orderId') orderId: string,
+    @CurrentUser() user: any,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where:   { id: orderId },
+      include: { items: { take: 1, select: { tenantId: true } } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const isAdmin  = ([UserRole.PLATFORM_ADMIN, UserRole.GOD_USER] as UserRole[]).includes(user.role);
+    const isOwner  = order.customerId === user.id;
+    const isVendor = order.items[0]?.tenantId === user.tenantId;
+    if (!isAdmin && !isOwner && !isVendor) throw new ForbiddenException('Access denied');
+
+    const rs = await this.kargo.getReturnShipment(orderId);
+    return ApiResponse.ok(rs, 'Return shipment');
+  }
+
+  // ── Admin: confirm depot arrival ───────────────────────────────────────────
+
+  @Patch('return/:orderId/arrived')
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.GOD_USER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Admin: mark return shipment as arrived at depot' })
+  async confirmDepotArrival(
+    @Param('orderId') orderId: string,
+    @Body() dto: DepotArrivalDto,
+  ) {
+    const rs = await this.kargo.confirmDepotArrival(orderId, dto.note);
+    return ApiResponse.ok(rs, 'Depot arrival confirmed');
   }
 
   // ── Admin: list all shipments (platform-wide) ─────────────────────────────

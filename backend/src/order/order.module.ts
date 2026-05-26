@@ -5,9 +5,10 @@ import { CartModule } from '../cart/cart.module';
 import { QueueModule } from '../queue/queue.module';
 import { PushModule } from '../push/push.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [CartModule, QueueModule, PushModule, NotificationsModule],
+  imports: [CartModule, QueueModule, PushModule, NotificationsModule, MailModule],
   controllers: [OrderController],
   providers: [OrderService],
   exports: [OrderService],

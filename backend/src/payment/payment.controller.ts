@@ -1,19 +1,26 @@
 import {
-  Controller, Post, Body, Param, Req,
-  HttpCode, HttpStatus, Logger, BadRequestException, ForbiddenException,
+  Controller, Post, Body, Param, Req, Get,
+  HttpCode, HttpStatus, Logger, BadRequestException, ForbiddenException, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { IsString } from 'class-validator';
 import { Request } from 'express';
 import * as crypto from 'crypto';
 import { IyzicoService } from './iyzico.service';
 import { EInvoiceService } from '../einvoice/einvoice.service';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { OrderStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+
+class MockPayDto {
+  @IsString() orderId: string;
+}
+
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -25,6 +32,7 @@ export class PaymentController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly einvoice: EInvoiceService,
+    private readonly mail: MailService,
   ) {}
 
   @Throttle({ default: { ttl: 60000, limit: 3 } })
@@ -117,6 +125,163 @@ export class PaymentController {
   async refund(@Param('paymentId') paymentId: string, @Body('amount') amount: number) {
     const result = await this.iyzico.refundPayment(paymentId, amount);
     return ApiResponse.ok(result, 'Refund processed');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Mock payment (dev/demo — simulates the full iyzico → callback → confirm flow)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('mock/pay')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Simulate payment confirmation (demo mode — no real money)' })
+  async mockPay(@Body() dto: MockPayDto, @CurrentUser() user: any) {
+    // Use 'any' cast — Prisma types update after `prisma generate` on deploy
+    const order: any = await this.prisma.order.findUnique({
+      where: { id: dto.orderId },
+      include: {
+        customer: { select: { email: true, name: true } },
+        items: {
+          include: { variant: { include: { product: true } } },
+        },
+      },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.customerId !== user.id) throw new ForbiddenException('Not your order');
+    if (order.status !== OrderStatus.PLACED) {
+      throw new BadRequestException(`Order is already ${order.status} — cannot pay again`);
+    }
+
+    // Generate mock payment reference
+    const paymentRef = `pay-mock-${crypto.randomBytes(8).toString('hex')}`;
+
+    // ── Issue e-Arşiv invoice (mock — auto) ─────────────────────────────────
+    const shippingAddr = (order.shippingAddress ?? {}) as any;
+    const invoiceResult = await this.einvoice.issueEArchive({
+      orderId: order.id,
+      buyer: {
+        identityNumber: '11111111111',   // placeholder TC — collect at checkout in production
+        name:  order.customer?.name ?? order.customer?.email ?? 'Müşteri',
+        email: order.customer?.email ?? '',
+        address: [shippingAddr.line1, shippingAddr.line2].filter(Boolean).join(' ') || 'Turkey',
+        city:    shippingAddr.city    || 'Istanbul',
+        country: shippingAddr.country || 'Turkey',
+      },
+      lines: order.items.map((item: any) => ({
+        description: item.variant?.product?.title ?? `Ürün ${item.variantId.slice(0, 8)}`,
+        quantity:    item.qty,
+        unitPrice:   Number(item.unitPriceSnapshot),
+        vatRate:     0.20,
+        unit:        'ADET',
+      })),
+      currency:    order.currency,
+      invoiceDate: new Date(),
+      type:        'EARCHIVE',
+    });
+
+    const invoiceNumber = invoiceResult.invoiceNumber ?? null;
+
+    // ── Confirm order in DB ──────────────────────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (this.prisma.order.update as any)({
+      where: { id: order.id },
+      data: {
+        status:        OrderStatus.CONFIRMED,
+        paymentRef,
+        invoiceNumber,          // available after `prisma generate` post-migration
+      },
+    });
+
+    this.logger.log(`[MOCK-PAY] Order ${order.id} confirmed | paymentRef=${paymentRef} invoice=${invoiceNumber}`);
+
+    // ── Send confirmation email (fire-and-forget) ────────────────────────────
+    if (order.customer?.email) {
+      this.mail.sendOrderConfirmed(order.customer.email, order.id).catch(err =>
+        this.logger.error(`[MOCK-PAY] Email failed for order ${order.id}: ${err.message}`),
+      );
+    }
+
+    return ApiResponse.ok({
+      orderId:       order.id,
+      paymentRef,
+      invoiceNumber,
+      invoiceId:     invoiceResult.invoiceId,
+      mockInvoice:   invoiceResult.mock ?? true,
+    }, 'Ödeme alındı — sipariş onaylandı');
+  }
+
+  // ── Invoice data for frontend rendering ─────────────────────────────────────
+
+  @Get('invoice/:orderId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get invoice data for an order (customer-facing)' })
+  async getInvoiceData(@Param('orderId') orderId: string, @CurrentUser() user: any) {
+    // Use 'any' cast — Prisma types update after `prisma generate` on deploy
+    const order: any = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: { select: { email: true, name: true } },
+        items: {
+          include: {
+            variant: {
+              include: { product: { include: { tenant: { select: { displayName: true } } } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.customerId !== user.id) throw new ForbiddenException('Not your order');
+
+    const shippingAddr = (order.shippingAddress ?? {}) as any;
+    const lines = order.items.map((item: any) => {
+      const unitPrice = Number(item.unitPriceSnapshot);
+      const qty       = item.qty;
+      const vatRate   = 0.20;
+      const lineTotal = unitPrice * qty;
+      const vatAmount = lineTotal * vatRate;
+      return {
+        description: item.variant?.product?.title ?? 'Ürün',
+        vendorName:  item.variant?.product?.tenant?.displayName ?? 'VibeHub',
+        quantity:    qty,
+        unitPrice,
+        vatRate,
+        lineTotal,
+        vatAmount,
+      };
+    });
+
+    const subtotal   = lines.reduce((s: number, l: any) => s + l.lineTotal, 0);
+    const totalVat   = lines.reduce((s: number, l: any) => s + l.vatAmount, 0);
+    const grandTotal = subtotal + totalVat;
+
+    return ApiResponse.ok({
+      invoiceNumber:  order.invoiceNumber ?? null,
+      invoiceDate:    order.updatedAt,
+      orderId:        order.id,
+      currency:       order.currency,
+      buyer: {
+        name:    order.customer?.name ?? 'Müşteri',
+        email:   order.customer?.email ?? '',
+        address: [shippingAddr.line1, shippingAddr.line2].filter(Boolean).join(', '),
+        city:    shippingAddr.city    ?? '',
+        country: shippingAddr.country ?? 'TR',
+      },
+      seller: {
+        name:    'VibeHub Teknoloji A.Ş.',
+        address: 'Levent Mah. Büyükdere Cad. No:185/A, 34394 Şişli/İstanbul',
+        taxId:   '1234567890',
+        taxOffice: 'Şişli',
+        email:   'fatura@vibehub.com.tr',
+      },
+      lines,
+      subtotal,
+      totalVat,
+      grandTotal,
+    }, 'Invoice data');
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

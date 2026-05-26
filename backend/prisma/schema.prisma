@@ -46,6 +46,7 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  REFUND_REQUESTED   // customer submitted refund request; awaiting admin review
   REFUNDED
 }
 
@@ -54,6 +55,14 @@ enum ShipmentStatus {
   IN_TRANSIT
   DELIVERED
   FAILED
+}
+
+enum ReturnShipmentStatus {
+  INITIATED        // barcode generated, customer notified, awaiting drop-off
+  DROPPED_OFF      // customer dropped package at cargo branch
+  IN_TRANSIT       // package moving toward VibeHub depot
+  ARRIVED_AT_DEPOT // admin confirmed receipt; awaiting physical inspection
+  COMPLETED        // admin approved or rejected the refund
 }
 
 enum PayoutStatus {
@@ -384,13 +393,20 @@ model Order {
   totalAmount     Decimal     @db.Decimal(12, 2)
   currency        String      @default("USD")
   shippingAddress Json
-  paymentRef      String?
+  paymentRef          String?
+  invoiceNumber       String?     // e-Arşiv / e-Fatura number (GİB format)
+  // ── Refund fields ──────────────────────────────────────────────────────────
+  refundReason        String?     // customer-provided reason
+  refundNote          String?     // admin rejection or approval note
+  refundRequestedAt   DateTime?   // when customer submitted the request
+  refundedAt          DateTime?   // when admin processed the refund
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  customer   User        @relation(fields: [customerId], references: [id])
-  items      OrderItem[]
-  shipments  Shipment[]
+  customer       User             @relation(fields: [customerId], references: [id])
+  items          OrderItem[]
+  shipments      Shipment[]
+  returnShipment ReturnShipment?
 
   @@index([customerId])
   @@index([status])
@@ -448,6 +464,23 @@ model Shipment {
   @@index([tenantId])
   @@index([orderId])
   @@index([trackingNumber])
+}
+
+model ReturnShipment {
+  id               String               @id @default(uuid())
+  orderId          String               @unique
+  returnBarcode    String               @unique   // code shown to customer; entered at cargo branch
+  carrier          String               @default("aras")
+  status           ReturnShipmentStatus @default(INITIATED)
+  droppedOffAt     DateTime?
+  arrivedAtDepotAt DateTime?
+  adminNote        String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([returnBarcode])
 }
 
 model Payout {
@@ -793,8 +826,12 @@ model PlatformSettings {
   // ── SEO & Marketing ────────────────────────────────────────────────────────
   metaTitle                String  @default("VibeHub — Your Merch, Your Stage")
   metaDescription          String  @default("Buy official merch from your favourite artists and creators.")
+  ogImageUrl               String?
+  twitterHandle            String?
   facebookPixelId          String?
   googleTagManagerId       String?
+  robotsTxt                String  @default("User-agent: *\nAllow: /\n\nSitemap: https://vibehub.com.tr/sitemap.xml")
+  schemaOrgJson            String? // JSON-LD Organization schema override (stringified JSON)
 
   updatedAt DateTime @updatedAt
 }
