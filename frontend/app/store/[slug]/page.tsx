@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import { StorePageClient } from './StorePageClient';
+import { JsonLd } from '../../../components/seo/JsonLd';
+
+const SITE_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-26a7.up.railway.app';
 
 interface Props { params: { slug: string } }
 
@@ -56,6 +60,34 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   }
 }
 
-export default function StorePage({ params }: Props) {
-  return <StorePageClient />;
+async function getVendorJsonLd(slug: string) {
+  try {
+    const res = await fetch(`${API_BASE}/vendors/slug/${slug}`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const vendor = json?.data;
+    if (!vendor) return null;
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: vendor.displayName,
+      url: `${SITE_URL}/store/${slug}`,
+      ...(vendor.logoUrl ? { logo: vendor.logoUrl } : {}),
+      ...(vendor.bio ? { description: vendor.bio.slice(0, 500) } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default async function StorePage({ params }: Props) {
+  const jsonLd = await getVendorJsonLd(params.slug);
+
+  return (
+    <>
+      {jsonLd && <JsonLd data={jsonLd} />}
+      <StorePageClient />
+    </>
+  );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 import GoogleAnalytics from '../components/ui/GoogleAnalytics';
+import { JsonLd } from '../components/seo/JsonLd';
 
 const SITE_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
 
@@ -42,6 +43,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
         <GoogleAnalytics />
+        <JsonLd
+          data={{
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: 'VibeHub',
+            url: SITE_URL,
+            logo: `${SITE_URL}/icon.svg`,
+            description: 'The merch marketplace for artists, bands, comedians, and influencers.',
+          }}
+        />
+        <JsonLd
+          data={{
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'VibeHub',
+            url: SITE_URL,
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: {
+                '@type': 'EntryPoint',
+                urlTemplate: `${SITE_URL}/shop?search={search_term_string}`,
+              },
+              'query-input': 'required name=search_term_string',
+            },
+          }}
+        />
       </head>
       <body>
         <Providers>{children}</Providers>
