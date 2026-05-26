@@ -8,6 +8,7 @@ import { Toaster } from '../components/ui/Toaster';
 import { SearchPalette } from '../components/ui/SearchPalette';
 import { ScrollToTop } from '../components/ui/ScrollToTop';
 import { CookieBanner } from '../components/ui/CookieBanner';
+import { HtmlLangSync } from '../components/ui/HtmlLangSync';
 import { useAuthStore } from '../store/auth.store';
 import axios from 'axios';
 
@@ -68,6 +69,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthBootstrap />
+        <HtmlLangSync />
         {children}
         <Toaster />
         <SearchPalette />

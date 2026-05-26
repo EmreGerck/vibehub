@@ -1109,6 +1109,28 @@ const translations: Record<Locale, Record<string, string>> = {
     'search.seeAll': 'Tüm {n} sonucu gör →',
     'search.label': 'Arama',
     'search.placeholder': 'Ürün, sanatçı ara…',
+
+    // ── Navbar extras ──
+    'nav.signedIn': 'Giriş yapıldı',
+
+    // ── Support page ──
+    'support.title': 'Destek',
+    'support.subtitle': 'Size nasıl yardımcı olabiliriz?',
+    'support.contactTitle': 'Bize Ulaşın',
+    'support.contactDesc': 'Sorularınız için bize e-posta gönderin, en kısa sürede yanıt vereceğiz.',
+    'support.email': 'E-posta',
+    'support.faqTitle': 'Sıkça Sorulan Sorular',
+    'support.faq1q': 'Siparişimi nasıl takip edebilirim?',
+    'support.faq1a': 'Profilinizde "Siparişlerim" bölümüne giderek siparişinizin durumunu ve kargo takip numarasını görebilirsiniz.',
+    'support.faq2q': 'İade ve değişim nasıl yapılır?',
+    'support.faq2a': 'Ürünü teslim aldıktan sonra 14 gün içinde cayma hakkınızı kullanabilirsiniz. Detaylar için Cayma Hakkı sayfamıza bakınız.',
+    'support.faq3q': 'Ödeme yöntemleri nelerdir?',
+    'support.faq3a': 'Kredi kartı ve banka kartı ile güvenli ödeme yapabilirsiniz. Ödeme altyapımız yakında aktif olacaktır.',
+    'support.faq4q': 'Sanatçı olarak nasıl mağaza açabilirim?',
+    'support.faq4a': '"Sanatçı Başvurusu" sayfasından başvurunuzu yapabilirsiniz. Başvurunuz onaylandığında size bilgi verilecektir.',
+    'support.faq5q': 'Kargo ne kadar sürede teslim edilir?',
+    'support.faq5a': 'Siparişler genellikle 2-5 iş günü içinde teslim edilir. Pre-order ürünlerde teslimat süresi ürün sayfasında belirtilir.',
+    'support.backToHome': 'Ana Sayfaya Dön',
   },
 
   en: {
@@ -2195,5 +2217,27 @@ const translations: Record<Locale, Record<string, string>> = {
     'search.seeAll': 'See all {n} results →',
     'search.label': 'Search',
     'search.placeholder': 'Search products, artists…',
+
+    // ── Navbar extras ──
+    'nav.signedIn': 'Signed in',
+
+    // ── Support page ──
+    'support.title': 'Support',
+    'support.subtitle': 'How can we help you?',
+    'support.contactTitle': 'Contact Us',
+    'support.contactDesc': 'Send us an email with your question and we\'ll get back to you as soon as possible.',
+    'support.email': 'Email',
+    'support.faqTitle': 'Frequently Asked Questions',
+    'support.faq1q': 'How can I track my order?',
+    'support.faq1a': 'Go to "My Orders" in your profile to see your order status and tracking number.',
+    'support.faq2q': 'How do returns and exchanges work?',
+    'support.faq2a': 'You have 14 days after receiving your product to exercise your right of withdrawal. See our Return Policy page for details.',
+    'support.faq3q': 'What payment methods are available?',
+    'support.faq3a': 'You can pay securely with credit and debit cards. Our payment infrastructure will be active soon.',
+    'support.faq4q': 'How can I open a store as an artist?',
+    'support.faq4a': 'Apply through the "Artist Application" page. You\'ll be notified once your application is approved.',
+    'support.faq5q': 'How long does shipping take?',
+    'support.faq5a': 'Orders are typically delivered within 2-5 business days. Pre-order items have estimated delivery dates shown on the product page.',
+    'support.backToHome': 'Back to Home',
   },
 };

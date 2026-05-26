@@ -1,0 +1,16 @@
+{
+  "name": "VibeHub",
+  "short_name": "VibeHub",
+  "description": "The merch marketplace for artists, bands, comedians, and influencers.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#9333ea",
+  "background_color": "#070A12",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

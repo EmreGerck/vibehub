@@ -104,7 +104,7 @@ export function Navbar() {
             {artistsOpen && (
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-44 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 py-1 origin-top animate-scale-in" style={{ boxShadow: 'var(--shadow-dropdown)' }}>
                 {vendors.length === 0 && (
-                  <span className="block px-4 py-2 text-gray-400 text-xs">Loading…</span>
+                  <span className="block px-4 py-2 text-gray-400 text-xs">{t('common.loading')}</span>
                 )}
                 {vendors.map((v, i) => (
                   <Link
@@ -183,7 +183,7 @@ export function Navbar() {
                 {userOpen && (
                   <div className="absolute top-full right-0 mt-2 w-52 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 py-1 origin-top-right animate-scale-in overflow-hidden" style={{ boxShadow: 'var(--shadow-dropdown)' }}>
                     <div className="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 mb-1 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                      <p className="text-[10px] uppercase font-semibold text-purple-500 dark:text-purple-400 tracking-wider">Signed in</p>
+                      <p className="text-[10px] uppercase font-semibold text-purple-500 dark:text-purple-400 tracking-wider">{t('nav.signedIn')}</p>
                       <p className="text-xs font-medium text-gray-900 dark:text-white truncate mt-0.5">{user.email}</p>
                     </div>
                     <Link

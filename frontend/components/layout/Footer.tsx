@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useI18n } from '../../lib/i18n';
+import { useVendors } from '../../hooks/useVendors';
 
 function clearCookieConsent() {
   try {
@@ -14,6 +15,8 @@ function clearCookieConsent() {
 
 export function Footer() {
   const t = useI18n((s) => s.t);
+  const { data: vendorsData } = useVendors({ limit: 5 });
+  const vendors = (vendorsData?.items ?? []).filter((v: any) => v.status === 'ACTIVE');
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -35,9 +38,13 @@ export function Footer() {
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('footer.shop')}</h4>
             <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
               <li><Link href="/shop" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.allProducts')}</Link></li>
-              <li><Link href="/store/kalt" className="hover:text-gray-900 dark:hover:text-white transition-colors">KALT</Link></li>
-              <li><Link href="/store/mode-xl" className="hover:text-gray-900 dark:hover:text-white transition-colors">MODE XL</Link></li>
-              <li><Link href="/store/tekir" className="hover:text-gray-900 dark:hover:text-white transition-colors">TEKİR</Link></li>
+              {vendors.slice(0, 4).map((v: any) => (
+                <li key={v.id}>
+                  <Link href={`/store/${v.slug}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                    {v.displayName}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

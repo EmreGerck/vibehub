@@ -164,7 +164,7 @@ function BentoCard({ product, price, isLarge, layoutClass, hidden, delay }: {
             {formatPrice(price)}
           </span>
           <span className={`text-xs transition-all ${hovered ? 'text-white translate-x-1' : 'text-white/60'}`}>
-            View →
+            {useI18n.getState().t('shop.view')}
           </span>
         </div>
       </div>
@@ -360,7 +360,7 @@ function ShopContent() {
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
-              Tümü
+              {t('shop.all') || 'All'}
             </button>
             {categoryList.map((cat) => (
               <button
@@ -692,7 +692,7 @@ function ShopProductCard({ product }: { product: Product }) {
         <div className="mt-auto pt-2 flex items-end justify-between">
           <span className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(price)}</span>
           <span className="text-xs text-purple-500 dark:text-purple-400 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all">
-            View →
+            {useI18n.getState().t('shop.view')}
           </span>
         </div>
       </div>
