@@ -969,6 +969,20 @@ const translations: Record<Locale, Record<string, string>> = {
     'productForm.preOrder.limit': 'Maks adet (limit)',
     'productForm.preOrder.limitPlaceholder': 'Sınırsız',
 
+    // ── Product Detail Page ──
+    'pdp.notFound': 'Ürün bulunamadı.',
+    'pdp.lowStock': 'Az',
+    'pdp.onlyXLeft': 'Son {n} adet!',
+    'pdp.shippingInfo': 'Kargo Bilgisi',
+
+    // ── Newsletter ──
+    'newsletter.title': 'Güncel Kal',
+    'newsletter.subtitle': 'Yeni çıkan ürünler, özel indirimler ve sanatçı haberleri için abone ol.',
+    'newsletter.placeholder': 'E-posta adresin',
+    'newsletter.cta': 'Abone Ol',
+    'newsletter.success': 'Harika! Abone oldun.',
+    'newsletter.privacy': 'Spam yok. İstediğin zaman çıkabilirsin.',
+
     // ── Product detail / card pre-order UI ──
     'preOrder.badge': '🕐 ÖN SİPARİŞ',
     'preOrder.cta.now': '🕐 Ön sipariş ver',
@@ -2239,5 +2253,19 @@ const translations: Record<Locale, Record<string, string>> = {
     'support.faq5q': 'How long does shipping take?',
     'support.faq5a': 'Orders are typically delivered within 2-5 business days. Pre-order items have estimated delivery dates shown on the product page.',
     'support.backToHome': 'Back to Home',
+
+    // ── Product Detail Page ──
+    'pdp.notFound': 'Product not found.',
+    'pdp.lowStock': 'Low',
+    'pdp.onlyXLeft': 'Only {n} left!',
+    'pdp.shippingInfo': 'Shipping Info',
+
+    // ── Newsletter ──
+    'newsletter.title': 'Stay in the Loop',
+    'newsletter.subtitle': 'Subscribe for new drops, exclusive deals, and artist news.',
+    'newsletter.placeholder': 'Your email address',
+    'newsletter.cta': 'Subscribe',
+    'newsletter.success': 'You\'re in! Thanks for subscribing.',
+    'newsletter.privacy': 'No spam. Unsubscribe anytime.',
   },
 };

@@ -14,6 +14,7 @@ import { useI18n } from '../lib/i18n';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { Reveal } from '../components/ui/Reveal';
 import { ProductImage } from '../components/ui/ProductImage';
+import { NewsletterSection } from '../components/home/NewsletterSection';
 import type { ApiResponse, Product } from '../types';
 
 interface HeroBanner {
@@ -213,7 +214,7 @@ export default function HomePage() {
   const { data: banners = [], isLoading: bannersLoading } = useBanners();
   const { data: productsData, isLoading: productsLoading } = useProducts({ limit: 8 });
   const products = productsData?.items ?? [];
-  const { data: trendingData, isLoading: trendingLoading } = useProducts({ limit: 8, sortBy: 'price_desc' });
+  const { data: trendingData, isLoading: trendingLoading } = useProducts({ limit: 8, sortBy: 'newest' });
   const trending = trendingData?.items ?? [];
   const { data: vendorsData, isLoading: vendorsLoading } = useVendors({ limit: 10 });
   const activeVendors = (vendorsData?.items ?? []).filter((v: any) => v.status === 'ACTIVE');
@@ -265,7 +266,7 @@ export default function HomePage() {
                   {t('home.trending')}
                   <span className="text-xl animate-float">🔥</span>
                 </h2>
-                <Link href="/shop?sortBy=price_desc" className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium underline-grow transition-colors">
+                <Link href="/shop" className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium underline-grow transition-colors">
                   {t('home.viewAll')}
                 </Link>
               </div>
@@ -330,6 +331,10 @@ export default function HomePage() {
             </div>
           </section>
         </Reveal>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <NewsletterSection />
       </div>
 
       <Footer />

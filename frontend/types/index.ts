@@ -58,6 +58,7 @@ export interface Product {
   title: string;
   description: string;
   price: number;
+  compareAtPrice?: number | null;
   // Pre-order metadata
   isPreOrder?: boolean;
   preOrderShipDate?: string | null;

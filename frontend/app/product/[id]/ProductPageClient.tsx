@@ -17,6 +17,7 @@ import { useI18n } from '../../../lib/i18n';
 import { Footer } from '../../../components/layout/Footer';
 import type { ProductVariant } from '../../../types';
 import { ProductImage } from '../../../components/ui/ProductImage';
+import { PriceBadge } from '../../../components/ui/PriceBadge';
 
 export function ProductPageClient() {
   const { id } = useParams<{ id: string }>();
@@ -63,7 +64,7 @@ export function ProductPageClient() {
   if (!product) return (
     <>
       <Navbar />
-      <div className="text-center py-32 text-gray-500">Product not found.</div>
+      <div className="text-center py-32 text-gray-500">{t('pdp.notFound')}</div>
     </>
   );
 
@@ -184,9 +185,7 @@ export function ProductPageClient() {
                 </button>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {formatPrice(price)}
-                </span>
+                <PriceBadge price={price} compareAtPrice={product.compareAtPrice} size="lg" />
               </div>
             </div>
 
@@ -218,7 +217,7 @@ export function ProductPageClient() {
                     >
                       {Object.values(v.attributes as Record<string, string>).join(' / ')}
                       {v.stockQty > 0 && v.stockQty <= (v.lowStockThreshold ?? 5) && (
-                        <span className="ml-1.5 text-yellow-400 text-xs">Low</span>
+                        <span className="ml-1.5 text-yellow-400 text-xs">{t('pdp.lowStock')}</span>
                       )}
                     </button>
                   ))}
@@ -226,6 +225,11 @@ export function ProductPageClient() {
                 {variant && (
                   <p className="mt-2 text-xs text-gray-500">
                     SKU: {variant.sku} · {variant.stockQty} {t('pdp.inStock')}
+                  </p>
+                )}
+                {variant && !isPreOrder && variant.stockQty > 0 && variant.stockQty <= (variant.lowStockThreshold ?? 5) && (
+                  <p className="mt-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    {t('pdp.onlyXLeft').replace('{n}', String(variant.stockQty))}
                   </p>
                 )}
               </div>
@@ -298,7 +302,7 @@ export function ProductPageClient() {
                 <div className="flex items-start gap-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 px-4 py-3">
                   <span className="text-xl mt-0.5">🚚</span>
                   <div>
-                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-0.5">Kargo Bilgisi</p>
+                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-0.5">{t('pdp.shippingInfo')}</p>
                     <p className="text-sm text-blue-700 dark:text-blue-400">{product.shippingNote}</p>
                   </div>
                 </div>

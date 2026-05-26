@@ -14,6 +14,7 @@ import { formatPrice, brandGradient } from '../../lib/format';
 import { useI18n } from '../../lib/i18n';
 import { FilterSidebar, DEFAULT_FILTERS, countActiveFilters, type FilterValues } from '../../components/product/FilterSidebar';
 import { ProductImage } from '../../components/ui/ProductImage';
+import { PriceBadge, SaleBadge } from '../../components/ui/PriceBadge';
 import GifPlayer from '../../components/ui/GifPlayer';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductSearch } from '../../hooks/useSearch';
@@ -617,6 +618,7 @@ function ShopProductCard({ product }: { product: Product }) {
       onMouseLeave={() => setHovered(false)}
     >
       <div className="aspect-square overflow-hidden relative">
+        <SaleBadge compareAtPrice={product.compareAtPrice} price={price} />
         {product.previewVideoUrl ? (
           <GifPlayer
             src={product.previewVideoUrl}
@@ -690,7 +692,7 @@ function ShopProductCard({ product }: { product: Product }) {
           {product.title}
         </h3>
         <div className="mt-auto pt-2 flex items-end justify-between">
-          <span className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(price)}</span>
+          <PriceBadge price={price} compareAtPrice={product.compareAtPrice} />
           <span className="text-xs text-purple-500 dark:text-purple-400 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all">
             {useI18n.getState().t('shop.view')}
           </span>
