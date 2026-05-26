@@ -161,9 +161,21 @@ function BentoCard({ product, price, isLarge, layoutClass, hidden, delay }: {
           {product.title}
         </h3>
         <div className="flex items-center justify-between mt-2">
-          <span className={`text-white font-bold ${isLarge ? 'text-xl' : 'text-sm'}`}>
-            {formatPrice(price)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-white font-bold ${isLarge ? 'text-xl' : 'text-sm'}`}>
+              {formatPrice(price)}
+            </span>
+            {product.compareAtPrice != null && Number(product.compareAtPrice) > price && (
+              <>
+                <span className={`text-white/50 line-through ${isLarge ? 'text-sm' : 'text-xs'}`}>
+                  {formatPrice(Number(product.compareAtPrice))}
+                </span>
+                <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full">
+                  -{Math.round((1 - price / Number(product.compareAtPrice)) * 100)}%
+                </span>
+              </>
+            )}
+          </div>
           <span className={`text-xs transition-all ${hovered ? 'text-white translate-x-1' : 'text-white/60'}`}>
             {useI18n.getState().t('shop.view')}
           </span>

@@ -329,7 +329,8 @@ model Product {
   categoryId   String?
   title        String
   description  String
-  price        Decimal       @db.Decimal(12, 2)
+  price           Decimal       @db.Decimal(12, 2)
+  compareAtPrice  Decimal?      @db.Decimal(12, 2)   // original/strike-through price for sale display
   currency     String        @default("USD")
   status       ProductStatus @default(DRAFT)
   images          String[]

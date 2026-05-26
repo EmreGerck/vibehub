@@ -36,6 +36,11 @@ export class AdminCreateProductDto {
   price: number;
 
   @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  compareAtPrice?: number | null;
+
+  @IsOptional()
   @IsString()
   currency?: string;
 
@@ -114,6 +119,11 @@ export class AdminUpdateProductDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  compareAtPrice?: number | null;
 
   @IsOptional()
   @IsObject()

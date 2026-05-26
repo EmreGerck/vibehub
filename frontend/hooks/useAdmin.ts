@@ -293,12 +293,17 @@ export function useAdminCreateProduct() {
       title: string;
       description: string;
       price: number;
+      compareAtPrice?: number | null;
       currency?: string;
       images?: string[];
       tags?: string[];
       translations?: Record<string, any>;
       previewVideoUrl?: string;
       categoryId?: string;
+      isPreOrder?: boolean;
+      preOrderShipDate?: string | null;
+      preOrderEndsAt?: string | null;
+      preOrderLimit?: number | null;
     }) => {
       const res = await api.post('/admin/products', body);
       return res.data.data;
@@ -310,7 +315,7 @@ export function useAdminCreateProduct() {
 export function useAdminUpdateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id: string; title?: string; description?: string; price?: number; currency?: string; images?: string[]; tags?: string[]; translations?: Record<string, any>; previewVideoUrl?: string; categoryId?: string; imageSettings?: Record<string, { x: number; y: number }> }) => {
+    mutationFn: async ({ id, ...body }: { id: string; title?: string; description?: string; price?: number; compareAtPrice?: number | null; currency?: string; images?: string[]; tags?: string[]; translations?: Record<string, any>; previewVideoUrl?: string; categoryId?: string; imageSettings?: Record<string, { x: number; y: number }>; isPreOrder?: boolean; preOrderShipDate?: string | null; preOrderEndsAt?: string | null; preOrderLimit?: number | null }) => {
       const res = await api.patch(`/admin/products/${id}`, body);
       return res.data.data;
     },

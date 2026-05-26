@@ -33,6 +33,7 @@ interface ProductFormState {
   descriptionTr: string;
   descriptionEn: string;
   price: string;
+  compareAtPrice: string;
   currency: string;
   tags: string;
   images: string;
@@ -51,6 +52,7 @@ const EMPTY_FORM: ProductFormState = {
   descriptionTr: '',
   descriptionEn: '',
   price: '',
+  compareAtPrice: '',
   currency: 'TRY',
   tags: '',
   images: '',
@@ -383,6 +385,7 @@ function ProductFormModal({
           descriptionTr: editingProduct.description ?? '',
           descriptionEn: existingTranslations.description ?? '',
           price: String(editingProduct.price ?? ''),
+          compareAtPrice: editingProduct.compareAtPrice != null ? String(editingProduct.compareAtPrice) : '',
           currency: editingProduct.currency ?? 'TRY',
           tags: (editingProduct.tags ?? []).join(', '),
           images: (editingProduct.images ?? []).join('\n'),
@@ -442,6 +445,7 @@ function ProductFormModal({
           title: form.titleTr,
           description: form.descriptionTr,
           price: parseFloat(form.price),
+          compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
           currency: form.currency,
           tags,
           images,
@@ -456,6 +460,7 @@ function ProductFormModal({
           title: form.titleTr,
           description: form.descriptionTr,
           price: parseFloat(form.price),
+          compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : undefined,
           currency: form.currency,
           tags,
           images,
@@ -570,6 +575,32 @@ function ProductFormModal({
                 <option>EUR</option>
               </select>
             </div>
+          </div>
+
+          {/* Compare At Price (for sale display) */}
+          <div>
+            <label className="label">
+              Compare At Price <span className="text-gray-400 font-normal">(original / strike-through — leave empty for no sale badge)</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.compareAtPrice}
+              onChange={(e) => set('compareAtPrice', e.target.value)}
+              placeholder="e.g. 299.00 — must be higher than price"
+              className="input"
+            />
+            {form.compareAtPrice && form.price && parseFloat(form.compareAtPrice) > parseFloat(form.price) && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                ✓ {Math.round((1 - parseFloat(form.price) / parseFloat(form.compareAtPrice)) * 100)}% discount will be shown on product
+              </p>
+            )}
+            {form.compareAtPrice && form.price && parseFloat(form.compareAtPrice) <= parseFloat(form.price) && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                Compare At Price must be higher than Price
+              </p>
+            )}
           </div>
 
           {/* Tags */}
