@@ -9,6 +9,7 @@ import {
   useAdminPendingProducts,
   useAdminCreateProduct,
   useAdminUpdateProduct,
+  useAdminSetProductPreOrder,
   useAdminPublishProduct,
   useAdminUnpublishProduct,
   useAdminDeleteProduct,
@@ -33,16 +34,11 @@ interface ProductFormState {
   descriptionTr: string;
   descriptionEn: string;
   price: string;
-  compareAtPrice: string;
   currency: string;
   tags: string;
   images: string;
   previewVideoUrl: string;
   categoryId: string;
-  isPreOrder: boolean;
-  preOrderShipDate: string;
-  preOrderEndsAt: string;
-  preOrderLimit: string;
 }
 
 const EMPTY_FORM: ProductFormState = {
@@ -52,16 +48,11 @@ const EMPTY_FORM: ProductFormState = {
   descriptionTr: '',
   descriptionEn: '',
   price: '',
-  compareAtPrice: '',
   currency: 'TRY',
   tags: '',
   images: '',
   previewVideoUrl: '',
   categoryId: '',
-  isPreOrder: false,
-  preOrderShipDate: '',
-  preOrderEndsAt: '',
-  preOrderLimit: '',
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -385,22 +376,11 @@ function ProductFormModal({
           descriptionTr: editingProduct.description ?? '',
           descriptionEn: existingTranslations.description ?? '',
           price: String(editingProduct.price ?? ''),
-          compareAtPrice: editingProduct.compareAtPrice != null ? String(editingProduct.compareAtPrice) : '',
           currency: editingProduct.currency ?? 'TRY',
           tags: (editingProduct.tags ?? []).join(', '),
           images: (editingProduct.images ?? []).join('\n'),
           previewVideoUrl: editingProduct.previewVideoUrl ?? '',
           categoryId: editingProduct.categoryId ?? '',
-          isPreOrder: (editingProduct as any).isPreOrder ?? false,
-          preOrderShipDate: (editingProduct as any).preOrderShipDate
-            ? new Date((editingProduct as any).preOrderShipDate).toISOString().slice(0, 10)
-            : '',
-          preOrderEndsAt: (editingProduct as any).preOrderEndsAt
-            ? new Date((editingProduct as any).preOrderEndsAt).toISOString().slice(0, 10)
-            : '',
-          preOrderLimit: (editingProduct as any).preOrderLimit
-            ? String((editingProduct as any).preOrderLimit)
-            : '',
         }
       : EMPTY_FORM,
   );
@@ -428,31 +408,18 @@ function ProductFormModal({
     try {
       const previewVideoUrl = form.previewVideoUrl.trim() || undefined;
       const categoryId = form.categoryId || undefined;
-      // Pre-order payload (omit fields if pre-order is off so backend doesn't store stale dates)
-      const preOrderFields: any = { isPreOrder: form.isPreOrder };
-      if (form.isPreOrder) {
-        if (form.preOrderShipDate) preOrderFields.preOrderShipDate = new Date(form.preOrderShipDate).toISOString();
-        if (form.preOrderEndsAt)   preOrderFields.preOrderEndsAt   = new Date(form.preOrderEndsAt).toISOString();
-        if (form.preOrderLimit)    preOrderFields.preOrderLimit    = Number(form.preOrderLimit);
-      } else {
-        preOrderFields.preOrderShipDate = null;
-        preOrderFields.preOrderEndsAt = null;
-        preOrderFields.preOrderLimit = null;
-      }
       if (editingProduct) {
         await updateProduct.mutateAsync({
           id: editingProduct.id,
           title: form.titleTr,
           description: form.descriptionTr,
           price: parseFloat(form.price),
-          compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
           currency: form.currency,
           tags,
           images,
           translations,
           previewVideoUrl,
           categoryId,
-          ...preOrderFields,
         });
       } else {
         await createProduct.mutateAsync({
@@ -460,14 +427,12 @@ function ProductFormModal({
           title: form.titleTr,
           description: form.descriptionTr,
           price: parseFloat(form.price),
-          compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : undefined,
           currency: form.currency,
           tags,
           images,
           translations,
           previewVideoUrl,
           categoryId,
-          ...preOrderFields,
         });
       }
       onClose();
@@ -577,31 +542,6 @@ function ProductFormModal({
             </div>
           </div>
 
-          {/* Compare At Price (for sale display) */}
-          <div>
-            <label className="label">
-              Compare At Price <span className="text-gray-400 font-normal">(original / strike-through — leave empty for no sale badge)</span>
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.compareAtPrice}
-              onChange={(e) => set('compareAtPrice', e.target.value)}
-              placeholder="e.g. 299.00 — must be higher than price"
-              className="input"
-            />
-            {form.compareAtPrice && form.price && parseFloat(form.compareAtPrice) > parseFloat(form.price) && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                ✓ {Math.round((1 - parseFloat(form.price) / parseFloat(form.compareAtPrice)) * 100)}% discount will be shown on product
-              </p>
-            )}
-            {form.compareAtPrice && form.price && parseFloat(form.compareAtPrice) <= parseFloat(form.price) && (
-              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                Compare At Price must be higher than Price
-              </p>
-            )}
-          </div>
 
           {/* Tags */}
           <div>
@@ -639,61 +579,6 @@ function ProductFormModal({
               Use an MP4/WebM for best results — it plays once then stops, and replays on hover.
               GIF files play on hover and loop while the mouse is over the card.
             </p>
-          </div>
-
-          {/* ── Pre-order ────────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 bg-gray-50/40 dark:bg-gray-900/30">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.isPreOrder}
-                onChange={(e) => set('isPreOrder', e.target.checked)}
-                className="mt-1 h-4 w-4"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-2">
-                  {t('productForm.preOrder.toggle')}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {t('productForm.preOrder.description')}
-                </p>
-              </div>
-            </label>
-
-            {form.isPreOrder && (
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label className="block">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{t('productForm.preOrder.shipDate')}</span>
-                  <input
-                    type="date"
-                    value={form.preOrderShipDate}
-                    onChange={(e) => set('preOrderShipDate', e.target.value)}
-                    className="input w-full mt-1"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{t('productForm.preOrder.endsAt')}</span>
-                  <input
-                    type="date"
-                    value={form.preOrderEndsAt}
-                    onChange={(e) => set('preOrderEndsAt', e.target.value)}
-                    className="input w-full mt-1"
-                  />
-                  <span className="text-[10px] text-gray-400">{t('productForm.preOrder.endsHint')}</span>
-                </label>
-                <label className="block">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{t('productForm.preOrder.limit')}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.preOrderLimit}
-                    onChange={(e) => set('preOrderLimit', e.target.value)}
-                    placeholder={t('productForm.preOrder.limitPlaceholder')}
-                    className="input w-full mt-1"
-                  />
-                </label>
-              </div>
-            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -850,6 +735,98 @@ function ImageSettingsModal({ product, onClose }: { product: any; onClose: () =>
   );
 }
 
+// ── Pre-order Config Modal ────────────────────────────────────────────────────
+
+function PreOrderModal({ product, onClose }: { product: any; onClose: () => void }) {
+  const setPreOrder = useAdminSetProductPreOrder();
+  const existing = {
+    endsAt: product.preOrderEndsAt ? new Date(product.preOrderEndsAt).toISOString().slice(0, 10) : '',
+    shipDate: product.preOrderShipDate ? new Date(product.preOrderShipDate).toISOString().slice(0, 10) : '',
+    limit: product.preOrderLimit ? String(product.preOrderLimit) : '',
+  };
+  const [form, setFormState] = useState(existing);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const isActive = !!product.preOrderEndsAt;
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(''); setSaved(false);
+    try {
+      await setPreOrder.mutateAsync({
+        id: product.id,
+        preOrderEndsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
+        preOrderShipDate: form.shipDate ? new Date(form.shipDate).toISOString() : null,
+        preOrderLimit: form.limit ? Number(form.limit) : null,
+      });
+      setSaved(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to save');
+    }
+  }
+
+  async function disable() {
+    setError(''); setSaved(false);
+    try {
+      await setPreOrder.mutateAsync({ id: product.id, preOrderEndsAt: null, preOrderShipDate: null, preOrderLimit: null });
+      setSaved(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="card p-6 w-full max-w-md space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Pre-order Config</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{product.title}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-white text-xl leading-none">×</button>
+        </div>
+
+        {isActive && (
+          <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Pre-order active — closes {new Date(product.preOrderEndsAt).toLocaleDateString()}
+          </div>
+        )}
+
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {saved && <p className="text-sm text-green-600 dark:text-green-400">✓ Saved</p>}
+
+        <form onSubmit={save} className="space-y-3">
+          <label className="block">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Pre-order window closes *</span>
+            <input type="date" value={form.endsAt} onChange={(e) => setFormState((f) => ({ ...f, endsAt: e.target.value }))} className="input w-full mt-1" />
+            <span className="text-[10px] text-gray-400">Leave empty to disable pre-order</span>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Estimated ship date</span>
+            <input type="date" value={form.shipDate} onChange={(e) => setFormState((f) => ({ ...f, shipDate: e.target.value }))} className="input w-full mt-1" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Max units (leave blank = unlimited)</span>
+            <input type="number" min={1} value={form.limit} onChange={(e) => setFormState((f) => ({ ...f, limit: e.target.value }))} placeholder="e.g. 100" className="input w-full mt-1" />
+          </label>
+          <div className="flex gap-3 pt-1">
+            <button type="submit" disabled={setPreOrder.isPending} className="flex-1 btn-primary text-sm">
+              {setPreOrder.isPending ? 'Saving…' : 'Save'}
+            </button>
+            {isActive && (
+              <button type="button" onClick={disable} disabled={setPreOrder.isPending} className="text-sm px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                Disable
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminProductsPage() {
@@ -863,6 +840,7 @@ export default function AdminProductsPage() {
   const [rejectModal, setRejectModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [photoSettingsFor, setPhotoSettingsFor] = useState<any | null>(null);
+  const [preOrderFor, setPreOrderFor] = useState<any | null>(null);
 
   const { data: allData, isLoading: allLoading } = useAdminAllProducts({ page, limit: pageSize });
   const { data: pendingData, isLoading: pendingLoading } = useAdminPendingProducts({ page, limit: pageSize });
@@ -1008,6 +986,18 @@ export default function AdminProductsPage() {
                           Variants ({product.variants?.length ?? 0})
                         </button>
 
+                        {/* Pre-order config */}
+                        <button
+                          onClick={() => setPreOrderFor(product)}
+                          className={`text-xs border px-2.5 py-1.5 rounded-lg transition-colors ${
+                            product.preOrderEndsAt
+                              ? 'border-emerald-400 dark:border-emerald-600 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+                              : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-purple-400 dark:hover:border-purple-600 hover:text-purple-600 dark:hover:text-purple-400'
+                          }`}
+                        >
+                          🕐 Pre-order{product.preOrderEndsAt ? ' ✓' : ''}
+                        </button>
+
                         {/* Photo focal-point settings */}
                         {(product.images?.length ?? 0) > 0 && (
                           <button
@@ -1120,6 +1110,14 @@ export default function AdminProductsPage() {
         <ImageSettingsModal
           product={items.find((p: any) => p.id === photoSettingsFor.id) ?? photoSettingsFor}
           onClose={() => setPhotoSettingsFor(null)}
+        />
+      )}
+
+      {/* Pre-order config modal */}
+      {preOrderFor && (
+        <PreOrderModal
+          product={items.find((p: any) => p.id === preOrderFor.id) ?? preOrderFor}
+          onClose={() => setPreOrderFor(null)}
         />
       )}
 

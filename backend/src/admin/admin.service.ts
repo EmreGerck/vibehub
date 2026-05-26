@@ -16,7 +16,7 @@ import { QueryOrdersDto } from '../order/dto/query-orders.dto';
 import { QueryAuditDto } from './dto/query-audit.dto';
 import { QueryProductsDto } from '../product/dto/query-products.dto';
 import { CreateBannerDto, UpdateBannerDto } from './dto/banner.dto';
-import { AdminCreateProductDto, AdminUpdateProductDto } from './dto/admin-product.dto';
+import { AdminCreateProductDto, AdminUpdateProductDto, AdminProductDiscountDto, AdminProductPreOrderDto } from './dto/admin-product.dto';
 import {
   AdminCreateVariantDto,
   AdminUpdateVariantDto,
@@ -782,7 +782,6 @@ export class AdminService {
         title: dto.title,
         description: dto.description,
         price: dto.price,
-        compareAtPrice: dto.compareAtPrice ?? null,
         currency: dto.currency ?? 'TRY',
         images: dto.images ?? [],
         previewVideoUrl: dto.previewVideoUrl ?? null,
@@ -790,10 +789,6 @@ export class AdminService {
         translations: (dto.translations ?? undefined) as any,
         status: ProductStatus.DRAFT,
         categoryId: dto.categoryId ?? null,
-        isPreOrder: dto.isPreOrder ?? false,
-        preOrderShipDate: dto.preOrderShipDate ? new Date(dto.preOrderShipDate) : null,
-        preOrderEndsAt: dto.preOrderEndsAt ? new Date(dto.preOrderEndsAt) : null,
-        preOrderLimit: dto.preOrderLimit ?? null,
       },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });
@@ -819,7 +814,6 @@ export class AdminService {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.compareAtPrice !== undefined && { compareAtPrice: dto.compareAtPrice }),
         ...(dto.currency !== undefined && { currency: dto.currency }),
         ...(dto.images !== undefined && { images: dto.images }),
         ...(dto.previewVideoUrl !== undefined && { previewVideoUrl: dto.previewVideoUrl }),
@@ -827,12 +821,55 @@ export class AdminService {
         ...(dto.translations !== undefined && { translations: dto.translations as any }),
         ...(dto.imageSettings !== undefined && { imageSettings: dto.imageSettings as any }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
-        ...(dto.isPreOrder !== undefined && { isPreOrder: dto.isPreOrder }),
+      },
+      include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_PRODUCT_UPDATED',
+      targetType: 'Product',
+      targetId: productId,
+    });
+
+    return updated;
+  }
+
+  async adminSetProductDiscount(productId: string, dto: AdminProductDiscountDto, actorId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+
+    const updated = await this.prisma.product.update({
+      where: { id: productId },
+      data: { compareAtPrice: dto.compareAtPrice },
+      include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_PRODUCT_UPDATED',
+      targetType: 'Product',
+      targetId: productId,
+      metadata: { compareAtPrice: dto.compareAtPrice },
+    });
+
+    return updated;
+  }
+
+  async adminSetProductPreOrder(productId: string, dto: AdminProductPreOrderDto, actorId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Product not found');
+
+    // isPreOrder is derived: if preOrderEndsAt is set, the product is a pre-order
+    const isPreOrder = dto.preOrderEndsAt !== null && dto.preOrderEndsAt !== undefined;
+
+    const updated = await this.prisma.product.update({
+      where: { id: productId },
+      data: {
+        isPreOrder,
+        preOrderEndsAt: dto.preOrderEndsAt ? new Date(dto.preOrderEndsAt) : null,
         ...(dto.preOrderShipDate !== undefined && {
           preOrderShipDate: dto.preOrderShipDate ? new Date(dto.preOrderShipDate) : null,
-        }),
-        ...(dto.preOrderEndsAt !== undefined && {
-          preOrderEndsAt: dto.preOrderEndsAt ? new Date(dto.preOrderEndsAt) : null,
         }),
         ...(dto.preOrderLimit !== undefined && { preOrderLimit: dto.preOrderLimit }),
       },
@@ -844,6 +881,7 @@ export class AdminService {
       action: 'ADMIN_PRODUCT_UPDATED',
       targetType: 'Product',
       targetId: productId,
+      metadata: { isPreOrder, preOrderEndsAt: dto.preOrderEndsAt },
     });
 
     return updated;

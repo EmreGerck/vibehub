@@ -7,7 +7,6 @@ import {
   MaxLength,
   MinLength,
   IsObject,
-  IsBoolean,
   IsInt,
   Min,
   IsDateString,
@@ -36,11 +35,6 @@ export class AdminCreateProductDto {
   price: number;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Type(() => Number)
-  compareAtPrice?: number | null;
-
-  @IsOptional()
   @IsString()
   currency?: string;
 
@@ -66,12 +60,6 @@ export class AdminCreateProductDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
-
-  // ── Pre-order ────────────────────────────────────────────────────────────
-  @IsOptional() @IsBoolean() isPreOrder?: boolean;
-  @IsOptional() @IsDateString() preOrderShipDate?: string;
-  @IsOptional() @IsDateString() preOrderEndsAt?: string;
-  @IsOptional() @IsInt() @Min(1) @Type(() => Number) preOrderLimit?: number;
 }
 
 export class AdminUpdateProductDto {
@@ -121,19 +109,37 @@ export class AdminUpdateProductDto {
   categoryId?: string;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Type(() => Number)
-  compareAtPrice?: number | null;
-
-  @IsOptional()
   @IsObject()
   imageSettings?: Record<string, { x: number; y: number }>;
+}
 
-  // ── Pre-order ────────────────────────────────────────────────────────────
-  @IsOptional() @IsBoolean() isPreOrder?: boolean;
-  @IsOptional() @IsDateString() preOrderShipDate?: string | null;
-  @IsOptional() @IsDateString() preOrderEndsAt?: string | null;
-  @IsOptional() @IsInt() @Min(1) @Type(() => Number) preOrderLimit?: number | null;
+// ── Dedicated discount endpoint ──────────────────────────────────────────────
+
+export class AdminProductDiscountDto {
+  /** Set to a positive number to show a strikethrough price, or null to clear the sale. */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  compareAtPrice: number | null;
+}
+
+// ── Dedicated pre-order configuration endpoint ───────────────────────────────
+
+export class AdminProductPreOrderDto {
+  /** ISO date string when the pre-order window closes; null clears pre-order mode. */
+  @IsOptional()
+  @IsDateString()
+  preOrderEndsAt: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  preOrderShipDate?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  preOrderLimit?: number | null;
 }
 
 // ── Admin pre-order status patch ────────────────────────────────────────────

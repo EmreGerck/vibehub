@@ -26,7 +26,7 @@ import { QueryVendorsDto } from '../vendor/dto/query-vendors.dto';
 import { QueryOrdersDto } from '../order/dto/query-orders.dto';
 import { QueryProductsDto } from '../product/dto/query-products.dto';
 import { CreateBannerDto, UpdateBannerDto } from './dto/banner.dto';
-import { AdminCreateProductDto, AdminUpdateProductDto } from './dto/admin-product.dto';
+import { AdminCreateProductDto, AdminUpdateProductDto, AdminProductDiscountDto, AdminProductPreOrderDto } from './dto/admin-product.dto';
 import { SetPermissionsDto, GrantPermissionDto } from './dto/permissions.dto';
 import {
   AdminCreateVariantDto,
@@ -307,6 +307,28 @@ export class AdminController {
   ) {
     const data = await this.adminService.adminUpdateProduct(id, dto, actorId);
     return ApiResponse.ok(data, 'Product updated');
+  }
+
+  @Patch('products/:id/discount')
+  @ApiOperation({ summary: 'Set or clear a Compare At (sale) price on a product' })
+  async adminSetProductDiscount(
+    @Param('id') id: string,
+    @Body() dto: AdminProductDiscountDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const data = await this.adminService.adminSetProductDiscount(id, dto, actorId);
+    return ApiResponse.ok(data, 'Product discount updated');
+  }
+
+  @Patch('products/:id/preorder')
+  @ApiOperation({ summary: 'Configure pre-order settings on a product' })
+  async adminSetProductPreOrder(
+    @Param('id') id: string,
+    @Body() dto: AdminProductPreOrderDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    const data = await this.adminService.adminSetProductPreOrder(id, dto, actorId);
+    return ApiResponse.ok(data, 'Product pre-order configuration updated');
   }
 
   @Patch('products/:id/publish')

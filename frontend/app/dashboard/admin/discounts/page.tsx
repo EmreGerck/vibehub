@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAdminAllProducts, useAdminUpdateProduct } from '../../../../hooks/useAdmin';
+import { useAdminAllProducts, useAdminSetProductDiscount } from '../../../../hooks/useAdmin';
 import { formatPrice } from '../../../../lib/format';
 import { PriceBadge } from '../../../../components/ui/PriceBadge';
 import Image from 'next/image';
@@ -9,7 +9,7 @@ import Image from 'next/image';
 // ── Inline edit row ───────────────────────────────────────────────────────────
 
 function DiscountRow({ product }: { product: any }) {
-  const updateProduct = useAdminUpdateProduct();
+  const updateProduct = useAdminSetProductDiscount();
   const [editing, setEditing] = useState(false);
   const [compareAt, setCompareAt] = useState(
     product.compareAtPrice != null ? String(product.compareAtPrice) : ''
