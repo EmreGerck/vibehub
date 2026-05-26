@@ -73,7 +73,11 @@ export class CartService {
     if (dto.qty < 1) throw new BadRequestException('Quantity must be at least 1');
     if (variant.product.status !== 'LIVE') throw new BadRequestException('Product is not available');
     if (variant.product.tenant.status !== 'ACTIVE') throw new BadRequestException('Store is not active');
-    if (variant.stockQty < dto.qty) {
+
+    // Pre-order products are sold based on the time window, not inventory.
+    // Only enforce stock checks for regular (non-pre-order) products.
+    const isPreOrder = variant.product.isPreOrder;
+    if (!isPreOrder && variant.stockQty < dto.qty) {
       throw new BadRequestException(`Only ${variant.stockQty} in stock`);
     }
 
@@ -82,7 +86,7 @@ export class CartService {
 
     if (existing) {
       const newQty = existing.qty + dto.qty;
-      if (newQty > variant.stockQty) {
+      if (!isPreOrder && newQty > variant.stockQty) {
         throw new BadRequestException(`Cannot add more — only ${variant.stockQty} available`);
       }
       existing.qty = newQty;
@@ -106,9 +110,14 @@ export class CartService {
     const entry = entries.find((e) => e.variantId === variantId);
     if (!entry) throw new NotFoundException('Item not in cart');
 
-    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: { select: { isPreOrder: true } } },
+    });
     if (!variant) throw new NotFoundException('Variant no longer exists');
-    if (dto.qty > variant.stockQty) throw new BadRequestException(`Only ${variant.stockQty} available`);
+    if (!variant.product.isPreOrder && dto.qty > variant.stockQty) {
+      throw new BadRequestException(`Only ${variant.stockQty} available`);
+    }
 
     entry.qty = dto.qty;
     await this.writeEntries(userId, entries);
