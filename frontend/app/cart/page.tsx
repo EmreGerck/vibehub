@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Navbar } from '../../components/layout/Navbar';
 import { formatPrice } from '../../lib/format';
 import { useCart, useUpdateCartItem, useRemoveCartItem } from '../../hooks/useCart';
@@ -114,9 +115,9 @@ function CartRow({
 
   return (
     <div className="flex gap-4 p-4">
-      <div className="h-16 w-16 shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
+      <div className="relative h-16 w-16 shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
         {item.product.images?.[0]
-          ? <img src={item.product.images[0]} alt="" className="w-full h-full object-cover" />
+          ? <Image src={item.product.images[0]} alt="" fill className="object-cover" sizes="64px" />
           : <span className="text-xl font-bold text-gray-400 dark:text-gray-600">{item.product.title?.[0] ?? '?'}</span>
         }
       </div>

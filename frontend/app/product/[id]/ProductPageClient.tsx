@@ -125,7 +125,7 @@ export function ProductPageClient() {
                 {product.images.slice(1).map((img, i) => {
                   const fpi = (product.imageSettings as any)?.[String(i + 1)];
                   return (
-                    <div key={i} className="h-20 w-20 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                    <div key={i} className="relative h-20 w-20 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
                       <img
                         src={img}
                         alt=""

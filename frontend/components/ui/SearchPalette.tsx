@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { api } from '../../lib/api';
 import { formatPrice } from '../../lib/format';
 import { useI18n } from '../../lib/i18n';
@@ -219,9 +220,9 @@ export function SearchPalette() {
                   }`}
                 >
                   {/* Thumbnail */}
-                  <div className="h-10 w-10 shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
+                  <div className="relative h-10 w-10 shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
                     {r.image ? (
-                      <img src={r.image} alt="" className="w-full h-full object-cover" />
+                      <Image src={r.image} alt="" fill className="object-cover" sizes="40px" />
                     ) : r.type === 'artist' ? (
                       <span className="text-purple-500 font-bold text-lg">{r.title?.[0] ?? '?'}</span>
                     ) : (

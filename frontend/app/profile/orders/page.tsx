@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMyOrders } from '../../../hooks/useCart';
 import { Spinner } from '../../../components/ui/Spinner';
 import { Alert } from '../../../components/ui/Alert';
@@ -70,9 +71,9 @@ export default function ProfileOrdersPage() {
                     : '';
                   return (
                     <div key={item.id} className="py-3 flex items-center gap-4">
-                      <div className="h-12 w-12 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
+                      <div className="relative h-12 w-12 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
                         {item.variant?.product?.images?.[0]
-                          ? <img src={item.variant.product.images[0]} alt="" className="w-full h-full object-cover" />
+                          ? <Image src={item.variant.product.images[0]} alt="" fill className="object-cover" sizes="48px" />
                           : <span className="text-lg font-bold text-gray-400 dark:text-gray-600">
                               {item.variant?.product?.title?.[0] ?? '?'}
                             </span>

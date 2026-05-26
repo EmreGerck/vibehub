@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useOrderDetail, useCancelOrder } from '../../../../hooks/useCart';
 import { useI18n } from '../../../../lib/i18n';
 import { formatPrice } from '../../../../lib/format';
@@ -168,9 +169,9 @@ export default function OrderDetailPage() {
               : '';
             return (
               <div key={item.id} className="py-3 flex items-center gap-4">
-                <div className="h-14 w-14 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
+                <div className="relative h-14 w-14 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
                   {item.variant?.product?.images?.[0] ? (
-                    <img src={item.variant.product.images[0]} alt="" className="w-full h-full object-cover" />
+                    <Image src={item.variant.product.images[0]} alt="" fill className="object-cover" sizes="56px" />
                   ) : (
                     <span className="text-lg font-bold text-gray-400 dark:text-gray-600">
                       {item.variant?.product?.title?.[0] ?? '?'}

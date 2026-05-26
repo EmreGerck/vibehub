@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useWishlist, useToggleWishlist } from '../../../hooks/useWishlist';
 import { useI18n } from '../../../lib/i18n';
 import { formatPrice, brandGradient } from '../../../lib/format';
@@ -44,9 +45,9 @@ export default function WishlistPage() {
             const price = product.variants?.[0]?.priceOverride ?? product.price;
             return (
               <div key={product.id} className="flex gap-4 p-4 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-purple-400 dark:hover:border-purple-700 transition-colors">
-                <Link href={`/product/${product.id}`} className="h-20 w-20 shrink-0 rounded-xl overflow-hidden">
+                <Link href={`/product/${product.id}`} className="relative h-20 w-20 shrink-0 rounded-xl overflow-hidden">
                   {product.images?.[0] ? (
-                    <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
+                    <Image src={product.images[0]} alt={product.title} fill className="object-cover" sizes="80px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center" style={{ background: brandGradient(product.tenant?.slug) }}>
                       <span className="text-2xl font-black text-white/20">{product.title?.[0] ?? '?'}</span>

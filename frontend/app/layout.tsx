@@ -70,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
+      <body className="pb-16 sm:pb-0">
         <Providers>{children}</Providers>
       </body>
     </html>

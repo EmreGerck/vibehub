@@ -1174,6 +1174,42 @@ const translations: Record<Locale, Record<string, string>> = {
     'search.label': 'Arama',
     'search.placeholder': 'Ürün, sanatçı ara…',
 
+    // ── Mobile Bottom Nav ──
+    'mobileNav.home': 'Ana Sayfa',
+    'mobileNav.shop': 'Mağaza',
+    'mobileNav.search': 'Ara',
+    'mobileNav.cart': 'Sepet',
+    'mobileNav.profile': 'Profil',
+
+    // ── About page ──
+    'about.title': 'Hakkımızda',
+    'about.subtitle': 'Sanatçılar ile fanları buluşturan platform',
+    'about.heroDesc': 'VibeHub, sevdiğin sanatçıların resmi ürünlerini satın alabileceğin, onları takip edebileceğin ve topluluğuyla bağlantı kurabileceğin Türkiye\'nin fan merkezi platformudur.',
+    'about.howTitle': 'Nasıl Çalışır?',
+    'about.step1Title': 'Sanatçını Bul',
+    'about.step1Desc': 'Türkiye\'nin en sevilen müzisyenleri, komedyenler ve içerik üreticilerinin mağazalarını keşfet.',
+    'about.step2Title': 'Resmi Ürünleri Al',
+    'about.step2Desc': 'Sanatçı lisanslı ürünleri doğrudan satıcıdan satın al. Her satışın bir kısmı sanatçıya gider.',
+    'about.step3Title': 'Topluluğa Katıl',
+    'about.step3Desc': 'Forum, etkinlikler ve medya aracılığıyla diğer fanlarla bağlantı kur. Favorilerini takip et.',
+    'about.missionTitle': 'Misyonumuz',
+    'about.missionDesc': 'Türk sanatçılarına ve onların hayranlarına özel, güvenilir ve eğlenceli bir platform sunmak. Her satın alma, sevdiğin sanatçıyı doğrudan destekler.',
+    'about.cta': 'Alışverişe Başla',
+    'about.backToHome': 'Ana Sayfaya Dön',
+
+    // ── Contact page ──
+    'contact.title': 'İletişim',
+    'contact.subtitle': 'Bizimle iletişime geçin',
+    'contact.desc': 'Sorularınız, geri bildirimleriniz veya iş teklifleriniz için bize ulaşın.',
+    'contact.nameLabel': 'Adınız',
+    'contact.emailLabel': 'E-posta adresiniz',
+    'contact.messageLabel': 'Mesajınız',
+    'contact.messagePlaceholder': 'Mesajınızı buraya yazın…',
+    'contact.submit': 'Gönder',
+    'contact.success': 'Mesajınız alındı! En kısa sürede geri döneceğiz.',
+    'contact.emailDirect': 'Doğrudan e-posta',
+    'contact.backToHome': 'Ana Sayfaya Dön',
+
     // ── Navbar extras ──
     'nav.signedIn': 'Giriş yapıldı',
 
@@ -2281,6 +2317,42 @@ const translations: Record<Locale, Record<string, string>> = {
     'search.seeAll': 'See all {n} results →',
     'search.label': 'Search',
     'search.placeholder': 'Search products, artists…',
+
+    // ── Mobile Bottom Nav ──
+    'mobileNav.home': 'Home',
+    'mobileNav.shop': 'Shop',
+    'mobileNav.search': 'Search',
+    'mobileNav.cart': 'Cart',
+    'mobileNav.profile': 'Profile',
+
+    // ── About page ──
+    'about.title': 'About Us',
+    'about.subtitle': 'The platform connecting artists and fans',
+    'about.heroDesc': 'VibeHub is Turkey\'s fan-hub platform where you can buy official merchandise from your favorite artists, follow them, and connect with their community.',
+    'about.howTitle': 'How It Works',
+    'about.step1Title': 'Find Your Artist',
+    'about.step1Desc': 'Discover stores from Turkey\'s most-loved musicians, comedians, and content creators.',
+    'about.step2Title': 'Get Official Merch',
+    'about.step2Desc': 'Buy artist-licensed products directly from the vendor. A portion of every sale goes to the artist.',
+    'about.step3Title': 'Join the Community',
+    'about.step3Desc': 'Connect with other fans through forums, events, and media. Follow your favorites.',
+    'about.missionTitle': 'Our Mission',
+    'about.missionDesc': 'To provide a trusted and fun platform dedicated to Turkish artists and their fans. Every purchase directly supports the artist you love.',
+    'about.cta': 'Start Shopping',
+    'about.backToHome': 'Back to Home',
+
+    // ── Contact page ──
+    'contact.title': 'Contact',
+    'contact.subtitle': 'Get in touch with us',
+    'contact.desc': 'Reach out with questions, feedback, or business inquiries.',
+    'contact.nameLabel': 'Your name',
+    'contact.emailLabel': 'Your email',
+    'contact.messageLabel': 'Your message',
+    'contact.messagePlaceholder': 'Write your message here…',
+    'contact.submit': 'Send',
+    'contact.success': 'Message received! We\'ll get back to you as soon as possible.',
+    'contact.emailDirect': 'Direct email',
+    'contact.backToHome': 'Back to Home',
 
     // ── Navbar extras ──
     'nav.signedIn': 'Signed in',

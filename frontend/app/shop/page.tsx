@@ -352,7 +352,10 @@ function ShopContent() {
 
         {/* Category pill bar */}
         {categoryList.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide animate-fade-in">
+          <div className="relative mb-6 animate-fade-in">
+            {/* Fade hint on right edge (mobile only) */}
+            <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-gray-50 dark:from-gray-950 to-transparent sm:hidden z-10" />
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => selectCategory('')}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 active:scale-95 ${
@@ -377,6 +380,7 @@ function ShopContent() {
                 {cat.name}
               </button>
             ))}
+          </div>
           </div>
         )}
 

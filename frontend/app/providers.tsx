@@ -9,6 +9,7 @@ import { SearchPalette } from '../components/ui/SearchPalette';
 import { ScrollToTop } from '../components/ui/ScrollToTop';
 import { CookieBanner } from '../components/ui/CookieBanner';
 import { HtmlLangSync } from '../components/ui/HtmlLangSync';
+import { MobileBottomNav } from '../components/layout/MobileBottomNav';
 import { useAuthStore } from '../store/auth.store';
 import axios from 'axios';
 
@@ -75,6 +76,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <SearchPalette />
         <ScrollToTop />
         <CookieBanner />
+        <MobileBottomNav />
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

@@ -15,6 +15,7 @@ import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { Reveal } from '../components/ui/Reveal';
 import { ProductImage } from '../components/ui/ProductImage';
 import { NewsletterSection } from '../components/home/NewsletterSection';
+import Image from 'next/image';
 import type { ApiResponse, Product } from '../types';
 
 interface HeroBanner {
@@ -417,9 +418,9 @@ function RecentlyViewedSection() {
             href={`/product/${item.id}`}
             className="group flex flex-col overflow-hidden card hover:border-purple-500 dark:hover:border-purple-700 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-200 shrink-0 w-[180px]"
           >
-            <div className="aspect-square overflow-hidden">
+            <div className="relative aspect-square overflow-hidden">
               {item.image ? (
-                <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                <Image src={item.image} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="180px" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center" style={{ background: brandGradient(item.tenantSlug) }}>
                   <span className="text-4xl font-black text-white/20">{item.title?.[0] ?? '?'}</span>

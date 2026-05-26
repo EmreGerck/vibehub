@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useProducts } from '../../../../hooks/useProducts';
 import { useI18n } from '../../../../lib/i18n';
 import { formatPrice, brandGradient } from '../../../../lib/format';
@@ -20,7 +21,7 @@ function ProductCard({ product }: { product: Product }) {
     >
       <div className="aspect-square overflow-hidden relative">
         {product.images?.[0] ? (
-          <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <Image src={product.images[0]} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: brandGradient(slug) }}>
             <span className="text-5xl font-black text-white/20">{product.title?.[0] ?? '?'}</span>
