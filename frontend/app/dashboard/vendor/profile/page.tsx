@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useMyVendorProfile, useUpdateMyVendorProfile } from '../../../../hooks/useVendors';
+import { useI18n } from '../../../../lib/i18n';
 
 export default function VendorProfilePage() {
   const { data: profile, isLoading } = useMyVendorProfile();
   const update = useUpdateMyVendorProfile();
+  const t = useI18n((s) => s.t);
 
   const [form, setForm] = useState({
     displayName: '',
@@ -44,7 +46,7 @@ export default function VendorProfilePage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Kaydedilemedi');
+      setError(err?.response?.data?.message ?? t('vendor.profile.saveFailed'));
     }
   }
 
@@ -58,21 +60,21 @@ export default function VendorProfilePage() {
 
   return (
     <div className="p-6 md:p-8 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Mağaza Profili</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{t('vendor.profile.title')}</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-        Mağazanın görünümünü ve içeriğini düzenleyin. Değişiklikler hemen vitrinizde yansır.
+        {t('vendor.profile.subtitle')}
       </p>
 
       {error && (
         <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">{error}</div>
       )}
       {saved && (
-        <div className="mb-6 px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm">✓ Profil güncellendi</div>
+        <div className="mb-6 px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm">{t('vendor.profile.saved')}</div>
       )}
 
       {/* Live Preview */}
       <section className="card overflow-hidden mb-8">
-        <p className="text-xs font-semibold text-gray-400 px-4 pt-3 uppercase tracking-wider">Önizleme</p>
+        <p className="text-xs font-semibold text-gray-400 px-4 pt-3 uppercase tracking-wider">{t('vendor.profile.preview')}</p>
         {/* Banner preview */}
         <div className="relative h-28 overflow-hidden mt-2">
           {form.bannerUrl ? (
@@ -104,8 +106,8 @@ export default function VendorProfilePage() {
           </div>
         </div>
         <div className="pt-12 px-4 pb-4">
-          <p className="font-bold text-gray-900 dark:text-white text-lg">{form.displayName || 'Mağaza Adı'}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{form.bio || 'Bio buraya gelir…'}</p>
+          <p className="font-bold text-gray-900 dark:text-white text-lg">{form.displayName || t('vendor.profile.namePlaceholder')}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{form.bio || t('vendor.profile.bioPreview')}</p>
         </div>
       </section>
 
@@ -113,10 +115,10 @@ export default function VendorProfilePage() {
         {/* Basic Info */}
         <section className="card p-6 space-y-4">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>🏪</span> Temel Bilgiler
+            {t('vendor.profile.basicInfo')}
           </h2>
           <div>
-            <label className="label">Mağaza Adı</label>
+            <label className="label">{t('vendor.profile.nameLabel')}</label>
             <input
               value={form.displayName}
               onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
@@ -126,13 +128,13 @@ export default function VendorProfilePage() {
             />
           </div>
           <div>
-            <label className="label">Bio</label>
+            <label className="label">{t('vendor.profile.bioLabel')}</label>
             <textarea
               value={form.bio}
               onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
               className="input resize-none min-h-[100px]"
               maxLength={500}
-              placeholder="Kendinizi tanıtın…"
+              placeholder={t('vendor.profile.bioInputPlaceholder')}
             />
             <p className="text-xs text-gray-400 mt-1">{form.bio.length}/500</p>
           </div>
@@ -141,13 +143,13 @@ export default function VendorProfilePage() {
         {/* Media URLs */}
         <section className="card p-6 space-y-4">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>🖼</span> Görsel URLs
+            {t('vendor.profile.imageUrls')}
           </h2>
           <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
-            Görselleri Cloudinary, ImgBB, S3 veya benzer bir servis ile yükleyip URL'i buraya yapıştırın.
+            {t('vendor.profile.imageHint')}
           </div>
           <div>
-            <label className="label">Profil Fotoğrafı / Logo URL</label>
+            <label className="label">{t('vendor.profile.logoUrl')}</label>
             <input
               type="url"
               value={form.logoUrl}
@@ -167,7 +169,7 @@ export default function VendorProfilePage() {
             )}
           </div>
           <div>
-            <label className="label">Banner / Arka Plan URL</label>
+            <label className="label">{t('vendor.profile.bannerUrl')}</label>
             <input
               type="url"
               value={form.bannerUrl}
@@ -176,7 +178,7 @@ export default function VendorProfilePage() {
               placeholder="https://cdn.example.com/banner.gif"
             />
             <p className="text-xs text-gray-400 mt-1">
-              Önerilen boyut: 1400×280px veya daha geniş, yatay oran. JPG, PNG, WebP, AVIF ve <b>animasyonlu GIF</b> destekleniyor.
+              {t('vendor.profile.bannerHint')}
             </p>
             {form.bannerUrl && (
               <div className="mt-2">
@@ -194,10 +196,10 @@ export default function VendorProfilePage() {
         {/* Brand Color */}
         <section className="card p-6 space-y-4">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>🎨</span> Marka Rengi
+            {t('vendor.profile.brandColor')}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Vitrin sayfanızda banner gradient ve vurgu rengi olarak kullanılır. Banner görseli yüklendiğinde görselin arkasında görünmez.
+            {t('vendor.profile.brandColorDesc')}
           </p>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -217,7 +219,7 @@ export default function VendorProfilePage() {
                   style={{ background: form.brandColor }}
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Renk seç</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('vendor.profile.chooseColor')}</p>
                   <p className="text-xs text-gray-400 font-mono">{form.brandColor}</p>
                 </div>
               </label>
@@ -245,9 +247,9 @@ export default function VendorProfilePage() {
 
         <div className="flex items-center gap-4">
           <button type="submit" disabled={update.isPending} className="btn-primary px-8 py-2.5">
-            {update.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            {update.isPending ? t('admin.saving') : t('admin.save')}
           </button>
-          {saved && <span className="text-sm text-green-600 dark:text-green-400">✓ Kaydedildi</span>}
+          {saved && <span className="text-sm text-green-600 dark:text-green-400">{t('vendor.profile.savedShort')}</span>}
         </div>
       </form>
     </div>

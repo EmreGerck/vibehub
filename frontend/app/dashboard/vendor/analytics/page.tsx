@@ -5,6 +5,7 @@ import { api } from '../../../../lib/api';
 import { useAuthStore } from '../../../../store/auth.store';
 import { formatPrice } from '../../../../lib/format';
 import { useFollowStatus } from '../../../../hooks/useVendors';
+import { useI18n } from '../../../../lib/i18n';
 import type { ApiResponse, ProductStatus } from '../../../../types';
 
 function StatCard({
@@ -48,6 +49,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function VendorAnalyticsPage() {
   const { user } = useAuthStore();
   const tenantId = user?.tenantId;
+  const t = useI18n((s) => s.t);
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['vendor-analytics-products', tenantId],
@@ -98,39 +100,39 @@ export default function VendorAnalyticsPage() {
 
   return (
     <div className="p-6 md:p-8">
-      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Analytics</h1>
-      <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Your store performance at a glance.</p>
+      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">{t('vendor.analytics.title')}</h1>
+      <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">{t('vendor.analytics.subtitle')}</p>
 
       {/* ── Stat cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
         <StatCard
-          label="Total Orders"
+          label={t('vendor.totalOrders')}
           value={totalOrders.toLocaleString()}
           color="text-purple-600 dark:text-purple-400"
         />
         <StatCard
-          label="Total Revenue"
+          label={t('vendor.revenue')}
           value={formatPrice(totalRevenue)}
-          sub="all-time gross"
+          sub={t('vendor.allTimeGross')}
           color="text-green-600 dark:text-green-400"
         />
         <StatCard
-          label="Followers"
+          label={t('store.followers')}
           value={(followData?.followerCount ?? 0).toLocaleString()}
         />
         <StatCard
-          label="Live Products"
+          label={t('vendor.liveProducts')}
           value={liveCount}
           color="text-green-600 dark:text-green-400"
         />
         <StatCard
-          label="Drafts"
+          label={t('vendor.drafts')}
           value={draftCount}
         />
         <StatCard
-          label="Pending Review"
+          label={t('vendor.pendingReview')}
           value={pendingCount}
-          sub="awaiting admin approval"
+          sub={t('vendor.awaitingAdmin')}
           color="text-yellow-600 dark:text-yellow-400"
         />
       </div>
@@ -138,21 +140,21 @@ export default function VendorAnalyticsPage() {
       {/* ── Recent orders table ────────────────────────────────────── */}
       <div className="card overflow-x-auto">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Recent Orders</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Last 10 orders for your store</p>
+          <h2 className="font-semibold text-gray-900 dark:text-white">{t('vendor.recentOrders')}</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('vendor.analytics.recentOrdersDesc')}</p>
         </div>
 
         {recentOrders.length === 0 ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-12">No orders yet.</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('vendor.analytics.noOrders')}</p>
         ) : (
           <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="text-gray-500 dark:text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-800">
-                <th className="text-left px-5 py-3">Order ID</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Amount</th>
-                <th className="text-left px-5 py-3">Items</th>
-                <th className="text-left px-5 py-3">Date</th>
+                <th className="text-left px-5 py-3">{t('vendor.orderId')}</th>
+                <th className="text-left px-5 py-3">{t('admin.status')}</th>
+                <th className="text-left px-5 py-3">{t('vendor.amount')}</th>
+                <th className="text-left px-5 py-3">{t('vendor.items')}</th>
+                <th className="text-left px-5 py-3">{t('admin.date')}</th>
               </tr>
             </thead>
             <tbody>

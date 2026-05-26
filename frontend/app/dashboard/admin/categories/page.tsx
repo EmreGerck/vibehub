@@ -8,6 +8,7 @@ import {
   useAdminDeleteCategory,
   type Category,
 } from '../../../../hooks/useCategories';
+import { useI18n } from '../../../../lib/i18n';
 
 function slugify(str: string): string {
   return str
@@ -34,6 +35,7 @@ export default function AdminCategoriesPage() {
   const createCategory = useAdminCreateCategory();
   const updateCategory = useAdminUpdateCategory();
   const deleteCategory = useAdminDeleteCategory();
+  const t = useI18n((s) => s.t);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,7 +94,7 @@ export default function AdminCategoriesPage() {
       setEditingId(null);
       setForm(EMPTY_FORM);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Something went wrong');
+      setError(err?.response?.data?.message ?? t('common.somethingWentWrong'));
     }
   }
 
@@ -101,7 +103,7 @@ export default function AdminCategoriesPage() {
       await deleteCategory.mutateAsync(id);
       setDeleteConfirm(null);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to delete');
+      setError(err?.response?.data?.message ?? t('admin.categories.deleteFailed'));
     }
   }
 
@@ -118,11 +120,11 @@ export default function AdminCategoriesPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kategoriler</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{categories.length} kategori</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.categories.title')}</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{t('admin.categories.count').replace('{n}', String(categories.length))}</p>
         </div>
         <button onClick={openCreate} className="btn-primary">
-          + Yeni Kategori
+          {t('admin.categories.new')}
         </button>
       </div>
 
@@ -130,7 +132,7 @@ export default function AdminCategoriesPage() {
       {showForm && (
         <div className="card p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {editingId ? 'Kategoriyi Düzenle' : 'Yeni Kategori'}
+            {editingId ? t('admin.categories.edit') : t('admin.categories.new')}
           </h2>
 
           {error && (
@@ -142,7 +144,7 @@ export default function AdminCategoriesPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Ad *</label>
+                <label className="label">{t('admin.categories.fieldName')}</label>
                 <input
                   required
                   value={form.name}
@@ -153,8 +155,8 @@ export default function AdminCategoriesPage() {
               </div>
               <div>
                 <label className="label">
-                  Emoji / İkon{' '}
-                  <span className="text-gray-400 font-normal text-xs">(emoji klavyesi için Win+. / Cmd+Ctrl+Space)</span>
+                  {t('admin.categories.fieldIcon')}{' '}
+                  <span className="text-gray-400 font-normal text-xs">{t('admin.categories.fieldIconHint')}</span>
                 </label>
                 <input
                   value={form.icon}
@@ -165,7 +167,7 @@ export default function AdminCategoriesPage() {
                 />
               </div>
               <div>
-                <label className="label">Slug *</label>
+                <label className="label">{t('admin.categories.fieldSlug')}</label>
                 <input
                   required
                   value={form.slug}
@@ -173,10 +175,10 @@ export default function AdminCategoriesPage() {
                   placeholder="t-shirt"
                   className="input font-mono text-sm"
                 />
-                <p className="text-xs text-gray-400 mt-1">URL'de kullanılır, otomatik oluşturulur</p>
+                <p className="text-xs text-gray-400 mt-1">{t('admin.categories.fieldSlugHint')}</p>
               </div>
               <div>
-                <label className="label">Sıralama</label>
+                <label className="label">{t('admin.categories.fieldOrder')}</label>
                 <input
                   type="number"
                   min="0"
@@ -202,7 +204,7 @@ export default function AdminCategoriesPage() {
                 />
               </button>
               <label className="text-sm text-gray-700 dark:text-gray-300">
-                {form.active ? 'Aktif' : 'Pasif'}
+                {form.active ? t('admin.categories.active') : t('admin.categories.inactive')}
               </label>
             </div>
 
@@ -212,10 +214,10 @@ export default function AdminCategoriesPage() {
                 onClick={() => { setShowForm(false); setEditingId(null); }}
                 className="btn-ghost"
               >
-                İptal
+                {t('admin.cancel')}
               </button>
               <button type="submit" disabled={isPending} className="btn-primary">
-                {isPending ? 'Kaydediliyor…' : editingId ? 'Kaydet' : 'Oluştur'}
+                {isPending ? t('admin.saving') : editingId ? t('admin.save') : t('admin.categories.create')}
               </button>
             </div>
           </form>
@@ -224,22 +226,22 @@ export default function AdminCategoriesPage() {
 
       {/* Table */}
       {isLoading ? (
-        <p className="text-center py-16 text-gray-400">Yükleniyor…</p>
+        <p className="text-center py-16 text-gray-400">{t('admin.loading')}</p>
       ) : categories.length === 0 ? (
         <div className="text-center py-16 text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-700 rounded-2xl">
-          Henüz kategori yok
+          {t('admin.categories.empty')}
         </div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="text-gray-500 dark:text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-800">
-                <th className="text-left px-4 py-3">İkon</th>
-                <th className="text-left px-4 py-3">Ad</th>
+                <th className="text-left px-4 py-3">{t('admin.categories.colIcon')}</th>
+                <th className="text-left px-4 py-3">{t('admin.categories.colName')}</th>
                 <th className="text-left px-4 py-3">Slug</th>
-                <th className="text-left px-4 py-3">Sıra</th>
-                <th className="text-left px-4 py-3">Durum</th>
-                <th className="text-right px-4 py-3">İşlemler</th>
+                <th className="text-left px-4 py-3">{t('admin.categories.colOrder')}</th>
+                <th className="text-left px-4 py-3">{t('admin.categories.colStatus')}</th>
+                <th className="text-right px-4 py-3">{t('admin.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -262,7 +264,7 @@ export default function AdminCategoriesPage() {
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                       }`}
                     >
-                      {cat.active ? 'Aktif' : 'Pasif'}
+                      {cat.active ? t('admin.categories.active') : t('admin.categories.inactive')}
                     </button>
                   </td>
                   <td className="px-4 py-3">
@@ -271,7 +273,7 @@ export default function AdminCategoriesPage() {
                         onClick={() => openEdit(cat)}
                         className="text-xs border border-gray-300 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 px-2.5 py-1.5 rounded-lg transition-colors"
                       >
-                        Düzenle
+                        {t('adminVendor.edit')}
                       </button>
 
                       {deleteConfirm === cat.id ? (
@@ -280,7 +282,7 @@ export default function AdminCategoriesPage() {
                             onClick={() => handleDelete(cat.id)}
                             className="text-xs text-red-600 border border-red-300 dark:border-red-800 px-2.5 py-1.5 rounded-lg"
                           >
-                            Onayla
+                            {t('admin.categories.confirm')}
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(null)}
@@ -294,7 +296,7 @@ export default function AdminCategoriesPage() {
                           onClick={() => setDeleteConfirm(cat.id)}
                           className="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 rounded-lg transition-colors"
                         >
-                          Sil
+                          {t('common.delete')}
                         </button>
                       )}
                     </div>
