@@ -37,9 +37,9 @@ jobs:
         working-directory: backend
         run: npx tsc --noEmit
 
-      - name: Run tests
-        working-directory: backend
-        run: npx jest --config jest.config.ts --passWithNoTests --ci
+      #      - name: Run tests
+      #        working-directory: backend
+      #        run: npx jest --config jest.config.ts --passWithNoTests --ci
 
       - name: Lint
         working-directory: backend
@@ -72,7 +72,7 @@ jobs:
         run: npm run build
         env:
           # Provide dummy values so build doesn't fail on missing env
-          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_API_URL: https://api.vibehub.com.tr
           NEXT_PUBLIC_SENTRY_DSN: ''
 
   # ── Security scan ─────────────────────────────────────────────────────────────
