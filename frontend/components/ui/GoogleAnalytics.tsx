@@ -1,9 +1,10 @@
 'use client';
 import Script from 'next/script';
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+export default function GoogleAnalytics({ gtmId }: { gtmId?: string | null }) {
+  // Fall back to environment variable if no dynamic ID is provided
+  const GA_ID = gtmId || process.env.NEXT_PUBLIC_GA_ID;
 
-export default function GoogleAnalytics() {
   if (!GA_ID) return null;
   return (
     <>
