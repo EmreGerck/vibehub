@@ -245,9 +245,10 @@ export class AuthController {
     res.cookie('refresh_token', token, {
       httpOnly: true,
       secure: isProd,
-      // 'none' is required for cross-domain (Vercel frontend ↔ Railway backend)
-      sameSite: isProd ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      // 'lax' is safe now that the API is served from the same domain (vibehub.com.tr/api/)
+      // Previously 'none' was needed for cross-domain Railway ↔ Vercel calls.
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/',
     });
   }

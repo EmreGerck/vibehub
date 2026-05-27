@@ -737,9 +737,12 @@ function ImageSettingsModal({ product, onClose }: { product: any; onClose: () =>
 
 // ── Pre-order Config Modal ────────────────────────────────────────────────────
 
+const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
 function PreOrderModal({ product, onClose }: { product: any; onClose: () => void }) {
   const setPreOrder = useAdminSetProductPreOrder();
   const createVariant = useAdminCreateVariant();
+
   const existing = {
     endsAt: product.preOrderEndsAt ? new Date(product.preOrderEndsAt).toISOString().slice(0, 10) : '',
     shipDate: product.preOrderShipDate ? new Date(product.preOrderShipDate).toISOString().slice(0, 10) : '',
@@ -749,22 +752,46 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
+  // Size-picker state — used only when product has no variants yet
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [customSize, setCustomSize] = useState('');
+
   const isActive = !!product.preOrderEndsAt;
-  const hasNoVariants = !product.variants || product.variants.length === 0;
+  const existingVariants: any[] = product.variants ?? [];
+  const hasNoVariants = existingVariants.length === 0;
+
+  // Derived: can we save? Need at least one size when enabling pre-order on a variant-less product
+  const enablingPreOrder = !!form.endsAt;
+  const sizesReady = !hasNoVariants || !enablingPreOrder || selectedSizes.length > 0;
+
+  function toggleSize(size: string) {
+    setSelectedSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size],
+    );
+  }
+
+  function addCustomSize() {
+    const s = customSize.trim();
+    if (s && !selectedSizes.includes(s)) {
+      setSelectedSizes((prev) => [...prev, s]);
+    }
+    setCustomSize('');
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setSaved(false);
     try {
-      // If enabling pre-order but the product has no variants, auto-create a
-      // "One Size" default variant so customers can actually add it to cart.
-      if (form.endsAt && hasNoVariants) {
-        await createVariant.mutateAsync({
-          productId: product.id,
-          sku: `${product.id.slice(0, 8).toUpperCase()}-OS`,
-          attributes: { size: 'One Size' },
-          stockQty: 9999,
-        });
+      // Create selected sizes as variants before enabling pre-order
+      if (enablingPreOrder && hasNoVariants && selectedSizes.length > 0) {
+        for (const size of selectedSizes) {
+          await createVariant.mutateAsync({
+            productId: product.id,
+            sku: `${product.id.slice(0, 8).toUpperCase()}-${size.replace(/\s+/g, '').toUpperCase()}`,
+            attributes: { size },
+            stockQty: 9999,
+          });
+        }
       }
       await setPreOrder.mutateAsync({
         id: product.id,
@@ -788,9 +815,11 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
     }
   }
 
+  const isBusy = setPreOrder.isPending || createVariant.isPending;
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="card p-6 w-full max-w-md space-y-4">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="card p-6 w-full max-w-lg space-y-4 my-auto">
         <div className="flex items-start justify-between">
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-white">Pre-order Config</h3>
@@ -806,10 +835,72 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
           </div>
         )}
 
-        {hasNoVariants && (
-          <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
-            <span className="shrink-0 mt-0.5">⚠️</span>
-            <span>This product has no variants. Saving will auto-create a <b>One Size</b> variant so customers can add it to cart.</span>
+        {/* Existing variants display */}
+        {existingVariants.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Current sizes / variants</p>
+            <div className="flex flex-wrap gap-1.5">
+              {existingVariants.map((v: any) => (
+                <span key={v.id} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {Object.values(v.attributes as Record<string, string>).join(' / ')}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">Manage sizes in the Variants tab of the product.</p>
+          </div>
+        )}
+
+        {/* Size picker — only shown when no variants exist yet and enabling pre-order */}
+        {hasNoVariants && enablingPreOrder && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 space-y-3">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              ⚠️ This product has no sizes yet — customers need to pick a size when ordering.
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">Select the sizes you'll offer for this pre-order:</p>
+
+            {/* Preset size buttons */}
+            <div className="flex flex-wrap gap-2">
+              {PRESET_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => toggleSize(size)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    selectedSizes.includes(size)
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-purple-400'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom size */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customSize}
+                onChange={(e) => setCustomSize(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomSize())}
+                placeholder="Custom size (e.g. 2XL, 38, One Size)"
+                className="input flex-1 text-xs"
+              />
+              <button
+                type="button"
+                onClick={addCustomSize}
+                disabled={!customSize.trim()}
+                className="text-xs px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-40"
+              >
+                Add
+              </button>
+            </div>
+
+            {selectedSizes.length > 0 && (
+              <p className="text-xs text-purple-700 dark:text-purple-400 font-medium">
+                ✓ Will create: {selectedSizes.join(', ')}
+              </p>
+            )}
           </div>
         )}
 
@@ -827,15 +918,21 @@ function PreOrderModal({ product, onClose }: { product: any; onClose: () => void
             <input type="date" value={form.shipDate} onChange={(e) => setFormState((f) => ({ ...f, shipDate: e.target.value }))} className="input w-full mt-1" />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Max units (leave blank = unlimited)</span>
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Max units total (leave blank = unlimited)</span>
             <input type="number" min={1} value={form.limit} onChange={(e) => setFormState((f) => ({ ...f, limit: e.target.value }))} placeholder="e.g. 100" className="input w-full mt-1" />
+            <span className="text-[10px] text-gray-400">Limit applies across all sizes combined.</span>
           </label>
           <div className="flex gap-3 pt-1">
-            <button type="submit" disabled={setPreOrder.isPending || createVariant.isPending} className="flex-1 btn-primary text-sm">
-              {(setPreOrder.isPending || createVariant.isPending) ? 'Saving…' : 'Save'}
+            <button
+              type="submit"
+              disabled={isBusy || !sizesReady}
+              title={!sizesReady ? 'Select at least one size above' : undefined}
+              className="flex-1 btn-primary text-sm disabled:opacity-50"
+            >
+              {isBusy ? 'Saving…' : 'Save'}
             </button>
             {isActive && (
-              <button type="button" onClick={disable} disabled={setPreOrder.isPending || createVariant.isPending} className="text-sm px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+              <button type="button" onClick={disable} disabled={isBusy} className="text-sm px-3 py-2 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                 Disable
               </button>
             )}

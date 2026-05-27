@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
-export const alt = 'VibeHub — The merch marketplace for artists';
+export const alt = 'VibeHub — Sanatçıların Resmi Ürünleri | Sahnen Senin';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -69,7 +69,7 @@ export default function OgImage() {
             letterSpacing: '0.05em',
           }}
         >
-          The merch marketplace for artists
+          Sanatçıların Resmi Ürünleri — Sahnen Senin
         </div>
 
         {/* Bottom accent line */}

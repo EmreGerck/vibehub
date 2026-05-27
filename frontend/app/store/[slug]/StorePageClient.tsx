@@ -19,6 +19,7 @@ import { useVendorMedia } from '../../../hooks/useMedia';
 import type { Product, VendorEvent, VendorMedia } from '../../../types';
 import { StoreForum } from '../../../components/store/StoreForum';
 import { ProductImage } from '../../../components/ui/ProductImage';
+import Image from 'next/image';
 
 const ARTIST_TYPE_KEYS: Record<string, string> = {
   BAND: 'store.band',
@@ -346,7 +347,7 @@ function EventCard({ ev, t }: { ev: VendorEvent; t: (k: string) => string }) {
   return (
     <div className="card overflow-hidden flex flex-col">
       {ev.imageUrl ? (
-        <img src={ev.imageUrl} alt={ev.title} className="w-full h-36 object-cover" />
+        <Image src={ev.imageUrl} alt={ev.title} width={400} height={144} className="w-full h-36 object-cover" />
       ) : (
         <div className="w-full h-36 bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
           <span className="text-4xl">🎫</span>

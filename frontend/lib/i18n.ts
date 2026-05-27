@@ -157,6 +157,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'wishlist.added': 'Favorilere eklendi',
     'wishlist.removed': 'Favorilerden çıkarıldı',
     'wishlist.loginRequired': 'Favorilere eklemek için giriş yapın',
+    'auth.loginToOrder': 'Sipariş vermek için giriş yap',
 
     // ── Cart ──
     'cart.title': 'Sepetiniz',
@@ -191,6 +192,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'checkout.iyzicoGateway': 'İyzico Ödeme Sistemi',
     'checkout.iyzicoDesc': 'Ödemenizi güvenle tamamlamak için İyzico\'ya yönlendirileceksiniz.',
     'checkout.placeOrder': 'Sipariş Ver',
+    'checkout.proceedToPayment': 'Ödemeye Geç',
     'checkout.processing': 'İşleniyor…',
     'checkout.orderSummary': 'Sipariş Özeti',
     'checkout.emptyCart': 'Sepetiniz boş',
@@ -316,7 +318,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'order.shipped': 'Kargoya Verildi',
     'order.delivered': 'Teslim Edildi',
     'order.cancelled': 'İptal Edildi',
+    'order.refundRequested': 'İade Talebi Oluşturuldu',
+    'order.refundRequestedSub': 'Ekibimiz 1-3 iş günü içinde talebinizi inceleyecek.',
     'order.refunded': 'İade Edildi',
+    'order.refundedSub': 'İadeniz onaylandı. Ödeme 5-10 iş günü içinde yansıyacak.',
 
     // ── Store Page ──
     'store.officialMerch': 'Resmi Ürünler',
@@ -1365,6 +1370,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'wishlist.added': 'Added to wishlist',
     'wishlist.removed': 'Removed from wishlist',
     'wishlist.loginRequired': 'Please login to add to wishlist',
+    'auth.loginToOrder': 'Login to order',
 
     // ── Cart ──
     'cart.title': 'Your cart',
@@ -1399,6 +1405,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'checkout.iyzicoGateway': 'İyzico Payment Gateway',
     'checkout.iyzicoDesc': 'You\'ll be redirected to İyzico to complete payment securely.',
     'checkout.placeOrder': 'Place order',
+    'checkout.proceedToPayment': 'Proceed to payment',
     'checkout.processing': 'Processing…',
     'checkout.orderSummary': 'Order summary',
     'checkout.emptyCart': 'Your cart is empty',
@@ -1524,7 +1531,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'order.shipped': 'Shipped',
     'order.delivered': 'Delivered',
     'order.cancelled': 'Cancelled',
+    'order.refundRequested': 'Refund Requested',
+    'order.refundRequestedSub': 'Our team will review your request within 1-3 business days.',
     'order.refunded': 'Refunded',
+    'order.refundedSub': 'Your refund was approved. Payment will reflect in 5-10 business days.',
 
     // ── Store Page ──
     'store.officialMerch': 'Official Merchandise',

@@ -105,8 +105,12 @@ class UpdatePlatformSettingsDto {
   // SEO & Marketing
   @IsOptional() @IsString() @MaxLength(200) metaTitle?: string;
   @IsOptional() @IsString() @MaxLength(500) metaDescription?: string;
+  @IsOptional() @IsString() ogImageUrl?: string;
+  @IsOptional() @IsString() @MaxLength(100) twitterHandle?: string;
   @IsOptional() @IsString() facebookPixelId?: string;
   @IsOptional() @IsString() googleTagManagerId?: string;
+  @IsOptional() @IsString() robotsTxt?: string;
+  @IsOptional() @IsString() schemaOrgJson?: string;
 }
 
 @ApiTags('Admin')

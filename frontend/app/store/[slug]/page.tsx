@@ -2,16 +2,15 @@ import type { Metadata } from 'next';
 import { StorePageClient } from './StorePageClient';
 import { JsonLd } from '../../../components/seo/JsonLd';
 
-const SITE_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-26a7.up.railway.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://vibehub.com.tr/api';
 
 interface Props { params: { slug: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-26a7.up.railway.app';
     const res = await fetch(
-      `${apiBase}/vendors/slug/${params.slug}`,
+      `${API_BASE}/vendors/slug/${params.slug}`,
       { next: { revalidate: 60 } },
     );
     if (!res.ok) throw new Error('not found');
@@ -21,21 +20,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const title = vendor?.displayName ?? params.slug;
     const description = vendor?.bio
       ? vendor.bio.slice(0, 155)
-      : `Shop official merch from ${title} on VibeHub.`;
+      : `${title} resmi mağazası — VibeHub'da satın al.`;
     const image = vendor?.bannerUrl ?? vendor?.logoUrl ?? undefined;
 
     return {
       title,
       description,
+      keywords: [title, 'resmi mağaza', 'merch', 'vibehub'],
+      alternates: { canonical: `${SITE_URL}/store/${params.slug}` },
       openGraph: {
-        title,
+        title: `${title} Resmi Mağazası | VibeHub`,
         description,
         type: 'website',
-        ...(image ? { images: [{ url: image }] } : {}),
+        url: `${SITE_URL}/store/${params.slug}`,
+        ...(image ? { images: [{ url: image, alt: `${title} mağaza görseli` }] } : {}),
       },
       twitter: {
         card: 'summary_large_image',
-        title,
+        title: `${title} Resmi Mağazası | VibeHub`,
         description,
         ...(image ? { images: [image] } : {}),
       },
@@ -48,8 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /** Pre-render all active vendor store pages at build time. */
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-26a7.up.railway.app';
-    const res = await fetch(`${apiBase}/vendors?limit=500&page=1`, {
+    const res = await fetch(`${API_BASE}/vendors?limit=500&page=1`, {
       next: { revalidate: 86400 },
     });
     if (!res.ok) return [];
@@ -73,8 +74,11 @@ async function getVendorJsonLd(slug: string) {
       '@type': 'Organization',
       name: vendor.displayName,
       url: `${SITE_URL}/store/${slug}`,
-      ...(vendor.logoUrl ? { logo: vendor.logoUrl } : {}),
+      ...(vendor.logoUrl ? { logo: { '@type': 'ImageObject', url: vendor.logoUrl } } : {}),
       ...(vendor.bio ? { description: vendor.bio.slice(0, 500) } : {}),
+      ...(vendor.instagramHandle ? {
+        sameAs: [`https://instagram.com/${vendor.instagramHandle}`],
+      } : {}),
     };
   } catch {
     return null;

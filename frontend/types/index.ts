@@ -76,6 +76,8 @@ export interface Product {
   updatedAt: string;
   tenant?: Tenant;
   variants?: ProductVariant[];
+  avgRating?: number | null;
+  _count?: { reviews: number };
 }
 
 export interface ProductVariant {

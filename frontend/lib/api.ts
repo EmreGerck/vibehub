@@ -23,34 +23,52 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh on 401
+// ── Token refresh with race-condition guard ───────────────────────────────────
+// Without this, multiple simultaneous 401s (e.g. cart + order + validation all
+// firing at once during checkout) each attempt a refresh, the 2nd attempt uses
+// an already-rotated token and fails → the user gets logged out mid-checkout.
+// The singleton promise ensures ONE refresh flight is in-progress at a time;
+// all concurrent 401s await the same promise and reuse the result.
+
+let _refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!_refreshPromise) {
+    _refreshPromise = axios
+      .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+      .then((res) => (res.data?.data?.accessToken as string) ?? null)
+      .catch(() => null)
+      .finally(() => { _refreshPromise = null; });
+  }
+  return _refreshPromise;
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as any;
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
-      try {
-        const res = await axios.post(
-          `${API_URL}/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
-        const newToken = res.data?.data?.accessToken;
-        if (newToken) {
-          const { useAuthStore } = await import('../store/auth.store');
-          useAuthStore.getState().setAccessToken(newToken);
-          original.headers.Authorization = `Bearer ${newToken}`;
-        }
-        return api(original);
-      } catch {
-        const { useAuthStore } = await import('../store/auth.store');
-        const hasUser = useAuthStore.getState().user;
-        if (hasUser) {
-          useAuthStore.getState().clearAuth();
-          window.location.href = '/auth/login';
-        }
-      }
+
+    // Only attempt refresh once per request, and only on 401
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error);
+    }
+    original._retry = true;
+
+    const newToken = await refreshAccessToken();
+
+    if (newToken) {
+      // Persist the new token and retry the original request
+      const { useAuthStore } = await import('../store/auth.store');
+      useAuthStore.getState().setAccessToken(newToken);
+      original.headers = { ...original.headers, Authorization: `Bearer ${newToken}` };
+      return api(original);
+    }
+
+    // Refresh failed — only log out if there was an active session
+    const { useAuthStore } = await import('../store/auth.store');
+    if (useAuthStore.getState().user) {
+      useAuthStore.getState().clearAuth();
+      if (typeof window !== 'undefined') window.location.href = '/auth/login';
     }
     return Promise.reject(error);
   },

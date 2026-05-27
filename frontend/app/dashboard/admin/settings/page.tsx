@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePlatformSettings, useUpdatePlatformSettings, PlatformSettings } from '../../../../hooks/useAdmin';
 
-type FormState = Omit<PlatformSettings, 'id' | 'updatedAt'>;
+type FormState = Omit<PlatformSettings, 'id' | 'updatedAt' | 'metaTitle' | 'metaDescription' | 'ogImageUrl' | 'twitterHandle' | 'facebookPixelId' | 'googleTagManagerId' | 'robotsTxt' | 'schemaOrgJson'>;
 
 const DEFAULTS: FormState = {
   // Identity
@@ -49,11 +49,6 @@ const DEFAULTS: FormState = {
   lowStockThreshold: 5,
   notifyVendorOnSale: true,
   notifyAdminOnVendorApply: true,
-  // SEO
-  metaTitle: 'VibeHub — Your Vibe, Your Stage',
-  metaDescription: 'Buy official merch from your favourite artists and creators.',
-  facebookPixelId: '',
-  googleTagManagerId: '',
 };
 
 function Toggle({ value, onChange, danger }: { value: boolean; onChange: (v: boolean) => void; danger?: boolean }) {
@@ -184,10 +179,6 @@ export default function AdminSettingsPage() {
         lowStockThreshold: settings.lowStockThreshold,
         notifyVendorOnSale: settings.notifyVendorOnSale,
         notifyAdminOnVendorApply: settings.notifyAdminOnVendorApply,
-        metaTitle: settings.metaTitle,
-        metaDescription: settings.metaDescription,
-        facebookPixelId: settings.facebookPixelId ?? '',
-        googleTagManagerId: settings.googleTagManagerId ?? '',
       });
     }
   }, [settings]);
@@ -202,7 +193,7 @@ export default function AdminSettingsPage() {
     setSaved(false);
     // Clean up empty string nullables
     const payload: Partial<FormState> = { ...form };
-    (['supportPhone', 'logoUrl', 'faviconUrl', 'orderNotificationEmail', 'facebookPixelId', 'googleTagManagerId'] as const).forEach(k => {
+    (['supportPhone', 'logoUrl', 'faviconUrl', 'orderNotificationEmail'] as const).forEach(k => {
       if (payload[k] === '') (payload as any)[k] = null;
     });
     try {
@@ -426,43 +417,6 @@ export default function AdminSettingsPage() {
           <div className="space-y-3 border-t border-gray-100 dark:border-gray-800 pt-4">
             <ToggleRow label="Notify vendor on sale" desc="Vendor receives email when an order comes in" value={form.notifyVendorOnSale} onChange={v => set('notifyVendorOnSale', v)} />
             <ToggleRow label="Notify admin on vendor application" desc="Admin email when new vendor applies" value={form.notifyAdminOnVendorApply} onChange={v => set('notifyAdminOnVendorApply', v)} />
-          </div>
-        </section>
-
-        {/* ── SEO & Marketing ───────────────────────────────────────────── */}
-        <section className="card p-6">
-          <SectionHeader icon="📈" title="SEO & Marketing" />
-          <div className="grid grid-cols-1 gap-4">
-            <TextInput label="Meta title" value={form.metaTitle} onChange={v => set('metaTitle', v)} desc="Shown in browser tab and search results" />
-            <div>
-              <label className="label">Meta description</label>
-              <textarea
-                value={form.metaDescription}
-                onChange={e => set('metaDescription', e.target.value)}
-                className="input min-h-[80px] resize-none"
-                placeholder="Short description shown in Google search previews..."
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <TextInput
-              label="Facebook Pixel ID"
-              value={form.facebookPixelId}
-              onChange={v => set('facebookPixelId', v)}
-              placeholder="123456789012345"
-              desc="Leave blank to disable Pixel"
-            />
-            <TextInput
-              label="Google Tag Manager ID"
-              value={form.googleTagManagerId}
-              onChange={v => set('googleTagManagerId', v)}
-              placeholder="GTM-XXXXXXX"
-              desc="Leave blank to disable GTM"
-            />
-          </div>
-          <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
-            <strong>GA4:</strong> Google Analytics is configured via{' '}
-            <code className="font-mono">NEXT_PUBLIC_GA_ID=G-8MC1G3RL3X</code> in your Vercel environment — already active.
           </div>
         </section>
 

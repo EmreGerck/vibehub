@@ -80,13 +80,20 @@ export function ProductPageClient() {
 
   async function handleAddToCart() {
     if (!variant) return;
+    // Guard: require login before cart action
+    if (!user) {
+      toast('info', t('wishlist.loginRequired'));
+      router.push('/auth/login');
+      return;
+    }
     try {
       await addToCart.mutateAsync({ variantId: variant.id, qty });
       setAdded(true);
       toast('success', `${product!.title} ${t('shop.addedToCart')}`);
       setTimeout(() => setAdded(false), 2000);
-    } catch {
-      toast('error', t('shop.failedToAdd'));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      toast('error', msg ?? t('shop.failedToAdd'));
     }
   }
 
@@ -257,9 +264,11 @@ export function ProductPageClient() {
                   ? t('pdp.adding')
                   : added
                     ? '✓'
-                    : isPreOrder
-                      ? preOrderClosed ? t('preOrder.cta.closed') : t('preOrder.cta.now')
-                      : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
+                    : !user
+                      ? t('auth.loginToOrder')
+                      : isPreOrder
+                        ? preOrderClosed ? t('preOrder.cta.closed') : t('preOrder.cta.now')
+                        : inStock ? t('pdp.addToCart') : t('pdp.outOfStock')}
               </button>
             </div>
 

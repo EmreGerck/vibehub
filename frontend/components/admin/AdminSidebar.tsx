@@ -64,6 +64,7 @@ const NAV_GROUPS: NavGroup[] = [
     defaultOpen: false,
     items: [
       { href: '/dashboard/admin/discounts', label: 'İndirimler',      icon: '🏷️' },
+      { href: '/dashboard/admin/seo',      label: 'SEO Motoru',      icon: '🔍' },
       { href: '/dashboard/admin/banners',  label: 'Hero Bannerlar', icon: '🖼' },
       { href: '/dashboard/admin/events',   label: 'Etkinlikler',    icon: '🎫' },
       { href: '/dashboard/admin/nfc-tags', label: 'NFC Etiketleri', icon: '📡' },

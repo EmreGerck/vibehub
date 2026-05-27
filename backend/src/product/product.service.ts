@@ -233,7 +233,23 @@ export class ProductService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { items: items.map((p) => this.applyTranslations(p, lang)), total, page: query.page, limit: query.limit };
+    // Attach avgRating via a single grouped aggregation query
+    const productIds = items.map((p) => p.id);
+    const ratingAggs = productIds.length
+      ? await this.prisma.review.groupBy({
+          by: ['productId'],
+          where: { productId: { in: productIds } },
+          _avg: { rating: true },
+        })
+      : [];
+    const ratingMap = new Map(ratingAggs.map((r) => [r.productId, r._avg.rating]));
+
+    const enriched = items.map((p) => ({
+      ...p,
+      avgRating: ratingMap.get(p.id) ?? null,
+    }));
+
+    return { items: enriched.map((p) => this.applyTranslations(p, lang)), total, page: query.page, limit: query.limit };
   }
 
   /** Full-text search via Meilisearch (falls back to Prisma LIKE). */
@@ -274,11 +290,19 @@ export class ProductService {
       },
     });
 
+    // Attach avgRating
+    const searchRatingAggs = await this.prisma.review.groupBy({
+      by: ['productId'],
+      where: { productId: { in: ids } },
+      _avg: { rating: true },
+    });
+    const searchRatingMap = new Map(searchRatingAggs.map((r) => [r.productId, r._avg.rating]));
+
     const lang = params.lang ?? 'tr';
     const ordered = ids
       .map(id => products.find(p => p.id === id))
       .filter(Boolean)
-      .map(p => this.applyTranslations(p!, lang));
+      .map(p => this.applyTranslations({ ...p!, avgRating: searchRatingMap.get(p!.id) ?? null }, lang));
 
     return { items: ordered, total, processingTimeMs };
   }

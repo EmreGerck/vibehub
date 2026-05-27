@@ -6,22 +6,28 @@ import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { useI18n } from '../../lib/i18n';
 import { Reveal } from '../../components/ui/Reveal';
+import { api } from '../../lib/api';
 
 export default function ContactPage() {
   const t = useI18n((s) => s.t);
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) return;
-    // Store locally until a backend contact endpoint exists
+    setLoading(true);
+    setError('');
     try {
-      const existing = JSON.parse(localStorage.getItem('contact_messages') || '[]');
-      existing.push({ ...form, ts: Date.now() });
-      localStorage.setItem('contact_messages', JSON.stringify(existing));
-    } catch { /* ignore */ }
-    setSubmitted(true);
+      await api.post('/contact', form);
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -81,8 +87,11 @@ export default function ContactPage() {
                     onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                   />
                 </div>
-                <button type="submit" className="btn-primary w-full py-3">
-                  {t('contact.submit')}
+                {error && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                )}
+                <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:opacity-60">
+                  {loading ? 'Gönderiliyor…' : t('contact.submit')}
                 </button>
               </form>
             )}

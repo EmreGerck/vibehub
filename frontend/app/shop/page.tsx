@@ -707,6 +707,12 @@ function ShopProductCard({ product }: { product: Product }) {
         <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
           {product.title}
         </h3>
+        {product.avgRating != null && (product._count?.reviews ?? 0) > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-yellow-400 text-xs">{'★'.repeat(Math.round(product.avgRating))}{'☆'.repeat(5 - Math.round(product.avgRating))}</span>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">({product._count!.reviews})</span>
+          </div>
+        )}
         <div className="mt-auto pt-2 flex items-end justify-between">
           <PriceBadge price={price} compareAtPrice={product.compareAtPrice} />
           <span className="text-xs text-purple-500 dark:text-purple-400 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all">

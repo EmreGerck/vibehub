@@ -1565,16 +1565,7 @@ export class AdminService {
     });
   }
 
-  async updatePlatformSettings(dto: {
-    defaultCommissionRate?: number;
-    platformName?: string;
-    supportEmail?: string;
-    maintenanceMode?: boolean;
-    vendorSignupsOpen?: boolean;
-    productSubmissionsOpen?: boolean;
-    globalForumEnabled?: boolean;
-    requirePurchaseReview?: boolean;
-  }, actorId: string) {
+  async updatePlatformSettings(dto: Record<string, any>, actorId: string) {
     const settings = await this.prisma.platformSettings.upsert({
       where: { id: 'singleton' },
       create: { id: 'singleton', ...dto },

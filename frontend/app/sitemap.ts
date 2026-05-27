@@ -12,8 +12,8 @@
 
 import type { MetadataRoute } from 'next';
 
-const SITE_URL  = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
-const API_URL   = process.env.NEXT_PUBLIC_API_URL      || 'http://localhost:3001';
+const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
+const API_URL   = process.env.NEXT_PUBLIC_API_URL  || 'http://localhost:3001';
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 
@@ -69,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   interface CategoryItem { slug: string; updatedAt?: string }
   const categoryData = await fetchJSON<CategoryItem[]>('/categories');
   const categoryEntries: SitemapEntry[] = (categoryData ?? []).map((c) => ({
-    url:             `${SITE_URL}/shop?categorySlug=${c.slug}`,
+    url:             `${SITE_URL}/shop/${c.slug}`,
     lastModified:    c.updatedAt ? new Date(c.updatedAt) : now,
     changeFrequency: 'weekly',
     priority:        0.6,
