@@ -245,9 +245,9 @@ export class AuthController {
     res.cookie('refresh_token', token, {
       httpOnly: true,
       secure: isProd,
-      // 'lax' is safe now that the API is served from the same domain (vibehub.com.tr/api/)
-      // Previously 'none' was needed for cross-domain Railway ↔ Vercel calls.
-      sameSite: 'lax',
+      // 'none' is required when the API and frontend have different origins
+      // even on the same VPS (e.g. api.vibehub.com.tr vs vibehub.com.tr)
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/',
     });
