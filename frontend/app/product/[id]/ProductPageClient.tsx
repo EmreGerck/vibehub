@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { trackViewItem } from '../../../lib/analytics';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../../components/layout/Navbar';
@@ -30,6 +31,19 @@ export function ProductPageClient() {
   const isWishlisted = wishlistStatus?.wishlisted ?? false;
 
   useTrackView(product);
+
+  // Fire GA4 view_item event for remarketing audiences + product performance
+  useEffect(() => {
+    if (!product) return;
+    trackViewItem({
+      id: product.id,
+      title: product.title,
+      price: Number(product.price ?? 0),
+      currency: product.currency ?? 'TRY',
+      category: (product as any).category?.name,
+      vendor: product.tenant?.displayName,
+    });
+  }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [qty, setQty] = useState(1);

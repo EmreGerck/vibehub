@@ -11,6 +11,7 @@
  */
 
 import type { MetadataRoute } from 'next';
+import { TOPICS } from './rehber/topics';
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
 const API_URL   = process.env.NEXT_PUBLIC_API_URL  || 'http://localhost:3001';
@@ -37,6 +38,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: SitemapEntry[] = [
     { url: SITE_URL,                          lastModified: now, changeFrequency: 'daily',   priority: 1.0 },
     { url: `${SITE_URL}/shop`,               lastModified: now, changeFrequency: 'hourly',  priority: 0.9 },
+    { url: `${SITE_URL}/vendors`,            lastModified: now, changeFrequency: 'daily',   priority: 0.8 },
+    { url: `${SITE_URL}/rehber`,             lastModified: now, changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${SITE_URL}/support`,            lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/about`,              lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${SITE_URL}/contact`,            lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${SITE_URL}/legal/terms`,        lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
@@ -44,6 +48,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/legal/kvkk`,         lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
     { url: `${SITE_URL}/legal/withdrawal`,   lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
   ];
+
+  // ── Rehber editorial topic pages ─────────────────────────────────────────────
+  const rehberEntries: SitemapEntry[] = Object.keys(TOPICS).map((slug) => ({
+    url:             `${SITE_URL}/rehber/${slug}`,
+    lastModified:    now,
+    changeFrequency: 'monthly',
+    priority:        0.7,
+  }));
 
   // ── Products ─────────────────────────────────────────────────────────────────
   interface ProductItem { id: string; updatedAt?: string; createdAt?: string }
@@ -77,6 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...rehberEntries,
     ...productEntries,
     ...vendorEntries,
     ...categoryEntries,

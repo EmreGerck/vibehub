@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ProductPageClient } from './ProductPageClient';
 import { JsonLd } from '../../../components/seo/JsonLd';
+import { ProductFaqJsonLd } from '../../../components/seo/ProductFaqJsonLd';
 
 interface Props { params: { id: string } }
 
@@ -35,6 +36,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: `${title} — ${vendorName} | VibeHub`,
         description,
+        // Note: Next.js Metadata API only accepts a limited set of og:type values
+        // ('website', 'article', 'book', 'profile', 'music.*', 'video.*'). For
+        // 'product' specifically we emit it as a raw property below via `other`,
+        // which is what Facebook's Product card actually reads.
         type: 'website',
         url: `${SITE_URL}/product/${params.id}`,
         ...(image ? { images: [{ url: image, width: 800, height: 800, alt: title }] } : {}),
@@ -45,10 +50,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         description,
         ...(image ? { images: [image] } : {}),
       },
-      other: price ? {
-        'product:price:amount': String(price),
-        'product:price:currency': currency,
-      } : {},
+      other: {
+        // og:type=product for Facebook Product Card (overrides default 'website')
+        'og:type': 'product',
+        ...(price ? {
+          'product:price:amount': String(price),
+          'product:price:currency': currency,
+          'product:availability': 'in stock',
+          'product:brand': vendorName,
+        } : {}),
+      },
     };
   } catch {
     return { title: 'Product' };
@@ -82,14 +93,27 @@ async function getProductJsonLd(id: string) {
     const inStock = product.variants?.some((v: any) => v.stockQty > 0) ?? false;
     const vendorName = product.tenant?.displayName ?? 'VibeHub';
     const vendorSlug = product.tenant?.slug;
+    const artistType = product.tenant?.artistType as 'BAND' | 'ARTIST' | 'COMEDIAN' | 'INFLUENCER' | 'OTHER' | undefined;
+
+    // Choose schema.org @type for brand based on vendor's artistType.
+    // MusicGroup → bands/musicians get richer Google Knowledge Panel treatment.
+    // Person     → comedians and influencers are individuals.
+    // Organization → safe default for unspecified or "OTHER".
+    const brandType =
+      artistType === 'BAND' || artistType === 'ARTIST' ? 'MusicGroup' :
+      artistType === 'COMEDIAN' || artistType === 'INFLUENCER' ? 'Person' :
+      'Organization';
 
     const productSchema: Record<string, unknown> = {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: product.title,
-      description: product.description?.slice(0, 500) ?? `Buy ${product.title} on VibeHub.`,
-      ...(product.images?.[0] ? { image: product.images[0] } : {}),
-      brand: { '@type': 'Organization', name: vendorName },
+      description: product.description?.slice(0, 500) ?? `${product.title} — ${vendorName} resmi ürünü. VibeHub'da satın al.`,
+      ...(product.images?.[0] ? { image: product.images } : {}),
+      sku: product.sku ?? product.id,
+      mpn: product.id,
+      ...(product.categoryId ? { category: product.category?.name } : {}),
+      brand: { '@type': brandType, name: vendorName },
       offers: {
         '@type': 'Offer',
         price: price ?? 0,
@@ -97,7 +121,9 @@ async function getProductJsonLd(id: string) {
         availability: inStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
+        itemCondition: 'https://schema.org/NewCondition',
         url: `${SITE_URL}/product/${id}`,
+        seller: { '@type': brandType, name: vendorName },
       },
     };
 
@@ -121,15 +147,25 @@ async function getProductJsonLd(id: string) {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+        { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Mağaza', item: `${SITE_URL}/shop` },
         ...(vendorSlug
-          ? [{ '@type': 'ListItem', position: 2, name: vendorName, item: `${SITE_URL}/store/${vendorSlug}` }]
+          ? [{ '@type': 'ListItem', position: 3, name: vendorName, item: `${SITE_URL}/store/${vendorSlug}` }]
           : []),
-        { '@type': 'ListItem', position: vendorSlug ? 3 : 2, name: product.title },
+        { '@type': 'ListItem', position: vendorSlug ? 4 : 3, name: product.title },
       ],
     };
 
-    return { productSchema, breadcrumbSchema };
+    return {
+      productSchema,
+      breadcrumbSchema,
+      faqContext: {
+        productTitle: product.title,
+        vendorName,
+        categorySlug: product.category?.slug,
+        isPreOrder: !!product.isPreOrder,
+      },
+    };
   } catch {
     return null;
   }
@@ -144,6 +180,7 @@ export default async function ProductPage({ params }: Props) {
         <>
           <JsonLd data={jsonLd.productSchema} />
           <JsonLd data={jsonLd.breadcrumbSchema} />
+          <ProductFaqJsonLd {...jsonLd.faqContext} />
         </>
       )}
       <ProductPageClient />

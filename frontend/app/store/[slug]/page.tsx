@@ -69,17 +69,39 @@ async function getVendorJsonLd(slug: string) {
     const vendor = json?.data;
     if (!vendor) return null;
 
-    return {
+    // Map our ArtistType enum → schema.org @type for richer SERP / Knowledge Panel
+    const artistType = vendor.artistType as 'BAND' | 'ARTIST' | 'COMEDIAN' | 'INFLUENCER' | 'OTHER' | undefined;
+    const schemaType =
+      artistType === 'BAND' || artistType === 'ARTIST' ? 'MusicGroup' :
+      artistType === 'COMEDIAN' || artistType === 'INFLUENCER' ? 'Person' :
+      'Organization';
+
+    // Collect social links into sameAs (helps Google build the Knowledge Panel)
+    const sameAs: string[] = [];
+    if (vendor.instagramHandle) sameAs.push(`https://instagram.com/${vendor.instagramHandle.replace('@', '')}`);
+    if (vendor.twitterHandle)   sameAs.push(`https://twitter.com/${vendor.twitterHandle.replace('@', '')}`);
+    if (vendor.spotifyUrl)      sameAs.push(vendor.spotifyUrl);
+    if (vendor.youtubeUrl)      sameAs.push(vendor.youtubeUrl);
+    if (vendor.websiteUrl)      sameAs.push(vendor.websiteUrl);
+
+    const baseSchema: Record<string, unknown> = {
       '@context': 'https://schema.org',
-      '@type': 'Organization',
+      '@type': schemaType,
       name: vendor.displayName,
       url: `${SITE_URL}/store/${slug}`,
-      ...(vendor.logoUrl ? { logo: { '@type': 'ImageObject', url: vendor.logoUrl } } : {}),
-      ...(vendor.bio ? { description: vendor.bio.slice(0, 500) } : {}),
-      ...(vendor.instagramHandle ? {
-        sameAs: [`https://instagram.com/${vendor.instagramHandle}`],
-      } : {}),
+      ...(vendor.logoUrl   ? { logo:  { '@type': 'ImageObject', url: vendor.logoUrl } } : {}),
+      ...(vendor.bannerUrl ? { image: vendor.bannerUrl } : {}),
+      ...(vendor.bio       ? { description: vendor.bio.slice(0, 500) } : {}),
+      ...(sameAs.length    ? { sameAs } : {}),
     };
+
+    // MusicGroup-specific enrichments
+    if (schemaType === 'MusicGroup') {
+      if (vendor.genre)    baseSchema.genre = vendor.genre;
+      if (vendor.foundedAt) baseSchema.foundingDate = vendor.foundedAt;
+    }
+
+    return baseSchema;
   } catch {
     return null;
   }
