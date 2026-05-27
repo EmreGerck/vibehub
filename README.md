@@ -62,7 +62,7 @@ cd mobile && npm install && npx expo start
 | Environment | Backend | Frontend |
 |-------------|---------|----------|
 | Local | http://localhost:3001 | http://localhost:3000 |
-| Production | https://api-production-26a7.up.railway.app | https://vibehub.com.tr |
+| Production | https://api.vibehub.com.tr | https://vibehub.com.tr |
 
 ---
 

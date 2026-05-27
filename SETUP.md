@@ -166,6 +166,6 @@ curl -X POST http://localhost:3001/auth/login \
 
 | Servis | URL |
 |--------|-----|
-| Backend (Railway) | https://api-production-26a7.up.railway.app |
-| Frontend (Vercel) | https://vibehub.com.tr |
-| Swagger | https://api-production-26a7.up.railway.app/api/docs |
+| Backend (VPS) | https://api.vibehub.com.tr |
+| Frontend (VPS) | https://vibehub.com.tr |
+| Swagger | https://api.vibehub.com.tr/api/docs |

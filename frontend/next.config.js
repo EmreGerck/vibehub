@@ -6,12 +6,12 @@ const nextConfig = {
   output: 'standalone',
   images: {
     // Allow images from any source — vendors paste direct-upload URLs from
-    // various CDNs (imgbb, Cloudinary, Unsplash, Google, Railway uploads, etc.)
+    // various CDNs (imgbb, Cloudinary, Unsplash, Google, VPS uploads, etc.)
     remotePatterns: [
       // Local backend uploads (dev)
       { protocol: 'http', hostname: 'localhost', port: '3001', pathname: '/uploads/**' },
-      // Railway backend uploads (production)
-      { protocol: 'https', hostname: '*.up.railway.app', pathname: '/**' },
+      // VPS backend uploads (production)
+      { protocol: 'https', hostname: 'api.vibehub.com.tr', pathname: '/uploads/**' },
       // Common image hosts vendors use
       { protocol: 'https', hostname: 'i.ibb.co', pathname: '/**' },
       { protocol: 'https', hostname: 'ibb.co', pathname: '/**' },

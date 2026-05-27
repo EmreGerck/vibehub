@@ -126,7 +126,7 @@ jobs:
             git reset --hard origin/main
 
             echo "==> Building and restarting frontend (bakes in API URL at build time)"
-            NEXT_PUBLIC_API_URL=https://api-production-26a7.up.railway.app \
+            NEXT_PUBLIC_API_URL=https://api.vibehub.com.tr \
             NEXT_PUBLIC_SITE_URL=https://vibehub.com.tr \
             docker compose -f docker-compose.yml up -d --build frontend
 

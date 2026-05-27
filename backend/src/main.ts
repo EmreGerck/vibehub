@@ -34,7 +34,6 @@ async function bootstrap() {
   }
 
   // Security headers — helmet first, then explicit fallback middleware
-  // in case Railway's edge proxy strips some headers
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow CDN assets
     contentSecurityPolicy: false, // handled by Next.js frontend
@@ -43,7 +42,7 @@ async function bootstrap() {
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }));
 
-  // Explicit header middleware — ensures headers survive Railway's reverse proxy
+  // Explicit security header middleware
   app.use((_req: any, res: any, next: any) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
