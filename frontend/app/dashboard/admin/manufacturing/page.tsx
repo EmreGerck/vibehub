@@ -34,7 +34,7 @@ export default function AdminManufacturingPage() {
   if (!isGod) {
     return (
       <div className="px-6 py-16 text-center">
-        <h1 className="text-2xl font-bold text-white mb-2">Erişim engellendi</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Erişim engellendi</h1>
         <p className="text-gray-400">
           Üretim birimleri yalnızca GOD_USER tarafından yönetilebilir. Maliyet bilgisi
           hassastır ve PLATFORM_ADMIN dahi kayıtları değiştiremez.
@@ -104,7 +104,7 @@ export default function AdminManufacturingPage() {
     <div className="px-6 py-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Üretim Birimleri</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Üretim Birimleri</h1>
           <p className="text-gray-400 text-sm mt-1">
             VibeHub-üretimli ürünlerin temel maliyet birimleri. Bu kayıtlar VIBEHUB_MANAGED
             ürünlere bağlanır ve sipariş anında kâr paylaşımı hesabında kullanılır.
@@ -159,8 +159,8 @@ export default function AdminManufacturingPage() {
             <tbody>
               {units.map((u) => (
                 <tr key={u.id} className={`border-t border-surface-border ${!u.active ? 'opacity-50' : ''}`}>
-                  <td className="px-4 py-3 text-white font-medium">{u.name}</td>
-                  <td className="px-4 py-3 text-right text-white tabular-nums">{tryFmt(u.unitCostTRY)}</td>
+                  <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{u.name}</td>
+                  <td className="px-4 py-3 text-right text-gray-900 dark:text-white tabular-nums">{tryFmt(u.unitCostTRY)}</td>
                   <td className="px-4 py-3 text-gray-400 max-w-xs truncate">{u.notes || '—'}</td>
                   <td className="px-4 py-3 text-center text-gray-400">{u._count?.products ?? 0}</td>
                   <td className="px-4 py-3 text-center">
@@ -193,7 +193,7 @@ export default function AdminManufacturingPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 z-50">
           <div className="card max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold text-white mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               {editingId ? 'Üretim birimini düzenle' : 'Yeni üretim birimi'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -266,7 +266,7 @@ export default function AdminManufacturingPage() {
       {deleteId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 z-50">
           <div className="card max-w-sm w-full p-6">
-            <h2 className="text-lg font-semibold text-white mb-2">Üretim birimini sil</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Üretim birimini sil</h2>
             <p className="text-sm text-gray-400 mb-4">
               Bu işlem geri alınamaz. Bağlı ürün yoksa kayıt tamamen silinir; varsa hata alırsın.
             </p>

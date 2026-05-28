@@ -148,7 +148,10 @@ export class AuthController {
   ) {
     const token = req.cookies?.['refresh_token'];
     if (token) await this.authService.logout(user.id, token);
-    res.clearCookie('refresh_token');
+    // Clear must specify the same domain we set the cookie with — otherwise
+    // browsers leave the parent-domain cookie alive and the next /auth/me
+    // call gets a rotated-but-unrevoked refresh token.
+    res.clearCookie('refresh_token', this.cookieAttrs());
     return ApiResponse.ok(null, 'Logged out');
   }
 
@@ -247,15 +250,40 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string) {
-    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refresh_token', token, {
+      ...this.cookieAttrs(),
+      maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days — match REFRESH_TOKEN_LIFETIME_DAYS in auth.service.ts
+    });
+  }
+
+  /**
+   * Shared cookie attributes for set/clear. Without a domain, the cookie is
+   * pinned to the response origin (api.vibehub.com.tr) and modern Chrome may
+   * drop it on the cross-origin /auth/refresh call from vibehub.com.tr even
+   * with sameSite=none — see Sprint 14 P0 audit. Setting the parent domain
+   * (.vibehub.com.tr) makes it a true first-party cookie that both subdomains
+   * can carry.
+   *
+   * The COOKIE_DOMAIN env override is for UAT (uat.vibehub.com.tr +
+   * uat-api.vibehub.com.tr → still .vibehub.com.tr) and any future env where
+   * the parent domain differs.
+   */
+  private cookieAttrs(): {
+    httpOnly: true;
+    secure: boolean;
+    sameSite: 'none' | 'lax';
+    path: '/';
+    domain?: string;
+  } {
+    const isProd = process.env.NODE_ENV === 'production';
+    const domain = process.env.COOKIE_DOMAIN
+      || (isProd ? '.vibehub.com.tr' : undefined);
+    return {
       httpOnly: true,
       secure: isProd,
-      // 'none' is required when the API and frontend have different origins
-      // even on the same VPS (e.g. api.vibehub.com.tr vs vibehub.com.tr)
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days — match REFRESH_TOKEN_LIFETIME_DAYS in auth.service.ts
       path: '/',
-    });
+      ...(domain && { domain }),
+    };
   }
 }

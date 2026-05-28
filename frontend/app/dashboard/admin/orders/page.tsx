@@ -612,9 +612,8 @@ export default function AdminOrdersPage() {
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
-              <tbody>
-                {displayedOrders.map((order: any) => (
-                  <tbody key={order.id}>
+              {displayedOrders.map((order: any) => (
+                <tbody key={order.id}>
                     <tr
                       className={`border-b border-gray-200 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer transition-colors ${
                         order.status === 'REFUND_REQUESTED' ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''
@@ -727,9 +726,8 @@ export default function AdminOrdersPage() {
                         </td>
                       </tr>
                     )}
-                  </tbody>
-                ))}
-              </tbody>
+                </tbody>
+              ))}
             </table>
           </div>
 

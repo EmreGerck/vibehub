@@ -882,19 +882,19 @@ function FulfilmentModal({ product, onClose }: { product: any; onClose: () => vo
                 <tbody>
                   <tr>
                     <td className="py-1 text-gray-400">Satış fiyatı</td>
-                    <td className="py-1 text-right text-white tabular-nums">{fmt(price)}</td>
+                    <td className="py-1 text-right text-gray-900 dark:text-white tabular-nums">{fmt(price)}</td>
                   </tr>
                   <tr>
                     <td className="py-1 text-gray-400">− KDV (%{(vatRate * 100).toFixed(0)})</td>
-                    <td className="py-1 text-right text-white tabular-nums">{fmt(vatExtracted)}</td>
+                    <td className="py-1 text-right text-gray-900 dark:text-white tabular-nums">{fmt(vatExtracted)}</td>
                   </tr>
                   <tr>
                     <td className="py-1 text-gray-400">− Üretim maliyeti</td>
-                    <td className="py-1 text-right text-white tabular-nums">{fmt(unitCost)}</td>
+                    <td className="py-1 text-right text-gray-900 dark:text-white tabular-nums">{fmt(unitCost)}</td>
                   </tr>
                   <tr className="border-t border-surface-border">
                     <td className="py-1 text-gray-300">Paylaşılacak kâr</td>
-                    <td className="py-1 text-right text-white font-medium tabular-nums">{fmt(distributableProfit)}</td>
+                    <td className="py-1 text-right text-gray-900 dark:text-white font-medium tabular-nums">{fmt(distributableProfit)}</td>
                   </tr>
                   <tr>
                     <td className="py-1 text-purple-300">→ Sanatçı kazanır</td>

@@ -108,7 +108,7 @@ export default function TradeLedgerPage() {
     <div className="px-6 py-8 max-w-7xl mx-auto">
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Satış Geçmişi</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Satış Geçmişi</h1>
           <p className="text-gray-400 text-sm mt-1">
             Tüm satışlar, filtrelenebilir bir tablo halinde. Detay için satıra tıkla. Para parçalanması (KDV, üretim maliyeti, satıcı, platform) sipariş anında dondurulmuştur — sonradan yapılan ürün düzenlemeleri burada görünmez.
           </p>
@@ -237,7 +237,7 @@ export default function TradeLedgerPage() {
                       : o.vendors.length === 1 ? o.vendors[0].displayName
                       : `${o.vendors[0].displayName} +${o.vendors.length - 1}`}
                   </td>
-                  <td className="px-4 py-3 text-right text-white font-medium tabular-nums">{fmtTRY(o.money.gross, o.currency)}</td>
+                  <td className="px-4 py-3 text-right text-gray-900 dark:text-white font-medium tabular-nums">{fmtTRY(o.money.gross, o.currency)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${FULFILMENT_BADGE[o.fulfilmentMix].cls}`}>
                       {FULFILMENT_BADGE[o.fulfilmentMix].label}
@@ -286,10 +286,10 @@ function DetailDrawer({ orderId, onClose }: { orderId: string; onClose: () => vo
       >
         <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur px-6 py-4 border-b border-surface-border flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Sipariş Detayı</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sipariş Detayı</h2>
             <p className="text-xs font-mono text-gray-400 mt-0.5">{orderId}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-2xl leading-none">×</button>
         </div>
 
         {isLoading || !data ? (
@@ -317,7 +317,7 @@ function DetailDrawer({ orderId, onClose }: { orderId: string; onClose: () => vo
                   <div key={it.id} className="rounded-lg border border-surface-border p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-medium text-white">{it.productTitle}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{it.productTitle}</p>
                         <p className="text-xs text-gray-400">{it.tenant?.displayName} · {it.qty} adet × {fmt(it.unitPrice, data.currency)}</p>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${
@@ -419,7 +419,7 @@ function Kv({ label, value, mono }: { label: string; value: string; mono?: boole
   return (
     <div>
       <p className="text-[11px] text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className={`text-sm text-white ${mono ? 'font-mono' : ''}`}>{value}</p>
+      <p className={`text-sm text-gray-900 dark:text-white ${mono ? 'font-mono' : ''}`}>{value}</p>
     </div>
   );
 }
