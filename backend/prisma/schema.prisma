@@ -153,9 +153,41 @@ model User {
   messagesReceived   DirectMessage[] @relation("MessagesReceived")
   pushDevices        PushDevice[]
   notifications      AppNotification[]
+  assignedNfcTags    NfcTag[]            @relation("NfcTagAssignee")
+  pageViews          PageView[]
 
   @@index([email])
   @@index([tenantId])
+}
+
+/**
+ * Lightweight page-view log for device analytics.
+ * Stores parsed user-agent (browser, OS, device brand/model) + hashed IP
+ * so admin can see "most visitors are on Samsung Galaxy S24 Ultra".
+ * Privacy: IP is hashed, no full UA stored, no behavioral profiling.
+ */
+model PageView {
+  id          String   @id @default(uuid())
+  ipHash      String?  // SHA-256 truncated, not the raw IP
+  browser     String?  // Chrome, Safari, Firefox, etc.
+  browserVer  String?
+  os          String?  // iOS, Android, Windows, etc.
+  osVer       String?
+  deviceType  String?  // mobile, tablet, console, smarttv, wearable, embedded, desktop (default)
+  deviceBrand String?  // Apple, Samsung, Xiaomi, etc.
+  deviceModel String?  // iPhone, SM-G998B, etc.
+  path        String
+  referer     String?
+  userId      String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([deviceBrand, deviceModel])
+  @@index([os])
+  @@index([deviceType])
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -325,6 +357,9 @@ model Category {
   icon      String?
   sortOrder Int       @default(0)
   active    Boolean   @default(true)
+  // Turkish KDV rate (0.20 = %20). Set per category — books may be 0.01,
+  // food 0.08, services 0.18, most goods 0.20. Used for invoice generation.
+  vatRate   Decimal   @default(0.200) @db.Decimal(4, 3)
   createdAt DateTime  @default(now())
   products  Product[]
 
@@ -503,6 +538,7 @@ model Payout {
 
   @@index([tenantId])
   @@index([status])
+  @@index([tenantId, periodStart, periodEnd])
 }
 
 model Review {
@@ -769,8 +805,23 @@ model NfcTag {
   tenantId       String?
   tenant         Tenant?   @relation(fields: [tenantId], references: [id])
 
+  // Per-person tag — e.g. fan wristbands, artist hand-outs.
+  // SET NULL on user delete so the tag survives but ownership clears.
+  assignedToUserId String?
+  assignedToUser   User?    @relation("NfcTagAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  // Batch ID for bulk-generation jobs — admin filters by batchId to find
+  // "all the tags I generated for the 2026 Anatolian Fest event"
+  batchId String?
+
+  // Admin-only internal notes for support workflows.
+  notes String?
+
   @@index([staticUrl])
   @@index([tenantId])
+  @@index([assignedToUserId])
+  @@index([batchId])
+  @@index([createdAt(sort: Desc)])
 }
 
 // ─── Platform Settings (singleton) ───────────────────────────────────────────

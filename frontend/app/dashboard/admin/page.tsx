@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAdminOverview } from '../../../hooks/useAdmin';
 import { Spinner } from '../../../components/ui/Spinner';
+import { DeviceBreakdownWidget } from '../../../components/admin/DeviceBreakdownWidget';
 
 function StatCard({
   label,
@@ -276,6 +277,9 @@ export default function AdminOverviewPage() {
           </Link>
         </div>
       </section>
+
+      {/* Device analytics — what brands/models are customers using? */}
+      <DeviceBreakdownWidget />
 
       {/* Recent audit events */}
       <section>

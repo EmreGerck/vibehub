@@ -1,9 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useNfcTags, useCreateNfcTag, useUpdateNfcTag, useDeleteNfcTag, useResetNfcScanCount, useBulkUpdateNfcDestination } from '../../../../hooks/useNfcTags';
+import {
+  useNfcTags, useCreateNfcTag, useUpdateNfcTag, useDeleteNfcTag,
+  useResetNfcScanCount, useBulkUpdateNfcDestination,
+  useBulkGenerateNfcTags, useNfcBatches,
+} from '../../../../hooks/useNfcTags';
 import { useAdminVendors } from '../../../../hooks/useAdmin';
 import { useI18n } from '../../../../lib/i18n';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
+import { toast } from '../../../../store/toast.store';
 import type { NfcTag } from '../../../../types';
 
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL ?? 'https://vibehub.com.tr';
@@ -116,12 +122,33 @@ export default function AdminNfcTagsPage() {
   const t = useI18n((s) => s.t);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [batchFilter, setBatchFilter] = useState('');
 
-  const { data, isLoading } = useNfcTags({ page, limit: 20, search: search || undefined });
+  const { data, isLoading } = useNfcTags({
+    page, limit: 20,
+    search: search || undefined,
+    batchId: batchFilter || undefined,
+  });
+  const { data: batches } = useNfcBatches();
   const create = useCreateNfcTag();
   const update = useUpdateNfcTag();
   const del = useDeleteNfcTag();
   const resetCount = useResetNfcScanCount();
+  const bulkGenerate = useBulkGenerateNfcTags();
+
+  // Bulk-generate modal state
+  const [showBulkGen, setShowBulkGen] = useState(false);
+  const [bgCount, setBgCount] = useState(50);
+  const [bgPrefix, setBgPrefix] = useState('Concert Tag');
+  const [bgDestType, setBgDestType] = useState<DestType>('internal');
+  const [bgExternalUrl, setBgExternalUrl] = useState('');
+  const [bgInternalPath, setBgInternalPath] = useState('/');
+  const [bgBatchId, setBgBatchId] = useState('');
+  const [bgConfirmOpen, setBgConfirmOpen] = useState(false);
+  const [bgResult, setBgResult] = useState<{ created: number; batchId: string } | null>(null);
+
+  // Reset count confirmation
+  const [resetConfirm, setResetConfirm] = useState<NfcTag | null>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', staticUrl: '', tenantId: '' });
@@ -242,18 +269,113 @@ export default function AdminNfcTagsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('nfc.title')}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{data?.total ?? 0} {t('admin.total')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => { setShowBulk(!showBulk); setShowForm(false); }}
+            onClick={() => { setShowBulkGen(!showBulkGen); setShowForm(false); setShowBulk(false); setBgResult(null); }}
+            className="px-4 py-2 text-sm font-medium border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
+          >
+            {showBulkGen ? 'İptal' : '🏭 Toplu Üret (1-1000)'}
+          </button>
+          <button
+            onClick={() => { setShowBulk(!showBulk); setShowForm(false); setShowBulkGen(false); }}
             className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             {showBulk ? 'İptal' : '⚡ Toplu Güncelle'}
           </button>
-          <button onClick={() => { setShowForm(!showForm); setShowBulk(false); }} className="btn-primary">
+          <button onClick={() => { setShowForm(!showForm); setShowBulk(false); setShowBulkGen(false); }} className="btn-primary">
             {showForm ? t('admin.cancel') : t('nfc.newTag')}
           </button>
         </div>
       </div>
+
+      {/* Batch filter chip row + search */}
+      {(batches?.length ?? 0) > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Batch:</span>
+          <button
+            onClick={() => { setBatchFilter(''); setPage(1); }}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              !batchFilter
+                ? 'bg-purple-600 border-purple-600 text-white'
+                : 'border-gray-300 dark:border-gray-700 hover:border-purple-400'
+            }`}
+          >
+            Tümü ({data?.total ?? 0})
+          </button>
+          {(batches ?? []).slice(0, 10).map((b) => (
+            <button
+              key={b.batchId}
+              onClick={() => { setBatchFilter(b.batchId); setPage(1); }}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                batchFilter === b.batchId
+                  ? 'bg-purple-600 border-purple-600 text-white'
+                  : 'border-gray-300 dark:border-gray-700 hover:border-purple-400'
+              }`}
+            >
+              {b.batchId} ({b.count})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Bulk-generate panel — generates N tags in one shot */}
+      {showBulkGen && (
+        <div className="card p-6 mb-6 space-y-4 border-purple-200 dark:border-purple-800">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🏭</span>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Toplu NFC Etiket Üret</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Tek seferde 1 ile 1000 arasında NFC etiketi oluştur. Her etiket için benzersiz bir static URL üretilir.
+            Üretildikten sonra batch ID ile filtreleyebilirsin.
+          </p>
+          {bgResult && (
+            <div className="px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm">
+              ✅ {bgResult.created} etiket üretildi · Batch: <span className="font-mono">{bgResult.batchId}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Adet (1-1000)</label>
+              <input type="number" min={1} max={1000} value={bgCount}
+                onChange={e => setBgCount(parseInt(e.target.value || '0', 10))}
+                className="input" />
+            </div>
+            <div>
+              <label className="label">İsim Öneki</label>
+              <input value={bgPrefix} onChange={e => setBgPrefix(e.target.value)}
+                placeholder="Concert Tag" maxLength={60} className="input" />
+              <p className="text-xs text-gray-400 mt-1">Örn: "Concert Tag" → "Concert Tag #001", "#002", …</p>
+            </div>
+            <div>
+              <label className="label">Batch ID (opsiyonel)</label>
+              <input value={bgBatchId} onChange={e => setBgBatchId(e.target.value)}
+                placeholder="otomatik (örn: batch-xyz)" maxLength={60} className="input" />
+              <p className="text-xs text-gray-400 mt-1">Boş bırakırsan otomatik atanır.</p>
+            </div>
+            <div>
+              <label className="label">Hedef URL (tüm batch için aynı)</label>
+              <DestinationField
+                destType={bgDestType}
+                setDestType={setBgDestType}
+                externalUrl={bgExternalUrl}
+                setExternalUrl={setBgExternalUrl}
+                internalPath={bgInternalPath}
+                setInternalPath={setBgInternalPath}
+                required
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBgConfirmOpen(true)}
+            disabled={bulkGenerate.isPending || bgCount < 1 || bgCount > 1000 || !bgPrefix.trim()}
+            className="px-5 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50 transition-colors"
+          >
+            {bulkGenerate.isPending ? 'Üretiliyor…' : `🏭 ${bgCount} Etiket Üret`}
+          </button>
+        </div>
+      )}
 
       {/* Bulk update panel */}
       {showBulk && (
@@ -446,7 +568,7 @@ export default function AdminNfcTagsPage() {
                           {tag.enabled ? t('nfc.disabled') : t('nfc.enabled')}
                         </button>
                         <button
-                          onClick={() => resetCount.mutate(tag.id)}
+                          onClick={() => setResetConfirm(tag)}
                           className="text-xs bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 text-amber-700 dark:text-amber-300 px-2.5 py-1 rounded-lg"
                         >
                           {t('nfc.resetCount')}
@@ -522,21 +644,119 @@ export default function AdminNfcTagsPage() {
         </div>
       )}
 
-      {/* Delete confirm */}
-      {confirmDel && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="card p-6 w-full max-w-sm space-y-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">{t('nfc.deleteConfirm')}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">"{confirmDel.name}"</p>
-            <div className="flex gap-3">
-              <button onClick={handleDelete} disabled={del.isPending} className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium">
-                {del.isPending ? '…' : t('nfc.delete')}
-              </button>
-              <button onClick={() => setConfirmDel(null)} className="flex-1 btn-ghost">{t('admin.cancel')}</button>
+      {/* Delete confirmation — typed double-verification */}
+      <ConfirmModal
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        onConfirm={async () => {
+          if (!confirmDel) return;
+          await del.mutateAsync(confirmDel.id);
+          toast('success', 'NFC etiket silindi');
+          setConfirmDel(null);
+        }}
+        title="Bu NFC etiketi kalıcı olarak silinecek"
+        description={
+          confirmDel && (
+            <>
+              <strong>{confirmDel.name}</strong> isimli etiket ve şu ana kadarki tüm tarama kayıtları silinecek.
+              Bu işlem geri alınamaz.
+            </>
+          )
+        }
+        danger="critical"
+        confirmLabel="Sil"
+        confirmPhrase="SIL"
+        busy={del.isPending}
+      >
+        {confirmDel && (
+          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3 text-left space-y-1">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">İsim</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{confirmDel.name}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Tarama Sayısı</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">{confirmDel.scanCount}</p>
             </div>
           </div>
+        )}
+      </ConfirmModal>
+
+      {/* Reset scan count confirmation */}
+      <ConfirmModal
+        open={!!resetConfirm}
+        onClose={() => setResetConfirm(null)}
+        onConfirm={async () => {
+          if (!resetConfirm) return;
+          await resetCount.mutateAsync(resetConfirm.id);
+          toast('success', 'Tarama sayısı sıfırlandı');
+          setResetConfirm(null);
+        }}
+        title="Tarama sayısı sıfırlanacak"
+        description={
+          resetConfirm && (
+            <>
+              <strong>{resetConfirm.name}</strong> etiketinin {resetConfirm.scanCount} tarama kaydı silinecek.
+              Bu işlem geri alınamaz.
+            </>
+          )
+        }
+        danger="warning"
+        confirmLabel="Sıfırla"
+        busy={resetCount.isPending}
+      />
+
+      {/* Bulk-generate confirmation — high-impact action */}
+      <ConfirmModal
+        open={bgConfirmOpen}
+        onClose={() => setBgConfirmOpen(false)}
+        onConfirm={async () => {
+          const destinationUrl = resolveDestUrl(bgDestType, bgExternalUrl, bgInternalPath);
+          try {
+            const res = await bulkGenerate.mutateAsync({
+              count: bgCount,
+              namePrefix: bgPrefix.trim(),
+              destinationUrl,
+              batchId: bgBatchId.trim() || undefined,
+            });
+            setBgConfirmOpen(false);
+            setBgResult({ created: res.created, batchId: res.batchId });
+            toast('success', `${res.created} etiket üretildi`);
+          } catch (err: any) {
+            setBgConfirmOpen(false);
+            toast('error', err?.response?.data?.message ?? 'Üretim başarısız');
+          }
+        }}
+        title={`${bgCount} adet NFC etiketi üretilecek`}
+        description={
+          <>
+            Toplu üretim sonrasında silmek için her bir etiketi tek tek silmen gerekir.
+            Aynı hedef URL ile <strong>{bgCount}</strong> etiket oluşacak.
+          </>
+        }
+        danger="warning"
+        confirmLabel={`Evet, ${bgCount} Üret`}
+        busy={bulkGenerate.isPending}
+      >
+        <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3 text-left space-y-1">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">İsim Öneki</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{bgPrefix} #001 — #{String(bgCount).padStart(3, '0')}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Hedef URL</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
+              {resolveDestUrl(bgDestType, bgExternalUrl, bgInternalPath)}
+            </p>
+          </div>
+          {bgBatchId && (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Batch ID</p>
+              <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{bgBatchId}</p>
+            </div>
+          )}
         </div>
-      )}
+      </ConfirmModal>
     </div>
   );
 }

@@ -60,6 +60,27 @@ export class PayoutService {
       throw new BadRequestException('periodEnd must be after periodStart');
     }
 
+    // Overlap detection: refuse if any existing non-FAILED payout for this
+    // tenant covers any part of the requested period. Prevents double-paying
+    // the vendor for the same DELIVERED orders.
+    // Two periods overlap iff: a.start < b.end AND a.end > b.start
+    const overlap = await this.prisma.payout.findFirst({
+      where: {
+        tenantId: dto.tenantId,
+        status: { not: PayoutStatus.FAILED },
+        AND: [
+          { periodStart: { lt: periodEnd } },
+          { periodEnd:   { gt: periodStart } },
+        ],
+      },
+      select: { id: true, periodStart: true, periodEnd: true, status: true },
+    });
+    if (overlap) {
+      throw new BadRequestException(
+        `Bu satıcı için ${overlap.periodStart.toISOString().slice(0,10)} — ${overlap.periodEnd.toISOString().slice(0,10)} dönemini kapsayan bir payout zaten var (${overlap.status}). Çift ödeme yapılamaz.`,
+      );
+    }
+
     let gross = dto.grossAmount !== undefined ? new Decimal(dto.grossAmount) : null;
     let net = dto.netAmount !== undefined ? new Decimal(dto.netAmount) : null;
     let fee = dto.platformFee !== undefined ? new Decimal(dto.platformFee) : null;

@@ -7,6 +7,9 @@ interface NfcTagsQuery {
   limit?: number;
   search?: string;
   enabled?: boolean;
+  batchId?: string;
+  assignedToUserId?: string;
+  tenantId?: string;
 }
 
 export function useNfcTags(params?: NfcTagsQuery) {
@@ -81,5 +84,47 @@ export function useBulkUpdateNfcDestination() {
       return res.data.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['nfc-tags'] }),
+  });
+}
+
+export function useBulkGenerateNfcTags() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      count: number;
+      namePrefix: string;
+      destinationUrl: string;
+      batchId?: string;
+      tenantId?: string;
+      notes?: string;
+    }) => {
+      const res = await api.post<ApiResponse<{ batchId: string; created: number; requested: number }>>(
+        '/nfc/tags/bulk-generate',
+        body,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['nfc-tags'] }),
+  });
+}
+
+export function useAssignNfcTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, assignedToUserId }: { id: string; assignedToUserId: string | null }) => {
+      const res = await api.patch<ApiResponse<NfcTag>>(`/nfc/tags/${id}/assign`, { assignedToUserId });
+      return res.data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['nfc-tags'] }),
+  });
+}
+
+export function useNfcBatches() {
+  return useQuery({
+    queryKey: ['nfc-batches'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<Array<{ batchId: string; count: number }>>>('/nfc/batches');
+      return res.data.data;
+    },
   });
 }

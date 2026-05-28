@@ -149,12 +149,14 @@ export class PaymentController {
       throw new NotFoundException();
     }
     // Use 'any' cast — Prisma types update after `prisma generate` on deploy
-    const order: any = await this.prisma.order.findUnique({
+    const order: any = await (this.prisma.order.findUnique as any)({
       where: { id: dto.orderId },
       include: {
         customer: { select: { email: true, name: true } },
         items: {
-          include: { variant: { include: { product: true } } },
+          include: {
+            variant: { include: { product: { include: { category: { select: { vatRate: true } } } } } },
+          },
         },
       },
     });
@@ -184,7 +186,9 @@ export class PaymentController {
         description: item.variant?.product?.title ?? `Ürün ${item.variantId.slice(0, 8)}`,
         quantity:    item.qty,
         unitPrice:   Number(item.unitPriceSnapshot),
-        vatRate:     0.20,
+        // Pull VAT from the product's category (Turkish KDV varies %1/%8/%18/%20).
+        // Fallback to 0.20 if no category set (merch default).
+        vatRate:     Number(item.variant?.product?.category?.vatRate ?? 0.20),
         unit:        'ADET',
       })),
       currency:    order.currency,
@@ -230,14 +234,21 @@ export class PaymentController {
   @ApiOperation({ summary: 'Get invoice data for an order (customer-facing)' })
   async getInvoiceData(@Param('orderId') orderId: string, @CurrentUser() user: any) {
     // Use 'any' cast — Prisma types update after `prisma generate` on deploy
-    const order: any = await this.prisma.order.findUnique({
+    const order: any = await (this.prisma.order.findUnique as any)({
       where: { id: orderId },
       include: {
         customer: { select: { email: true, name: true } },
         items: {
           include: {
             variant: {
-              include: { product: { include: { tenant: { select: { displayName: true } } } } },
+              include: {
+                product: {
+                  include: {
+                    tenant: { select: { displayName: true } },
+                    category: { select: { vatRate: true } },
+                  },
+                },
+              },
             },
           },
         },
@@ -251,7 +262,7 @@ export class PaymentController {
     const lines = order.items.map((item: any) => {
       const unitPrice = Number(item.unitPriceSnapshot);
       const qty       = item.qty;
-      const vatRate   = 0.20;
+      const vatRate   = Number(item.variant?.product?.category?.vatRate ?? 0.20);
       const lineTotal = unitPrice * qty;
       const vatAmount = lineTotal * vatRate;
       return {
@@ -301,12 +312,16 @@ export class PaymentController {
 
   private async _autoIssueInvoice(orderId: string, order: any): Promise<void> {
     // Load the order with customer and items
-    const fullOrder = await this.prisma.order.findUnique({
+    // Cast prisma + result as any — Category.vatRate column added in 20260528010000
+    // migration; types regenerate at deploy on prisma generate
+    const fullOrder: any = await (this.prisma.order.findUnique as any)({
       where: { id: orderId },
       include: {
         customer: { select: { email: true, name: true } },
         items: {
-          include: { variant: { include: { product: true } } },
+          include: {
+            variant: { include: { product: { include: { category: { select: { vatRate: true } } } } } },
+          },
         },
       },
     });
@@ -330,7 +345,8 @@ export class PaymentController {
         description: item.variant?.product?.title ?? `Item ${item.variantId.slice(0, 8)}`,
         quantity:    item.qty,
         unitPrice:   Number(item.unitPriceSnapshot),
-        vatRate:     0.20,
+        // Per-category KDV — fallback to %20 if no category set
+        vatRate:     Number((item.variant?.product as any)?.category?.vatRate ?? 0.20),
         unit:        'ADET',
       })),
       currency:    fullOrder.currency,

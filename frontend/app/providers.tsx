@@ -10,6 +10,7 @@ import { ScrollToTop } from '../components/ui/ScrollToTop';
 import { CookieBanner } from '../components/ui/CookieBanner';
 import { HtmlLangSync } from '../components/ui/HtmlLangSync';
 import { MobileBottomNav } from '../components/layout/MobileBottomNav';
+import { PageViewTracker } from '../components/analytics/PageViewTracker';
 import { useAuthStore } from '../store/auth.store';
 import axios from 'axios';
 
@@ -71,6 +72,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider>
         <AuthBootstrap />
         <HtmlLangSync />
+        <PageViewTracker />
         {children}
         <Toaster />
         <SearchPalette />

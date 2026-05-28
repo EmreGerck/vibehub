@@ -15,7 +15,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { NfcService } from './nfc.service';
-import { CreateNfcTagDto, UpdateNfcTagDto, QueryNfcTagsDto, BulkUpdateDestinationDto } from './dto/nfc.dto';
+import {
+  CreateNfcTagDto, UpdateNfcTagDto, QueryNfcTagsDto, BulkUpdateDestinationDto,
+  BulkGenerateNfcTagsDto, AssignNfcTagDto,
+} from './dto/nfc.dto';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { Public } from '../common/public.decorator';
@@ -112,5 +115,34 @@ export class NfcController {
   @ApiOperation({ summary: 'Bulk update destination URL for all tags of a vendor' })
   async bulkUpdate(@Body() dto: BulkUpdateDestinationDto, @CurrentUser('id') actorId: string) {
     return ApiResponse.ok(await this.nfcService.bulkUpdateByTenant(dto, actorId), 'Bulk update complete');
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  @Post('tags/bulk-generate')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Bulk generate N NFC tags in one shot (max 1000/call). Each gets a unique staticUrl.' })
+  async bulkGenerate(@Body() dto: BulkGenerateNfcTagsDto, @CurrentUser('id') actorId: string) {
+    return ApiResponse.ok(await this.nfcService.bulkGenerate(dto, actorId), `Generated ${dto.count} NFC tags`);
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  @Patch('tags/:id/assign')
+  @ApiOperation({ summary: 'Assign or unassign an NFC tag to a specific user' })
+  async assignTag(
+    @Param('id') id: string,
+    @Body() dto: AssignNfcTagDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return ApiResponse.ok(await this.nfcService.assignTag(id, dto, actorId), 'NFC tag assignment updated');
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  @Get('batches')
+  @ApiOperation({ summary: 'List NFC tag batches (groups created via bulk-generate)' })
+  async listBatches() {
+    return ApiResponse.ok(await this.nfcService.listBatches());
   }
 }

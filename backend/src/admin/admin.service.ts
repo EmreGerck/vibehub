@@ -31,6 +31,7 @@ import {
 } from './dto/admin-extras.dto';
 import { PermissionsService } from '../permissions/permissions.service';
 import { MailService } from '../mail/mail.service';
+import { SeoService } from '../seo/seo.service';
 import { OrderStatus, ProductStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -53,6 +54,7 @@ export class AdminService {
     private readonly vendor: VendorService,
     private readonly permissions: PermissionsService,
     private readonly mail: MailService,
+    private readonly seo: SeoService,
   ) {}
 
   // ── Platform overview stats ───────────────────────────────────────────────────
@@ -966,6 +968,9 @@ export class AdminService {
       targetId: productId,
     });
 
+    // SEO: revalidate frontend cache + ping IndexNow so Google sees the new URL
+    void this.seo.productChanged(productId, updated.tenant?.slug);
+
     return updated;
   }
 
@@ -978,6 +983,9 @@ export class AdminService {
       data: { status: ProductStatus.ARCHIVED },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });
+
+    // SEO: revalidate so the unpublished URL disappears from sitemap promptly
+    void this.seo.productChanged(productId, updated.tenant?.slug);
 
     await this.audit.log({
       actorId,

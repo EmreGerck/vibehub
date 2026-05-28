@@ -3,6 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
+/** Minimal HTML escape for email template interpolation. */
+function escapeHtml(value: string | null | undefined): string {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Sends transactional email via SMTP (nodemailer).
  * Falls back to logging the email body when SMTP_HOST is unset (local dev),
@@ -188,6 +199,43 @@ export class MailService {
       `https://vibehub.com.tr/profile/orders`,
     );
     await this.send(to, subject, html, `VibeHub siparişiniz alındı: #${shortId}`);
+  }
+
+  /**
+   * Notify the platform admin of a new incoming order.
+   * Fired from order.service.placeOrder right after the order row is created.
+   * Recipient is PlatformSettings.orderNotificationEmail.
+   */
+  async sendAdminNewOrder(
+    to: string,
+    orderId: string,
+    customerEmail: string,
+    customerName: string | null,
+    totalAmount: number,
+    currency: string,
+    itemCount: number,
+    items: Array<{ title: string; qty: number }>,
+  ): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const formattedTotal = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(totalAmount);
+    const itemList = items.slice(0, 10).map((i) =>
+      `<li style="padding:4px 0;color:#ddd;"><strong>${escapeHtml(i.title)}</strong> × ${i.qty}</li>`
+    ).join('');
+    const moreItems = items.length > 10 ? `<li style="color:#999;font-style:italic;">…ve ${items.length - 10} ürün daha</li>` : '';
+    const subject = `🛒 Yeni sipariş — #${shortId} (${formattedTotal})`;
+    const html = this.orderEmailHtml(
+      '🛒 Yeni sipariş geldi!',
+      `<strong>${formattedTotal}</strong> tutarında yeni bir sipariş alındı.<br/><br/>
+      <strong>Sipariş ID:</strong> #${shortId}<br/>
+      <strong>Müşteri:</strong> ${escapeHtml(customerName ?? customerEmail)} (<a href="mailto:${escapeHtml(customerEmail)}" style="color:#a855f7;">${escapeHtml(customerEmail)}</a>)<br/>
+      <strong>Ürün sayısı:</strong> ${itemCount}<br/><br/>
+      <strong>Ürünler:</strong>
+      <ul style="margin:8px 0 16px;padding-left:20px;">${itemList}${moreItems}</ul>
+      Bu siparişi onaylamak ve kargo oluşturmak için aşağıdaki bağlantıyı kullanın.`,
+      'Admin Panelde Görüntüle',
+      `https://vibehub.com.tr/dashboard/admin/orders?status=PLACED`,
+    );
+    await this.send(to, subject, html, `${formattedTotal} tutarında yeni sipariş: #${shortId}`);
   }
 
   async sendOrderConfirmed(to: string, orderId: string): Promise<void> {

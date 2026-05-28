@@ -40,6 +40,8 @@ import { SearchModule } from './search/search.module';
 import { KargoModule } from './kargo/kargo.module';
 import { TrapModule } from './trap/trap.module';
 import { MerchantFeedModule } from './merchant-feed/merchant-feed.module';
+import { SeoModule } from './seo/seo.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -83,6 +85,8 @@ import { MerchantFeedModule } from './merchant-feed/merchant-feed.module';
     KargoModule,
     TrapModule,
     MerchantFeedModule,
+    SeoModule,
+    AnalyticsModule,
   ],
   providers: [
     // All routes are JWT-protected by default; decorate with @Public() to opt out

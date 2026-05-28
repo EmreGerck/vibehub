@@ -76,12 +76,29 @@ export class CartService {
 
     // Pre-order products are sold based on the time window, not inventory.
     // Only enforce stock checks for regular (non-pre-order) products.
-    const isPreOrder = variant.product.preOrderEndsAt !== null && variant.product.preOrderEndsAt !== undefined;
+    const isPreOrder = !!variant.product.isPreOrder;
     if (!isPreOrder && variant.stockQty < dto.qty) {
       throw new BadRequestException(`Only ${variant.stockQty} in stock`);
     }
 
     const entries = await this.readEntries(userId);
+
+    // Single-currency cart enforcement: prevent mixing TRY/USD/EUR items in
+    // the same cart (causes silent wrong totals at checkout). If the cart has
+    // items already, the new variant's currency must match.
+    if (entries.length > 0) {
+      const firstExisting = await this.prisma.productVariant.findUnique({
+        where: { id: entries[0].variantId },
+        include: { product: { select: { currency: true } } },
+      });
+      const cartCurrency = firstExisting?.product?.currency;
+      if (cartCurrency && variant.product.currency !== cartCurrency) {
+        throw new BadRequestException(
+          `Sepetinde ${cartCurrency} para birimi ürün var. Farklı para birimi (${variant.product.currency}) ürün ekleyemezsin — önce sepeti boşalt.`,
+        );
+      }
+    }
+
     const existing = entries.find((e) => e.variantId === dto.variantId);
 
     if (existing) {

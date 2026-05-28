@@ -55,6 +55,17 @@ export class OrderService {
 
     const variantMap = new Map(variants.map((v) => [v.id, v]));
 
+    // Single-currency enforcement: every product must share the same currency.
+    // The cart layer also blocks mixing, but we double-check here in case state
+    // got out of sync (e.g., vendor changed product currency after add-to-cart).
+    const currencies = new Set(variants.map((v) => v.product.currency));
+    if (currencies.size > 1) {
+      throw new BadRequestException(
+        `Sepetin birden fazla para birimi (${Array.from(currencies).join(', ')}) içeriyor — siparişi tamamlamak için tek para birimine indir.`,
+      );
+    }
+    const cartCurrency = variants[0]?.product?.currency || 'TRY';
+
     // Validate every item before touching the DB
     for (const entry of cartItems) {
       const v = variantMap.get(entry.variantId);
@@ -131,7 +142,8 @@ export class OrderService {
           customerId,
           status: OrderStatus.PLACED,
           totalAmount,
-          currency: dto.currency ?? 'USD',
+          // Use the cart's authoritative currency, not whatever the client sent
+          currency: cartCurrency,
           shippingAddress: dto.shippingAddress as any,
           items: {
             create: lineItems.map(({ variant: _v, ...item }) => item),
@@ -173,7 +185,7 @@ export class OrderService {
 
     const customer = await this.prisma.user.findUnique({
       where: { id: customerId },
-      select: { email: true },
+      select: { email: true, name: true },
     });
     if (customer) {
       await this.queue.sendMail({
@@ -200,6 +212,37 @@ export class OrderService {
       );
     } catch (err: any) {
       this.logger.warn(`[order.placeOrder] notification dispatch failed: ${err?.message ?? err}`);
+    }
+
+    // Notify ADMIN via email — pull recipient from PlatformSettings.orderNotificationEmail.
+    // Fail silently if no setting configured (don't block the order on a missing config).
+    try {
+      const settings = await this.prisma.platformSettings.findUnique({
+        where: { id: 'singleton' },
+        select: { orderNotificationEmail: true },
+      });
+      const adminEmail = settings?.orderNotificationEmail;
+      if (adminEmail) {
+        const itemList = order.items.map((it: any) => ({
+          title: it.variant?.product?.title ?? `Ürün ${it.variantId.slice(0, 8)}`,
+          qty: it.qty,
+        }));
+        // Fire-and-forget — admin notification shouldn't fail the customer's order
+        this.mail.sendAdminNewOrder(
+          adminEmail,
+          order.id,
+          customer?.email ?? '',
+          (customer as any)?.name ?? null,
+          Number(order.totalAmount),
+          order.currency,
+          order.items.length,
+          itemList,
+        ).catch((err: any) =>
+          this.logger.warn(`[order.placeOrder] admin email failed: ${err?.message ?? err}`),
+        );
+      }
+    } catch (err: any) {
+      this.logger.warn(`[order.placeOrder] admin email lookup failed: ${err?.message ?? err}`);
     }
 
     return order;
@@ -583,6 +626,36 @@ export class OrderService {
         products:          preOrderItems.map((i) => i.variant?.product?.title).filter(Boolean),
       },
     });
+
+    // NOTE: real payment refund (Iyzico) goes here when keys are live.
+    // For now log the obligation — admin manually refunds in Iyzico panel.
+    // Customer gets push so they know the cancel was registered.
+    if (order.paymentRef) {
+      this.logger.warn(
+        `[PRE-ORDER-CANCEL] Order ${orderId} cancelled — manual payment refund required in Iyzico panel (ref: ${order.paymentRef})`,
+      );
+    }
+
+    // Notify customer
+    try {
+      await this.notifications.create({
+        userId: customerId,
+        type: NotificationType.ORDER_SHIPPED,
+        title: '🚫 Ön sipariş iptal edildi',
+        body: order.paymentRef
+          ? 'Para iaden 5-10 iş günü içinde hesabına yansıyacak.'
+          : 'Siparişin iptal edildi.',
+        data: { orderId, kind: 'PREORDER_CANCELLED' },
+      });
+      await this.push.sendToUser(
+        customerId,
+        '🚫 Ön sipariş iptal edildi',
+        order.paymentRef ? 'Para iaden 5-10 iş günü içinde dönecek' : 'Siparişin iptal edildi',
+        { url: `/profile/orders/${orderId}`, type: 'PREORDER_CANCELLED', orderId },
+      );
+    } catch (err: any) {
+      this.logger.warn(`[cancelPreOrder] notification dispatch failed: ${err?.message ?? err}`);
+    }
 
     return { id: orderId, status: OrderStatus.CANCELLED, preOrderItemsCancelled: preOrderItems.length };
   }
