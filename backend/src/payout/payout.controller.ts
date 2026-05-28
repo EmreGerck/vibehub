@@ -19,7 +19,7 @@ import {
   QueryPayoutsDto,
 } from './dto/payout.dto';
 import { Roles } from '../common/roles.decorator';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { RequirePermissions } from '../permissions/permissions.decorator';
 
@@ -35,7 +35,7 @@ export class PayoutController {
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @RequirePermissions(VendorPermission.PAYOUT_REQUEST)
   @ApiOperation({ summary: "List the caller's own payouts" })
-  async listMine(@Query() query: QueryPayoutsDto, @CurrentUser() user: any) {
+  async listMine(@Query() query: QueryPayoutsDto, @CurrentUser() user: AuthenticatedUser) {
     if (!user.tenantId) {
       return ApiResponse.ok({ items: [], total: 0, page: 1, limit: query.limit ?? 20 }, 'No store');
     }
@@ -52,7 +52,7 @@ export class PayoutController {
       'Vendor requests a payout for everything DELIVERED since their last payout. ' +
       'Period is computed automatically; amounts are auto-summed from order items.',
   })
-  async requestMine(@CurrentUser() user: any) {
+  async requestMine(@CurrentUser() user: AuthenticatedUser) {
     if (!user.tenantId) {
       throw new (await import('@nestjs/common').then((m) => m.BadRequestException))(
         'Bu hesabın bir mağazası yok — payout talep edilemez.',

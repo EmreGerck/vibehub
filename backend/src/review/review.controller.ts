@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Delete, Body, Param, Query } from '@nestjs/common';
 import { ReviewService } from './review.service';
 import { CreateReviewDto } from './dto/create-review.dto';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '@prisma/client';
@@ -11,7 +11,7 @@ export class ReviewController {
   constructor(private reviewService: ReviewService) {}
 
   @Post()
-  async create(@CurrentUser() user: any, @Body() dto: CreateReviewDto) {
+  async create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateReviewDto) {
     const review = await this.reviewService.create(user.id, dto);
     return { success: true, data: review, message: 'Review created' };
   }
@@ -39,7 +39,7 @@ export class ReviewController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+  async remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const isAdmin = user.role === UserRole.PLATFORM_ADMIN || user.role === UserRole.GOD_USER;
     await this.reviewService.remove(id, user.id, isAdmin);
     return { success: true, message: 'Review deleted' };

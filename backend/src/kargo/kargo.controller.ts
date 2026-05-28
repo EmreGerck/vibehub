@@ -7,7 +7,7 @@ import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { KargoService } from './kargo.service';
 import { CreateShipmentDto } from './dto/kargo.dto';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { Roles } from '../common/roles.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,7 +33,7 @@ export class KargoController {
   @ApiOperation({ summary: 'Create a new shipment for an order' })
   async createShipment(
     @Body()         dto:  CreateShipmentDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     // Order items carry the tenantId — get it from there
     const order = await this.prisma.order.findUnique({
@@ -76,7 +76,7 @@ export class KargoController {
   @ApiOperation({ summary: 'Get all shipments for an order' })
   async orderShipments(
     @Param('orderId') orderId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const order = await this.prisma.order.findUnique({
       where:   { id: orderId },
@@ -101,7 +101,7 @@ export class KargoController {
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @ApiOperation({ summary: 'List shipments for the authenticated vendor\'s tenant' })
   async myShipments(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page')  page  = '1',
     @Query('limit') limit = '20',
   ) {
@@ -115,7 +115,7 @@ export class KargoController {
   @ApiOperation({ summary: 'Get return shipment info for an order' })
   async getReturnShipment(
     @Param('orderId') orderId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const order = await this.prisma.order.findUnique({
       where:   { id: orderId },
@@ -141,7 +141,7 @@ export class KargoController {
   async confirmDepotArrival(
     @Param('orderId') orderId: string,
     @Body() dto: DepotArrivalDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const rs = await this.kargo.confirmDepotArrival(orderId, dto.note, user.id);
     return ApiResponse.ok(rs, 'Depot arrival confirmed');

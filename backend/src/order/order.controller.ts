@@ -18,7 +18,7 @@ import { PlaceOrderDto } from './dto/place-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrdersDto } from './dto/query-orders.dto';
 import { Roles } from '../common/roles.decorator';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { RequirePermissions } from '../permissions/permissions.decorator';
 import { VendorPermission } from '@prisma/client';
@@ -46,21 +46,21 @@ export class OrderController {
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post()
   @ApiOperation({ summary: 'Place an order from the current cart' })
-  async placeOrder(@Body() dto: PlaceOrderDto, @CurrentUser() user: any) {
+  async placeOrder(@Body() dto: PlaceOrderDto, @CurrentUser() user: AuthenticatedUser) {
     const order = await this.orderService.placeOrder(user.id, dto);
     return ApiResponse.ok(order, 'Order placed successfully');
   }
 
   @Get('my')
   @ApiOperation({ summary: 'Get current customer order history' })
-  async getMyOrders(@Query() query: QueryOrdersDto, @CurrentUser() user: any) {
+  async getMyOrders(@Query() query: QueryOrdersDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.orderService.getMyOrders(user.id, query);
     return ApiResponse.ok(result, 'Orders retrieved');
   }
 
   @Get('my/:id')
   @ApiOperation({ summary: 'Get a specific order (customer view)' })
-  async getMyOrder(@Param('id') id: string, @CurrentUser() user: any) {
+  async getMyOrder(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const order = await this.orderService.getOrderById(id, user);
     return ApiResponse.ok(order, 'Order retrieved');
   }
@@ -68,7 +68,7 @@ export class OrderController {
   @Patch('my/:id/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel an order (only PLACED or CONFIRMED)' })
-  async cancelOrder(@Param('id') id: string, @CurrentUser() user: any) {
+  async cancelOrder(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.orderService.cancelOrder(id, user.id);
     return ApiResponse.ok(result, 'Order cancelled');
   }
@@ -76,7 +76,7 @@ export class OrderController {
   @Patch('my/:id/cancel-preorder')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel a pre-order before it ships (customer-initiated)' })
-  async cancelPreOrder(@Param('id') id: string, @CurrentUser() user: any) {
+  async cancelPreOrder(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.orderService.cancelPreOrder(id, user.id);
     return ApiResponse.ok(result, 'Pre-order cancelled');
   }
@@ -88,7 +88,7 @@ export class OrderController {
   async requestRefund(
     @Param('id') id: string,
     @Body() dto: RequestRefundDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const result = await this.orderService.requestRefund(id, user.id, dto.reason);
     return ApiResponse.ok(result, 'Refund request submitted');
@@ -100,7 +100,7 @@ export class OrderController {
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @RequirePermissions(VendorPermission.ORDER_VIEW)
   @ApiOperation({ summary: "Get orders containing vendor's items" })
-  async getVendorOrders(@Query() query: QueryOrdersDto, @CurrentUser() user: any) {
+  async getVendorOrders(@Query() query: QueryOrdersDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.orderService.getVendorOrders(user.tenantId, query);
     return ApiResponse.ok(result, 'Vendor orders retrieved');
   }
@@ -114,7 +114,7 @@ export class OrderController {
   async updateVendorOrderStatus(
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const order = await this.orderService.updateStatusAsVendor(id, dto, user);
     return ApiResponse.ok(order, 'Order status updated');
@@ -133,7 +133,7 @@ export class OrderController {
   @Get('admin/:id')
   @Roles(UserRole.PLATFORM_ADMIN, UserRole.GOD_USER)
   @ApiOperation({ summary: 'Get any order by ID (admin)' })
-  async getOrderAdmin(@Param('id') id: string, @CurrentUser() user: any) {
+  async getOrderAdmin(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const order = await this.orderService.getOrderById(id, user);
     return ApiResponse.ok(order, 'Order retrieved');
   }
@@ -145,7 +145,7 @@ export class OrderController {
   async adminUpdateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const order = await this.orderService.updateStatusAsAdmin(id, dto, user.id);
     return ApiResponse.ok(order, 'Order status overridden');
@@ -159,7 +159,7 @@ export class OrderController {
   async approveRefund(
     @Param('id') id: string,
     @Body() dto: ApproveRefundDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const order = await this.orderService.approveRefund(id, user.id, dto.note);
     return ApiResponse.ok(order, 'Refund approved');
@@ -173,7 +173,7 @@ export class OrderController {
   async rejectRefund(
     @Param('id') id: string,
     @Body() dto: RejectRefundDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const order = await this.orderService.rejectRefund(id, user.id, dto.note);
     return ApiResponse.ok(order, 'Refund rejected');

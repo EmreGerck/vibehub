@@ -21,7 +21,7 @@ import { UpdateVendorDto } from './dto/update-vendor.dto';
 import { QueryVendorsDto } from './dto/query-vendors.dto';
 import { Public } from '../common/public.decorator';
 import { Roles } from '../common/roles.decorator';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { RequirePermissions } from '../permissions/permissions.decorator';
 import { VendorPermission } from '@prisma/client';
@@ -68,7 +68,7 @@ export class VendorController {
   @ApiBearerAuth()
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @ApiOperation({ summary: "Get the caller's own store" })
-  async getMyStore(@CurrentUser() user: any) {
+  async getMyStore(@CurrentUser() user: AuthenticatedUser) {
     const tenant = await this.vendorService.getMyTenant(user.id);
     return ApiResponse.ok(tenant, 'Store retrieved');
   }
@@ -78,7 +78,7 @@ export class VendorController {
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @RequirePermissions(VendorPermission.STOREFRONT_EDIT)
   @ApiOperation({ summary: "Update caller's own store profile" })
-  async updateMyStore(@CurrentUser() user: any, @Body() dto: UpdateVendorDto) {
+  async updateMyStore(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateVendorDto) {
     const tenant = await this.vendorService.update(user.tenantId, dto, user.id);
     return ApiResponse.ok(tenant, 'Store updated');
   }
@@ -87,7 +87,7 @@ export class VendorController {
   @ApiBearerAuth()
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @ApiOperation({ summary: "Get the permissions granted to the caller's store (used to gate vendor UI)" })
-  async getMyPermissions(@CurrentUser() user: any) {
+  async getMyPermissions(@CurrentUser() user: AuthenticatedUser) {
     if (!user.tenantId) {
       return ApiResponse.ok({ permissions: [] }, 'No store associated');
     }
@@ -104,7 +104,7 @@ export class VendorController {
   async review(
     @Param('id') id: string,
     @Body() dto: ReviewVendorDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenant = await this.vendorService.review(id, dto, user.id);
     return ApiResponse.ok(tenant, `Vendor ${dto.decision.toLowerCase()}d`);
@@ -125,7 +125,7 @@ export class VendorController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Follow a vendor store' })
-  async follow(@Param('id') id: string, @CurrentUser() user: any) {
+  async follow(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     await this.vendorService.follow(user.id, id);
     return ApiResponse.ok(null, 'Following');
   }
@@ -134,7 +134,7 @@ export class VendorController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Unfollow a vendor store' })
-  async unfollow(@Param('id') id: string, @CurrentUser() user: any) {
+  async unfollow(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     await this.vendorService.unfollow(user.id, id);
     return ApiResponse.ok(null, 'Unfollowed');
   }
@@ -142,7 +142,7 @@ export class VendorController {
   @Get(':id/follow')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Check follow status for a vendor' })
-  async followStatus(@Param('id') id: string, @CurrentUser() user: any) {
+  async followStatus(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const status = await this.vendorService.getFollowStatus(user.id, id);
     return ApiResponse.ok(status, 'Follow status');
   }

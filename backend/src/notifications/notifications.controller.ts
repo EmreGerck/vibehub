@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IsString, MaxLength, MinLength } from 'class-validator';
 import { NotificationsService } from './notifications.service';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiResponse } from '../common/response.dto';
@@ -33,7 +33,7 @@ export class NotificationsController {
   @Get()
   @ApiOperation({ summary: 'Get paginated in-app notifications for the current user' })
   async findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page') page = '1',
     @Query('limit') limit = '30',
   ) {
@@ -47,7 +47,7 @@ export class NotificationsController {
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Get count of unread notifications' })
-  async unreadCount(@CurrentUser() user: any) {
+  async unreadCount(@CurrentUser() user: AuthenticatedUser) {
     const count = await this.notificationsService.unreadCount(user.id);
     return ApiResponse.ok({ count }, 'Unread count');
   }
@@ -55,7 +55,7 @@ export class NotificationsController {
   @Patch('read-all')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark all notifications as read' })
-  async markAllRead(@CurrentUser() user: any) {
+  async markAllRead(@CurrentUser() user: AuthenticatedUser) {
     await this.notificationsService.markAllRead(user.id);
     return ApiResponse.ok(null, 'All notifications marked as read');
   }
@@ -63,7 +63,7 @@ export class NotificationsController {
   @Patch(':id/read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark a single notification as read' })
-  async markRead(@CurrentUser() user: any, @Param('id') id: string) {
+  async markRead(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     await this.notificationsService.markRead(user.id, id);
     return ApiResponse.ok(null, 'Notification marked as read');
   }
@@ -83,7 +83,7 @@ export class AdminNotificationsController {
   @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
   @Throttle({ default: { ttl: 3600000, limit: 5 } })
   @ApiOperation({ summary: 'Broadcast a push notification to all users with registered devices (5/hr per admin, audit-logged)' })
-  async pushBroadcast(@Body() dto: PushBroadcastDto, @CurrentUser() user: any) {
+  async pushBroadcast(@Body() dto: PushBroadcastDto, @CurrentUser() user: AuthenticatedUser) {
     await this.notificationsService.broadcastPush(dto.title, dto.body);
     // Audit-log every broadcast — blast radius = every user with a device token
     await this.audit.log({

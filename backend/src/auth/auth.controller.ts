@@ -20,7 +20,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -120,6 +120,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate access token using httpOnly refresh cookie' })
   async refresh(
+    // NOTE: `user` is intentionally `any` here. `JwtRefreshGuard` uses the
+    // `jwt-refresh` strategy which returns `{...JwtPayload, refreshToken}` —
+    // a different shape than the global `JwtAuthGuard` (no `id` field, uses `sub`).
+    // Don't substitute AuthenticatedUser — it would lie about the available keys.
     @CurrentUser() user: any,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -138,7 +142,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke refresh token and clear cookie' })
   async logout(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -151,14 +155,14 @@ export class AuthController {
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current authenticated user' })
-  async me(@CurrentUser() user: any) {
+  async me(@CurrentUser() user: AuthenticatedUser) {
     return ApiResponse.ok(user, 'Current user');
   }
 
   @Get('profile')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get full profile of current user' })
-  async getProfile(@CurrentUser() user: any) {
+  async getProfile(@CurrentUser() user: AuthenticatedUser) {
     const profile = await this.authService.getProfile(user.id);
     return ApiResponse.ok(profile, 'User profile');
   }
@@ -166,7 +170,7 @@ export class AuthController {
   @Post('profile') // Need PATCH or POST, Post is fine but let's use PATCH
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current user profile' })
-  async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
+  async updateProfile(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateProfileDto) {
     const profile = await this.authService.updateProfile(user.id, dto);
     return ApiResponse.ok(profile, 'Profile updated');
   }
@@ -193,7 +197,7 @@ export class AuthController {
   @Post('change-password')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change user password' })
-  async changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto) {
+  async changePassword(@CurrentUser() user: AuthenticatedUser, @Body() dto: ChangePasswordDto) {
     await this.authService.changePassword(user.id, dto);
     return ApiResponse.ok(null, 'Password changed successfully');
   }
@@ -201,7 +205,7 @@ export class AuthController {
   @Delete('account')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Permanently delete own account (KVKK Art. 11 right to erasure)' })
-  async deleteAccount(@CurrentUser() user: any, @Body() dto: DeleteAccountDto) {
+  async deleteAccount(@CurrentUser() user: AuthenticatedUser, @Body() dto: DeleteAccountDto) {
     await this.authService.deleteAccount(user.id, dto.password);
     return ApiResponse.ok(null, 'Account deleted');
   }
@@ -209,7 +213,7 @@ export class AuthController {
   @Patch('marketing-consent')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update marketing consent preference' })
-  async updateMarketingConsent(@CurrentUser() user: any, @Body() dto: UpdateMarketingConsentDto) {
+  async updateMarketingConsent(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateMarketingConsentDto) {
     const result = await this.authService.updateMarketingConsent(user.id, dto.consent);
     return ApiResponse.ok(result, 'Marketing consent updated');
   }
@@ -219,7 +223,7 @@ export class AuthController {
   @Get('devices')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List all active trusted devices for current user' })
-  async listDevices(@CurrentUser() user: any) {
+  async listDevices(@CurrentUser() user: AuthenticatedUser) {
     const devices = await this.authService.listTrustedDevices(user.id);
     return ApiResponse.ok(devices, 'Trusted devices retrieved');
   }
@@ -228,7 +232,7 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Revoke all trusted devices (forces OTP on next login from all devices)' })
-  async revokeAllDevices(@CurrentUser() user: any) {
+  async revokeAllDevices(@CurrentUser() user: AuthenticatedUser) {
     const result = await this.authService.revokeAllTrustedDevices(user.id);
     return ApiResponse.ok(result, 'All trusted devices revoked');
   }
@@ -237,7 +241,7 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Revoke a specific trusted device by ID' })
-  async revokeDevice(@CurrentUser() user: any, @Param('id') deviceId: string) {
+  async revokeDevice(@CurrentUser() user: AuthenticatedUser, @Param('id') deviceId: string) {
     const result = await this.authService.revokeTrustedDevice(user.id, deviceId);
     return ApiResponse.ok(result, 'Device revoked');
   }

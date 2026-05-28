@@ -11,7 +11,7 @@ import { IyzicoService } from './iyzico.service';
 import { EInvoiceService } from '../einvoice/einvoice.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
 import { Roles } from '../common/roles.decorator';
 import { ApiResponse } from '../common/response.dto';
@@ -44,7 +44,7 @@ export class PaymentController {
   @Post('iyzico/initiate/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Initiate İyzico checkout session for an order' })
-  async initiate(@Param('orderId') orderId: string, @CurrentUser() user: any) {
+  async initiate(@Param('orderId') orderId: string, @CurrentUser() user: AuthenticatedUser) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new BadRequestException('Order not found');
     if (order.customerId !== user.id) throw new ForbiddenException('Not your order');
@@ -143,6 +143,10 @@ export class PaymentController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Simulate payment confirmation (demo mode — non-production only)' })
+  // NOTE: `user` is intentionally `any` here. The mock-pay handler pulls
+  // Prisma-typed fields (order with deep-includes) and threads them through
+  // helpers without strict typing. Casting on each access would be noisier
+  // than the alternative. Real-prod cleanup is in Sprint 12 G2.
   async mockPay(@Body() dto: MockPayDto, @CurrentUser() user: any) {
     // Hard production guard — never allow free order confirmation in real env
     if (this.config.get<string>('NODE_ENV') === 'production') {
@@ -232,7 +236,7 @@ export class PaymentController {
   @Get('invoice/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get invoice data for an order (customer-facing)' })
-  async getInvoiceData(@Param('orderId') orderId: string, @CurrentUser() user: any) {
+  async getInvoiceData(@Param('orderId') orderId: string, @CurrentUser() user: AuthenticatedUser) {
     // Use 'any' cast — Prisma types update after `prisma generate` on deploy
     const order: any = await (this.prisma.order.findUnique as any)({
       where: { id: orderId },

@@ -21,7 +21,7 @@ import { QueryProductsDto } from './dto/query-products.dto';
 import { ReviewProductDto } from './dto/review-product.dto';
 import { Public } from '../common/public.decorator';
 import { Roles } from '../common/roles.decorator';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { RequirePermissions } from '../permissions/permissions.decorator';
 import { VendorPermission } from '@prisma/client';
@@ -90,7 +90,7 @@ export class ProductController {
   @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
   @RequirePermissions(VendorPermission.PRODUCT_CREATE)
   @ApiOperation({ summary: 'Create a new product (DRAFT)' })
-  async create(@Body() dto: CreateProductDto, @CurrentUser() user: any) {
+  async create(@Body() dto: CreateProductDto, @CurrentUser() user: AuthenticatedUser) {
     const product = await this.productService.create(user.tenantId, dto, user.id);
     return ApiResponse.ok(product, 'Product created');
   }
@@ -103,7 +103,7 @@ export class ProductController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const product = await this.productService.update(id, dto, user);
     return ApiResponse.ok(product, 'Product updated');
@@ -115,7 +115,7 @@ export class ProductController {
   @RequirePermissions(VendorPermission.PRODUCT_SUBMIT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit product for review (DRAFT → PENDING_REVIEW)' })
-  async submit(@Param('id') id: string, @CurrentUser() user: any) {
+  async submit(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const product = await this.productService.submitForReview(id, user);
     return ApiResponse.ok(product, 'Submitted for review');
   }
@@ -126,7 +126,7 @@ export class ProductController {
   @RequirePermissions(VendorPermission.PRODUCT_DELETE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Archive a product (pull it from storefront)' })
-  async archive(@Param('id') id: string, @CurrentUser() user: any) {
+  async archive(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     const product = await this.productService.archive(id, user);
     return ApiResponse.ok(product, 'Product archived');
   }
@@ -141,7 +141,7 @@ export class ProductController {
   async createVariant(
     @Param('id') id: string,
     @Body() dto: CreateVariantDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const variant = await this.productService.createVariant(id, dto, user);
     return ApiResponse.ok(variant, 'Variant created');
@@ -155,7 +155,7 @@ export class ProductController {
   async updateVariant(
     @Param('variantId') variantId: string,
     @Body() dto: UpdateVariantDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const variant = await this.productService.updateVariant(variantId, dto, user);
     return ApiResponse.ok(variant, 'Variant updated');
@@ -170,7 +170,7 @@ export class ProductController {
   async adjustStock(
     @Param('variantId') variantId: string,
     @Body('delta') delta: number,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const variant = await this.productService.adjustStock(variantId, delta, user);
     return ApiResponse.ok(variant, 'Stock adjusted');
@@ -182,7 +182,7 @@ export class ProductController {
   @RequirePermissions(VendorPermission.VARIANT_MANAGE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a variant (only on DRAFT/ARCHIVED products)' })
-  async deleteVariant(@Param('variantId') variantId: string, @CurrentUser() user: any) {
+  async deleteVariant(@Param('variantId') variantId: string, @CurrentUser() user: AuthenticatedUser) {
     await this.productService.deleteVariant(variantId, user);
     return ApiResponse.ok(null, 'Variant deleted');
   }
@@ -206,7 +206,7 @@ export class ProductController {
   async reviewProduct(
     @Param('id') id: string,
     @Body() dto: ReviewProductDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const product = await this.productService.review(id, dto, user.id);
     return ApiResponse.ok(product, `Product ${dto.decision.toLowerCase()}d`);

@@ -21,6 +21,7 @@ import { CartService } from '../../cart/cart.service';
 import { QueueService } from '../../queue/queue.service';
 import { PushService } from '../../push/push.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { MailService } from '../../mail/mail.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -104,6 +105,9 @@ function makePrisma(overrides: {
         },
         productVariant: {
           update: jest.fn().mockResolvedValue({}),
+          // Atomic stock-decrement guard added in earlier sprint; default to
+          // "1 row updated" (success). Override per-test for race-loss scenarios.
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
       };
       return fn(tx);
@@ -123,6 +127,15 @@ const silentDeps = {
   queue:         { sendMail: jest.fn().mockResolvedValue(undefined) } as unknown as QueueService,
   push:          { sendToUser: jest.fn() } as unknown as PushService,
   notifications: { create: jest.fn() } as unknown as NotificationsService,
+  // Added Sprint 12 B4 — OrderService now sends vendor + admin emails directly
+  // (via MailService) in addition to queueing customer email via QueueService.
+  mail: {
+    sendVendorNewOrder:      jest.fn().mockResolvedValue(undefined),
+    sendVendorRefundRequest: jest.fn().mockResolvedValue(undefined),
+    sendAdminNewOrder:       jest.fn().mockResolvedValue(undefined),
+    sendRefundRequested:     jest.fn().mockResolvedValue(undefined),
+    sendReturnBarcode:       jest.fn().mockResolvedValue(undefined),
+  } as unknown as MailService,
 };
 
 async function buildService(overrides: {
@@ -138,6 +151,7 @@ async function buildService(overrides: {
       { provide: QueueService,         useValue: silentDeps.queue },
       { provide: PushService,          useValue: silentDeps.push },
       { provide: NotificationsService, useValue: silentDeps.notifications },
+      { provide: MailService,          useValue: silentDeps.mail },
     ],
   }).compile();
 
