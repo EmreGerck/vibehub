@@ -42,6 +42,39 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(n);
 }
 
+/** Compact action-required tile — animates a pulse for high-urgency counts. */
+function ActionTile({
+  href,
+  icon,
+  count,
+  label,
+  urgency,
+}: {
+  href: string;
+  icon: string;
+  count: number;
+  label: string;
+  urgency: 'high' | 'medium' | 'low';
+}) {
+  const cfg = {
+    high:   { bg: 'bg-red-50 dark:bg-red-900/30',    text: 'text-red-700 dark:text-red-300',    ring: 'ring-red-200 dark:ring-red-900/40 animate-pulse' },
+    medium: { bg: 'bg-amber-50 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', ring: 'ring-amber-200 dark:ring-amber-900/40' },
+    low:    { bg: 'bg-blue-50 dark:bg-blue-900/30',  text: 'text-blue-700 dark:text-blue-300',  ring: 'ring-blue-200 dark:ring-blue-900/40' },
+  }[urgency];
+  return (
+    <Link
+      href={href}
+      className={`block rounded-xl ${cfg.bg} ${cfg.ring} ring-1 px-4 py-3 hover:scale-[1.02] transition-transform`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xl">{icon}</span>
+        <span className={`text-2xl font-bold ${cfg.text}`}>{count}</span>
+      </div>
+      <p className={`text-xs font-medium ${cfg.text}`}>{label}</p>
+    </Link>
+  );
+}
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -54,6 +87,10 @@ function timeAgo(dateStr: string) {
 
 export default function AdminOverviewPage() {
   const { data, isLoading, error } = useAdminOverview();
+
+  // Pull action-required counts from overview (typed as `any` until shared types regenerate)
+  const action = (data as any)?.actionRequired;
+  const showActionRequired = action && action.totalActionable > 0;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -71,6 +108,72 @@ export default function AdminOverviewPage() {
         <div className="card p-4 border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 text-sm">
           Failed to load overview. Check your connection and try refreshing.
         </div>
+      )}
+
+      {/* ── ACTION REQUIRED — Top-priority operational inbox ───────────────── */}
+      {showActionRequired && (
+        <section className="-mb-2">
+          <div className="card p-5 border-l-4 border-amber-500 bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/20 dark:to-gray-950">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-2xl">⚡</span>
+              <div>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  Bana Bak — {action.totalActionable} işlem bekliyor
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Müşteriyi bekletmemek için bu işlemleri bugün halletmen önerilir
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {action.refundRequestsPending > 0 && (
+                <ActionTile
+                  href="/dashboard/admin/orders?status=REFUND_REQUESTED"
+                  icon="↩️"
+                  count={action.refundRequestsPending}
+                  label="İade Talebi"
+                  urgency="high"
+                />
+              )}
+              {action.ordersAwaitingShipment > 0 && (
+                <ActionTile
+                  href="/dashboard/admin/orders?status=CONFIRMED"
+                  icon="📦"
+                  count={action.ordersAwaitingShipment}
+                  label="Kargoya Çıkar"
+                  urgency="medium"
+                />
+              )}
+              {action.vendorApplicationsPending > 0 && (
+                <ActionTile
+                  href="/dashboard/admin/vendors?status=PENDING"
+                  icon="🏪"
+                  count={action.vendorApplicationsPending}
+                  label="Bekleyen Satıcı"
+                  urgency="medium"
+                />
+              )}
+              {action.productsAwaitingApproval > 0 && (
+                <ActionTile
+                  href="/dashboard/admin/products"
+                  icon="📝"
+                  count={action.productsAwaitingApproval}
+                  label="Ürün Onayı"
+                  urgency="medium"
+                />
+              )}
+              {action.returnShipmentsInTransit > 0 && (
+                <ActionTile
+                  href="/dashboard/admin/orders?status=REFUND_REQUESTED"
+                  icon="🚚"
+                  count={action.returnShipmentsInTransit}
+                  label="Yolda İade"
+                  urgency="low"
+                />
+              )}
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Orders & GMV */}

@@ -458,6 +458,7 @@ export default function AdminOrdersPage() {
   const t = useI18n((s) => s.t);
   const [page,           setPage]           = useState(1);
   const [statusFilter,   setStatusFilter]   = useState('');
+  const [search,         setSearch]         = useState('');
   const [expanded,       setExpanded]       = useState<string | null>(null);
   const [actionModal,    setActionModal]    = useState<{ order: any; kind: 'cancel' | 'refund' } | null>(null);
   const [refundModal,    setRefundModal]    = useState<any | null>(null);
@@ -469,6 +470,18 @@ export default function AdminOrdersPage() {
 
   const { data, isLoading } = useAdminOrders({ page, limit: 20, status: statusFilter || undefined });
   const { data: pendingRefunds } = useAdminOrders({ page: 1, limit: 50, status: 'REFUND_REQUESTED' });
+
+  // Client-side filter for order ID / customer email until backend search lands
+  const displayedOrders = (() => {
+    if (!search.trim() || !data?.items) return data?.items ?? [];
+    const q = search.trim().toLowerCase();
+    return data.items.filter((o: any) =>
+      o.id?.toLowerCase().includes(q) ||
+      o.customer?.email?.toLowerCase().includes(q) ||
+      o.customer?.name?.toLowerCase().includes(q) ||
+      o.paymentRef?.toLowerCase().includes(q),
+    );
+  })();
   const cancel = useAdminCancelOrder();
   const refund = useAdminRefundOrder();
 
@@ -500,7 +513,7 @@ export default function AdminOrdersPage() {
   return (
     <div className="p-6 md:p-8">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.orders')}</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm">{data?.total ?? 0} {t('admin.allVendors')}</p>
@@ -519,6 +532,34 @@ export default function AdminOrdersPage() {
           <option value="REFUND_REQUESTED">⚠️ İade Bekliyor</option>
           <option value="REFUNDED">{t('admin.refunded')}</option>
         </select>
+      </div>
+
+      {/* Search box — order ID, customer email, name, payment ref */}
+      <div className="mb-6">
+        <div className="relative">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="🔍 Sipariş ID, müşteri e-posta, isim veya ödeme ref ile ara…"
+            className="input pl-10 w-full"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">🔎</span>
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm"
+              aria-label="Aramayı temizle"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {search && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+            {displayedOrders.length} sonuç ({data?.items?.length ?? 0} arasında)
+          </p>
+        )}
       </div>
 
       {/* ── Pending refund alert banner ─────────────────────────────────────── */}
@@ -579,7 +620,7 @@ export default function AdminOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {data?.items.map((order: any) => (
+                {displayedOrders.map((order: any) => (
                   <tbody key={order.id}>
                     <tr
                       className={`border-b border-gray-200 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer transition-colors ${

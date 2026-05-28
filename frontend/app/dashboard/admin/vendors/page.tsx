@@ -7,6 +7,7 @@ import { useI18n } from '../../../../lib/i18n';
 import type { Tenant } from '../../../../types';
 import VendorFeaturesModal from '../../../../components/admin/VendorFeaturesModal';
 import ForumSettingsModal from '../../../../components/admin/ForumSettingsModal';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'badge-yellow',
@@ -113,8 +114,17 @@ export default function AdminVendorsPage() {
     }
   }
 
+  /** Stash a pending status change so the user can confirm in a modal first. */
+  const [statusConfirm, setStatusConfirm] = useState<{ vendor: Tenant; status: string } | null>(null);
+
   async function setStatus(id: string, status: string) {
     try { await patchStatus.mutateAsync({ id, status }); } catch {}
+  }
+
+  async function executeStatusConfirm() {
+    if (!statusConfirm) return;
+    await setStatus(statusConfirm.vendor.id, statusConfirm.status);
+    setStatusConfirm(null);
   }
 
   async function saveCommission() {
@@ -222,15 +232,15 @@ export default function AdminVendorsPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {(vendor.status as string) === 'PENDING' && (
                           <>
-                            <button onClick={() => setStatus(vendor.id, 'ACTIVE')} className="text-xs bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.approve')}</button>
-                            <button onClick={() => setStatus(vendor.id, 'REJECTED')} className="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.reject')}</button>
+                            <button onClick={() => setStatusConfirm({ vendor, status: 'ACTIVE' })} className="text-xs bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.approve')}</button>
+                            <button onClick={() => setStatusConfirm({ vendor, status: 'REJECTED' })} className="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.reject')}</button>
                           </>
                         )}
                         {(vendor.status as string) === 'ACTIVE' && (
-                          <button onClick={() => setStatus(vendor.id, 'FROZEN')} className="text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.freeze')}</button>
+                          <button onClick={() => setStatusConfirm({ vendor, status: 'FROZEN' })} className="text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.freeze')}</button>
                         )}
                         {(vendor.status as string) === 'FROZEN' && (
-                          <button onClick={() => setStatus(vendor.id, 'ACTIVE')} className="text-xs bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.unfreeze')}</button>
+                          <button onClick={() => setStatusConfirm({ vendor, status: 'ACTIVE' })} className="text-xs bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.unfreeze')}</button>
                         )}
                         <button
                           onClick={() => { setCommissionModal(vendor); setCommissionValue(String(Number(vendor.commissionRate))); }}
@@ -619,6 +629,50 @@ export default function AdminVendorsPage() {
           onClose={() => setForumSettingsModal(null)}
         />
       )}
+
+      {/* ── Status-change confirmation (approve / reject / freeze / unfreeze) ── */}
+      <ConfirmModal
+        open={!!statusConfirm}
+        onClose={() => setStatusConfirm(null)}
+        onConfirm={executeStatusConfirm}
+        busy={patchStatus.isPending}
+        title={(() => {
+          if (!statusConfirm) return '';
+          const m: Record<string, string> = {
+            ACTIVE: 'Bu satıcıyı onaylamak istediğine emin misin?',
+            REJECTED: 'Bu satıcı başvurusunu reddetmek istediğine emin misin?',
+            FROZEN: 'Bu satıcıyı dondurmak istediğine emin misin?',
+          };
+          return m[statusConfirm.status] ?? `Satıcıyı ${statusConfirm.status} olarak işaretle?`;
+        })()}
+        description={(() => {
+          if (!statusConfirm) return '';
+          if (statusConfirm.status === 'ACTIVE' && statusConfirm.vendor.status === 'PENDING') {
+            return 'Satıcıya "hoş geldin" e-postası gönderilecek ve mağazası canlıya çıkacak.';
+          }
+          if (statusConfirm.status === 'FROZEN') {
+            return 'Mağaza anında offline olacak ve müşteriler satın alamayacak. İstediğin zaman tekrar aktif edebilirsin.';
+          }
+          if (statusConfirm.status === 'REJECTED') {
+            return 'Satıcı başvurusu kalıcı olarak reddedilecek.';
+          }
+          if (statusConfirm.status === 'ACTIVE' && statusConfirm.vendor.status === 'FROZEN') {
+            return 'Mağaza tekrar müşterilere açılacak.';
+          }
+          return '';
+        })()}
+        danger={statusConfirm?.status === 'REJECTED' || statusConfirm?.status === 'FROZEN' ? 'critical' : 'warning'}
+        confirmLabel={statusConfirm?.status === 'ACTIVE' ? 'Onayla' : statusConfirm?.status === 'FROZEN' ? 'Dondur' : statusConfirm?.status === 'REJECTED' ? 'Reddet' : 'Devam Et'}
+        confirmPhrase={statusConfirm?.status === 'FROZEN' || statusConfirm?.status === 'REJECTED' ? statusConfirm?.vendor.slug : undefined}
+      >
+        {statusConfirm && (
+          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3 text-left">
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Satıcı</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{statusConfirm.vendor.displayName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">{statusConfirm.vendor.slug}</p>
+          </div>
+        )}
+      </ConfirmModal>
     </div>
   );
 }

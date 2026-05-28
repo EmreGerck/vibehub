@@ -63,6 +63,11 @@ export class AdminService {
       recentAuditEvents,
       gmvRaw,
       gmvLast30dRaw,
+      // ── Action-required counts (drives dashboard inbox widget) ──
+      ordersAwaitingShipment,
+      ordersAwaitingRefundReview,
+      productsAwaitingApproval,
+      returnShipmentsAwaitingDepot,
     ] = await Promise.all([
       this.prisma.order.count(),
       this.prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
@@ -83,6 +88,12 @@ export class AdminService {
         _sum: { totalAmount: true },
         where: { createdAt: { gte: thirtyDaysAgo } },
       }),
+      this.prisma.order.count({ where: { status: 'CONFIRMED' } }),
+      this.prisma.order.count({ where: { status: 'REFUND_REQUESTED' as any } }),
+      this.prisma.product.count({ where: { status: ProductStatus.PENDING_REVIEW } }),
+      (this.prisma as any).returnShipment.count({
+        where: { status: { in: ['INITIATED', 'DROPPED_OFF', 'IN_TRANSIT'] } },
+      }).catch(() => 0),
     ]);
 
     const toNumber = (d: any) => (d ? parseFloat(d.toString()) : 0);
@@ -103,6 +114,19 @@ export class AdminService {
       customers: totalCustomers,
       products: totalProducts,
       totalReviews: pendingReviews,
+      // ── Action-required inbox (admin operational dashboard) ──
+      actionRequired: {
+        ordersAwaitingShipment,         // CONFIRMED → create kargo
+        refundRequestsPending: ordersAwaitingRefundReview,  // REFUND_REQUESTED → approve/reject
+        productsAwaitingApproval,       // PENDING_REVIEW → review submission
+        returnShipmentsInTransit: returnShipmentsAwaitingDepot,  // Track for depot arrival
+        vendorApplicationsPending: pendingVendors,
+        totalActionable:
+          ordersAwaitingShipment +
+          ordersAwaitingRefundReview +
+          productsAwaitingApproval +
+          pendingVendors,
+      },
       recentAuditEvents: recentAuditEvents.map((e) => ({
         id: e.id,
         action: e.action,
