@@ -27,6 +27,7 @@ import { MediaModule } from './media/media.module';
 import { ForumModule } from './forum/forum.module';
 import { CategoryModule } from './category/category.module';
 import { ManufacturingModule } from './manufacturing/manufacturing.module';
+import { TradeLedgerModule } from './trade-ledger/trade-ledger.module';
 import { UserProfileModule } from './userprofile/userprofile.module';
 import { MessagesModule } from './messages/messages.module';
 import { DevicesModule } from './devices/devices.module';
@@ -74,6 +75,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     ForumModule,
     CategoryModule,
     ManufacturingModule,
+    TradeLedgerModule,
     UserProfileModule,
     MessagesModule,
     DevicesModule,

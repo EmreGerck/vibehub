@@ -52,10 +52,11 @@ const NAV_GROUPS: NavGroup[] = [
     icon: '💰',
     defaultOpen: true,
     items: [
-      { href: '/dashboard/admin/orders',     label: 'Siparişler',    icon: '🧾' },
-      { href: '/dashboard/admin/pre-orders', label: 'Ön Siparişler', icon: '🕐' },
-      { href: '/dashboard/admin/payouts',    label: 'Ödemeler',      icon: '💸' },
-      { href: '/dashboard/admin/financials', label: 'Finansal',      icon: '📊' },
+      { href: '/dashboard/admin/orders',        label: 'Siparişler',     icon: '🧾' },
+      { href: '/dashboard/admin/pre-orders',    label: 'Ön Siparişler',  icon: '🕐' },
+      { href: '/dashboard/admin/payouts',       label: 'Ödemeler',       icon: '💸' },
+      { href: '/dashboard/admin/financials',    label: 'Finansal',       icon: '📊' },
+      { href: '/dashboard/admin/trade-ledger',  label: 'Satış Geçmişi',  icon: '📒' },
     ],
   },
   {
