@@ -18,6 +18,9 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../push/push.service';
+import { NotificationType } from '@prisma/client';
 import * as https from 'https';
 
 export interface ShipmentCreateParams {
@@ -70,6 +73,8 @@ export class KargoService {
     private readonly config:  ConfigService,
     private readonly prisma:  PrismaService,
     private readonly mail:    MailService,
+    private readonly notifications: NotificationsService,
+    private readonly push:    PushService,
   ) {
     this.arasApiKey       = this.config.get('ARAS_KARGO_API_KEY', '');
     this.arasCustomerCode = this.config.get('ARAS_KARGO_CUSTOMER_CODE', '');
@@ -111,28 +116,56 @@ export class KargoService {
         },
       });
 
-      // Update order status to SHIPPED
+      // Update order status to SHIPPED + stamp shippedAt timestamp
       await this.prisma.order.update({
         where: { id: params.orderId },
-        data:  { status: 'SHIPPED' as any },
+        data:  { status: 'SHIPPED' as any, shippedAt: new Date() } as any,
       });
 
-      // Email customer with tracking number
+      // Notify customer through all 3 channels: email + push + in-app bell
       try {
         const order: any = await this.prisma.order.findUnique({
           where:   { id: params.orderId },
-          include: { customer: { select: { email: true } } },
+          include: { customer: { select: { id: true, email: true } } },
         });
-        if (order?.customer?.email) {
-          this.mail.sendShipmentCreated(
-            order.customer.email,
-            params.orderId,
-            result.trackingNumber,
-            result.carrier,
-            estimatedDelivery ?? undefined,
+        if (order?.customer) {
+          // Email (already-existing template)
+          if (order.customer.email) {
+            this.mail.sendShipmentCreated(
+              order.customer.email,
+              params.orderId,
+              result.trackingNumber,
+              result.carrier,
+              estimatedDelivery ?? undefined,
+            ).catch(() => {});
+          }
+          // In-app notification bell badge
+          this.notifications.create({
+            userId: order.customer.id,
+            type: NotificationType.ORDER_SHIPPED,
+            title: 'Siparişin yola çıktı! 📦',
+            body: `${result.carrier.toUpperCase()} - Takip: ${result.trackingNumber}`,
+            data: {
+              orderId: params.orderId,
+              trackingNumber: result.trackingNumber,
+              carrier: result.carrier,
+              kind: 'SHIPPED',
+            },
+          }).catch(() => {});
+          // Push notification to mobile devices
+          this.push.sendToUser(
+            order.customer.id,
+            'Siparişin yola çıktı! 📦',
+            `${result.carrier.toUpperCase()} - Takip: ${result.trackingNumber}`,
+            {
+              type: 'ORDER_SHIPPED',
+              orderId: params.orderId,
+              trackingNumber: result.trackingNumber,
+              carrier: result.carrier,
+            },
           ).catch(() => {});
         }
-      } catch { /* non-fatal */ }
+      } catch { /* non-fatal — notification failures must not block shipment creation */ }
 
       this.logger.log(
         `[Kargo] Shipment created — order=${params.orderId} carrier=${result.carrier} tracking=${result.trackingNumber}`,

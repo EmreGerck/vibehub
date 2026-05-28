@@ -15,6 +15,7 @@ import { formatPrice } from '../../../../lib/format';
 import { Spinner } from '../../../../components/ui/Spinner';
 import { toast } from '../../../../store/toast.store';
 import { useState } from 'react';
+import { OrderTimeline, type OrderTimelineStatus } from '../../../../components/order/OrderTimeline';
 
 const STEPS = ['PLACED', 'CONFIRMED', 'SHIPPED', 'DELIVERED'] as const;
 
@@ -414,10 +415,32 @@ export default function OrderDetailPage() {
       {/* ── Return shipment barcode banner ─────────────────────────────────── */}
       {showReturnBanner && <ReturnShipmentBanner orderId={id} />}
 
-      {/* Timeline */}
+      {/* Timeline — new polished stepper with timestamps + estimated delivery */}
       <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
-        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">{t('profile.orderTimeline')}</h3>
-        <StatusTimeline status={order.status} t={t} />
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-5">{t('profile.orderTimeline')}</h3>
+        <OrderTimeline
+          status={order.status as OrderTimelineStatus}
+          timestamps={{
+            PLACED: order.createdAt,
+            CONFIRMED: order.confirmedAt ?? null,
+            SHIPPED: order.shippedAt ?? order.shipments?.[0]?.createdAt ?? null,
+            DELIVERED: order.deliveredAt ?? null,
+            REFUND_REQUESTED: order.refundRequestedAt ?? null,
+            REFUNDED: order.refundedAt ?? null,
+          }}
+          estimatedDelivery={order.shipments?.[0]?.estimatedDelivery ?? null}
+        />
+        {/* Contextual single-line status sub-message */}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
+          {order.status === 'PLACED' && t('orderDetail.placedAwaitingPayment')}
+          {order.status === 'CONFIRMED' && t('orderDetail.confirmedAwaitingShipment')}
+          {order.status === 'SHIPPED' && t('orderDetail.shippedOnWay')}
+          {order.status === 'DELIVERED' && (
+            <span className="text-green-600 dark:text-green-400 font-medium">
+              🎉 {t('orderDetail.deliveredCelebration')}
+            </span>
+          )}
+        </p>
       </div>
 
       {/* Stats row */}

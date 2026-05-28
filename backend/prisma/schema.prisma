@@ -400,6 +400,10 @@ model Order {
   refundNote          String?     // admin rejection or approval note
   refundRequestedAt   DateTime?   // when customer submitted the request
   refundedAt          DateTime?   // when admin processed the refund
+  // ── Order lifecycle timestamps (powers customer-facing timeline) ───────────
+  confirmedAt         DateTime?   // when payment confirmed → CONFIRMED
+  shippedAt           DateTime?   // when shipment dispatched → SHIPPED
+  deliveredAt         DateTime?   // when carrier marked delivered → DELIVERED
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

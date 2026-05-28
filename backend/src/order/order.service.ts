@@ -174,6 +174,25 @@ export class OrderService {
       });
     }
 
+    // In-app + push notification so the customer immediately sees the order land
+    try {
+      await this.notifications.create({
+        userId: customerId,
+        type: NotificationType.ORDER_SHIPPED, // reused as "order lifecycle" channel
+        title: 'Siparişin alındı!',
+        body: `Sipariş numaran: ${order.id.slice(0, 8).toUpperCase()}. Ödemen onaylandığında işleme alacağız.`,
+        data: { orderId: order.id, kind: 'PLACED' },
+      });
+      await this.push.sendToUser(
+        customerId,
+        'Siparişin alındı!',
+        `Sipariş #${order.id.slice(0, 8).toUpperCase()}`,
+        { type: 'ORDER_PLACED', orderId: order.id },
+      );
+    } catch (err: any) {
+      this.logger.warn(`[order.placeOrder] notification dispatch failed: ${err?.message ?? err}`);
+    }
+
     return order;
   }
 
@@ -290,9 +309,16 @@ export class OrderService {
       throw new BadRequestException('Cannot confirm order: payment has not been received');
     }
 
+    // Build update payload with lifecycle timestamp
+    const updateData: any = { status: dto.status };
+    const now = new Date();
+    if (dto.status === OrderStatus.CONFIRMED) (updateData as any).confirmedAt = now;
+    if (dto.status === OrderStatus.SHIPPED)   (updateData as any).shippedAt = now;
+    if (dto.status === OrderStatus.DELIVERED) (updateData as any).deliveredAt = now;
+
     const updated = await this.prisma.order.update({
       where: { id: orderId },
-      data: { status: dto.status },
+      data: updateData,
     });
 
     await this.audit.log({
@@ -315,23 +341,57 @@ export class OrderService {
     }
 
     if (dto.status === OrderStatus.SHIPPED) {
+      // Find the most recent shipment for this order to pull the real tracking number.
+      // If no shipment exists, the customer would have received a useless null tracking
+      // notification — so we use a friendly placeholder + tell the vendor to create one.
+      const shipment = await this.prisma.shipment.findFirst({
+        where: { orderId: order.id },
+        orderBy: { createdAt: 'desc' },
+      });
+
       if (customer) {
         await this.queue.sendMail({
           type: 'SHIPMENT_NOTIFICATION',
           to: customer.email,
           orderId: order.id,
-          trackingNumber: null,
-          carrier: null,
+          trackingNumber: shipment?.trackingNumber ?? null,
+          carrier: shipment?.carrier ?? null,
         });
       }
-      await this.push.sendToUser(order.customerId, 'Siparişiniz Kargoya Verildi', 'Siparişiniz yolda!', { type: 'ORDER_SHIPPED', orderId: order.id });
-      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Kargoya Verildi', body: 'Siparişiniz yolda!', data: { orderId: order.id } });
+      await this.push.sendToUser(
+        order.customerId,
+        'Siparişin yola çıktı! 📦',
+        shipment?.trackingNumber
+          ? `Takip: ${shipment.trackingNumber} (${shipment.carrier})`
+          : 'Siparişin yolda!',
+        { type: 'ORDER_SHIPPED', orderId: order.id, trackingNumber: shipment?.trackingNumber, carrier: shipment?.carrier },
+      );
+      await this.notifications.create({
+        userId: order.customerId,
+        type: NotificationType.ORDER_SHIPPED,
+        title: 'Siparişin yola çıktı! 📦',
+        body: shipment?.trackingNumber
+          ? `${shipment.carrier?.toUpperCase()} - Takip: ${shipment.trackingNumber}`
+          : 'Siparişin kargoya verildi.',
+        data: { orderId: order.id, trackingNumber: shipment?.trackingNumber, carrier: shipment?.carrier, kind: 'SHIPPED' },
+      });
     }
 
     if (dto.status === OrderStatus.DELIVERED) {
       if (customer) await this.mail.sendOrderDelivered(customer.email, order.id);
-      await this.push.sendToUser(order.customerId, 'Siparişiniz Teslim Edildi', 'Yorum bırakmayı unutmayın!', { type: 'ORDER_DELIVERED', orderId: order.id });
-      await this.notifications.create({ userId: order.customerId, type: NotificationType.ORDER_SHIPPED, title: 'Siparişiniz Teslim Edildi', body: 'Yorum bırakarak sanatçıyı destekleyin!', data: { orderId: order.id } });
+      await this.push.sendToUser(
+        order.customerId,
+        'Siparişin teslim edildi! 🎉',
+        'Beğendiysen sanatçıya yıldız bırak — desteğin çok değerli',
+        { type: 'ORDER_DELIVERED', orderId: order.id },
+      );
+      await this.notifications.create({
+        userId: order.customerId,
+        type: NotificationType.ORDER_SHIPPED,
+        title: 'Siparişin teslim edildi! 🎉',
+        body: 'Yorum bırakarak sanatçıyı destekleyebilirsin.',
+        data: { orderId: order.id, kind: 'DELIVERED' },
+      });
     }
 
     return updated;
@@ -345,9 +405,16 @@ export class OrderService {
       throw new BadRequestException(`Order is already in terminal status: ${order.status}`);
     }
 
+    // Build update payload with lifecycle timestamp
+    const adminUpdateData: any = { status: dto.status };
+    const adminNow = new Date();
+    if (dto.status === OrderStatus.CONFIRMED) (adminUpdateData as any).confirmedAt = adminNow;
+    if (dto.status === OrderStatus.SHIPPED)   (adminUpdateData as any).shippedAt = adminNow;
+    if (dto.status === OrderStatus.DELIVERED) (adminUpdateData as any).deliveredAt = adminNow;
+
     const updated = await this.prisma.order.update({
       where: { id: orderId },
-      data: { status: dto.status },
+      data: adminUpdateData,
     });
 
     await this.audit.log({
