@@ -268,6 +268,8 @@ export class ProductService {
     const enriched = items.map((p) => ({
       ...p,
       avgRating: ratingMap.get(p.id) ?? null,
+      // Sprint 13 audit: hide profit-share + mfg-unit pointer from non-admin views.
+      ...(adminView ? {} : { profitSharePct: undefined, manufacturingUnitId: undefined }),
     }));
 
     return { items: enriched.map((p) => this.applyTranslations(p, lang)), total, page: query.page, limit: query.limit };
@@ -333,7 +335,15 @@ export class ProductService {
       where: { id: productId },
       include: {
         tenant: { select: { id: true, slug: true, displayName: true, logoUrl: true } },
-        category: { select: { id: true, name: true, slug: true, icon: true } },
+        // Sprint 13 fix: attributeSchema + sizeChartTemplate must flow through
+        // so the customer Özellikler panel + Beden Tablosu can render with
+        // category-aware labels. Without these, the PDP falls back to raw keys.
+        category: {
+          select: {
+            id: true, name: true, slug: true, icon: true,
+            attributeSchema: true, sizeChartTemplate: true,
+          },
+        },
         variants: true,
         reviews: {
           take: 10,
@@ -349,13 +359,22 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
 
-    return this.applyTranslations(product, lang);
+    // Sprint 13 audit: scrub the internal commercial fields from non-admin
+    // responses. profitSharePct = vendor's agreed cut (commercial info).
+    // manufacturingUnitId = pointer to the GOD_USER-owned cost catalogue.
+    // Both are leaking to anyone hitting GET /products/:id today.
+    const scrubbed = adminView
+      ? product
+      : { ...product, profitSharePct: undefined, manufacturingUnitId: undefined };
+
+    return this.applyTranslations(scrubbed, lang);
   }
 
   async findByTenant(tenantId: string, query: QueryProductsDto, viewerRole?: UserRole) {
     const isVendor = viewerRole && ([UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER] as UserRole[]).includes(viewerRole);
+    const isAdmin  = viewerRole && ([UserRole.PLATFORM_ADMIN, UserRole.GOD_USER] as UserRole[]).includes(viewerRole);
     const where: any = { tenantId };
-    if (!isVendor) where.status = ProductStatus.LIVE;
+    if (!isVendor && !isAdmin) where.status = ProductStatus.LIVE;
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -368,7 +387,13 @@ export class ProductService {
       this.prisma.product.count({ where }),
     ]);
 
-    return { items, total, page: query.page, limit: query.limit };
+    // Sprint 13 audit: scrub profitSharePct + manufacturingUnitId for public
+    // and vendor-of-different-tenant views. Vendor of THIS tenant can see
+    // their own deal; admin sees everything.
+    const scrubbed = isAdmin
+      ? items
+      : items.map((p) => ({ ...p, profitSharePct: undefined, manufacturingUnitId: undefined }));
+    return { items: scrubbed, total, page: query.page, limit: query.limit };
   }
 
   async findPendingReview(query: QueryProductsDto) {

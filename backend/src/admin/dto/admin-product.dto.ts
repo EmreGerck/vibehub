@@ -9,6 +9,7 @@ import {
   IsObject,
   IsInt,
   Min,
+  Max,
   IsDateString,
   IsEnum,
 } from 'class-validator';
@@ -126,9 +127,13 @@ export class AdminUpdateProductDto {
   manufacturingUnitId?: string | null;
 
   // Vendor's share of post-cost profit. 0.5 = 50/50, 0.6 = 60% vendor / 40% VibeHub.
-  // Same lock-after-first-order guard as fulfilment.
+  // Same lock-after-first-order guard as fulfilment. Validation: 0..1 inclusive.
+  // (Previously unbounded — DB column accepts up to 9.9999 which would silently
+  // sit in a broken state until a customer tries to buy the product.)
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(1)
   @Type(() => Number)
   profitSharePct?: number | null;
 

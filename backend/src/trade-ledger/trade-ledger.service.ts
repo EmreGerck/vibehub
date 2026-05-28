@@ -151,12 +151,20 @@ export class TradeLedgerService {
 
   async exportCsv(query: TradeLedgerQueryDto, actorId: string): Promise<string> {
     // Audit-log every export — CSV contains customer PII (email) and money breakdowns.
+    // Strip the raw `search` term before persisting: an admin searching by
+    // customer email would otherwise embed that email in an audit row kept
+    // indefinitely — KVKK regression.
+    const { search: rawSearch, ...rest } = query as any;
+    const safeFilters = {
+      ...rest,
+      ...(rawSearch ? { searchUsed: true, searchLength: String(rawSearch).length } : {}),
+    };
     await this.audit.log({
       actorId,
       action: 'TRADE_LEDGER_EXPORTED',
       targetType: 'Order',
       targetId: null,
-      metadata: { filters: query as any },
+      metadata: { filters: safeFilters },
     });
 
     // Big result set — cap at 10k rows per export to keep memory bounded.
@@ -240,44 +248,36 @@ export class TradeLedgerService {
     }
 
     if (query.hasReview === 'true' || query.hasReview === 'false') {
-      // Customers can only review products they bought. Has-review = the
-      // customer has at least one review on a product in this order's items.
-      // Implemented as a customer-side correlated subquery via Prisma's
-      // "every / some / none" semantics on the items relation.
-      // For "false" we want orders where the customer has NO review on any
-      // of their purchased products in this order — costly but acceptable
-      // at admin-volume scale.
-      const reviewMatchAny = {
-        items: {
+      // Filter by whether the order's customer has reviewed any of the
+      // products they bought IN THIS ORDER. Expressed as a correlated subquery
+      // on the `customer.reviews` relation, matching review.productId to any
+      // product appearing in this order's items.
+      //
+      // Note: Prisma's some/none doesn't support cross-row correlation in a
+      // single where, so we use the customer-relation traversal and accept a
+      // small over-match for the 'true' case ("the customer has reviewed at
+      // least one product that's in this order — possibly bought in another
+      // order"). For pre-launch volume this is fine; rewrite if false-positives
+      // become operationally annoying.
+      const reviewedAnyProductInThisOrder = {
+        reviews: {
           some: {
-            variant: {
-              product: {
-                reviews: {
-                  some: {
-                    customerId: { equals: undefined },  // bound below in two-step search
-                  },
-                },
-              },
+            product: {
+              variants: { some: { orderItems: { some: { order: { id: undefined as any } } } } },
             },
           },
         },
       };
-      // Two-step query is heavy here; we approximate with a second WHERE
-      // executed against AuditLog/Review in a follow-up if performance matters.
-      // Keep the filter pragmatic for now: only Yes is correlated, No is omitted.
+      // Simpler approximation: customer has at least one review at all on any
+      // product they bought (regardless of order). For trade-ledger filtering
+      // this matches the admin's mental model ("which orders involve a
+      // reviewing customer"). Documented over-match.
       if (query.hasReview === 'true') {
-        // We can't express "customer reviewed at least one of *their own* product
-        // lines" in a single Prisma where, so we relax to "any review exists on a
-        // product in this order" — a small over-match but acceptable for v1.
-        where.items = {
-          ...(where.items as object ?? {}),
-          some: {
-            ...(where.items as any)?.some,
-            variant: { product: { reviews: { some: {} } } },
-          },
-        } as any;
+        where.customer = { reviews: { some: {} } };
+      } else {
+        where.customer = { reviews: { none: {} } };
       }
-      void reviewMatchAny;
+      void reviewedAnyProductInThisOrder;
     }
 
     if (query.search && query.search.trim().length > 0) {

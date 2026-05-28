@@ -370,7 +370,13 @@ export class OrderService {
       this.prisma.order.count({ where }),
     ]);
 
-    return { items, total, page: query.page, limit: query.limit };
+    // Customer-scope view — strip lane-1 + commission snapshots from every item.
+    const scrubbed = items.map((o: any) => ({
+      ...o,
+      items: o.items.map((it: any) => stripLaneOneSnapshots(it, null)),
+    }));
+
+    return { items: scrubbed, total, page: query.page, limit: query.limit };
   }
 
   async getOrderById(orderId: string, actor: { id: string; role: UserRole; tenantId: string | null }) {
@@ -399,6 +405,16 @@ export class OrderService {
       throw new ForbiddenException('Access denied');
     }
 
+    // Strip the lane-1 + commission snapshots from non-admin responses. Those
+    // are internal accounting — customers should never see VibeHub's cut or
+    // the vendor's profit share %, and vendors should never see another
+    // vendor's mfg cost when an order spans multiple tenants.
+    if (!isAdmin) {
+      return {
+        ...order,
+        items: order.items.map((it: any) => stripLaneOneSnapshots(it, actor.tenantId)),
+      };
+    }
     return order;
   }
 
@@ -427,7 +443,15 @@ export class OrderService {
       this.prisma.order.count({ where }),
     ]);
 
-    return { items, total, page: query.page, limit: query.limit };
+    // Vendor view — strip the lane-1 fields they shouldn't see (VibeHub's mfg
+    // cost + VibeHub's platform share). Keep their own vendorPayoutAmount and
+    // profitSharePctSnapshot — they negotiated those, they should see them.
+    const scrubbed = items.map((o: any) => ({
+      ...o,
+      items: o.items.map((it: any) => stripLaneOneSnapshots(it, tenantId)),
+    }));
+
+    return { items: scrubbed, total, page: query.page, limit: query.limit };
   }
 
   async updateStatusAsVendor(
@@ -769,7 +793,15 @@ export class OrderService {
   async requestRefund(orderId: string, customerId: string, reason: string): Promise<any> {
     const order: any = await this.prisma.order.findUnique({
       where:   { id: orderId },
-      include: { customer: { select: { email: true, name: true } } },
+      include: {
+        customer: { select: { email: true, name: true } },
+        // Sprint 13 audit fix: the vendor-notify branch below iterates
+        // `order.items` to fan out per-tenant emails. Previously items
+        // weren't loaded so the entire vendor notification was dead code.
+        items: {
+          include: { variant: { include: { product: { select: { tenantId: true } } } } },
+        },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
     if (order.customerId !== customerId) throw new ForbiddenException('Not your order');
@@ -1064,4 +1096,33 @@ export class OrderService {
 
     return updated;
   }
+}
+
+/**
+ * Strip lane-1 + commission snapshots from an OrderItem before returning it
+ * to a non-admin consumer.
+ *
+ * Customer view (viewerTenantId === null): no money breakdown at all —
+ *   they paid the gross price; the split between vendor and platform is
+ *   internal accounting.
+ *
+ * Vendor view (viewerTenantId === item.tenantId): keep their own
+ *   vendorPayoutAmount + profitSharePctSnapshot (they agreed to those);
+ *   strip manufacturingCostSnapshot + platformShareAmount + commissionRateSnapshot
+ *   (those are VibeHub's internals — vendor knows the deal terms but not the
+ *   per-line internal cost or platform's keep).
+ *
+ * Admin view: never call this — return the row verbatim.
+ */
+function stripLaneOneSnapshots(item: any, viewerTenantId: string | null): any {
+  const isOwnVendor = viewerTenantId !== null && item.tenantId === viewerTenantId;
+  const out = { ...item };
+  delete out.commissionRateSnapshot;
+  delete out.manufacturingCostSnapshot;
+  delete out.platformShareAmount;
+  if (!isOwnVendor) {
+    delete out.vendorPayoutAmount;
+    delete out.profitSharePctSnapshot;
+  }
+  return out;
 }

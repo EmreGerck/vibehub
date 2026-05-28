@@ -16,7 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { AdminService } from './admin.service';
 import { Roles } from '../common/roles.decorator';
-import { CurrentUser } from '../common/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { ApiResponse } from '../common/response.dto';
 import { PatchVendorStatusDto, PatchCommissionDto } from './dto/patch-vendor.dto';
 import { PatchVendorFeaturesDto, PatchForumSettingsDto } from './dto/vendor-features.dto';
@@ -311,9 +311,9 @@ export class AdminController {
   async adminUpdateProduct(
     @Param('id') id: string,
     @Body() dto: AdminUpdateProductDto,
-    @CurrentUser('id') actorId: string,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    const data = await this.adminService.adminUpdateProduct(id, dto, actorId);
+    const data = await this.adminService.adminUpdateProduct(id, dto, actor.id, actor.role);
     return ApiResponse.ok(data, 'Product updated');
   }
 

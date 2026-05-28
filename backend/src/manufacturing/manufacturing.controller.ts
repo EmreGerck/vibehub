@@ -27,20 +27,22 @@ import { UserRole } from '@prisma/client';
 export class ManufacturingController {
   constructor(private readonly mfg: ManufacturingService) {}
 
-  // Reads: PLATFORM_ADMIN may see the catalogue so the product editor's
-  // mfg-unit picker can render names. Costs themselves are still surfaced
-  // to ADMIN; if this becomes a leakage concern later, narrow read access.
-  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  // Reads: GOD_USER only. Sprint 13 audit pulled this back from "ADMIN+"
+  // because PLATFORM_ADMIN could read `unitCostTRY` which is internal
+  // commercial info. The product editor's mfg-unit picker is also gated
+  // GOD_USER on the frontend (the 🏭 button only renders for GOD_USER),
+  // so PLATFORM_ADMIN never needs to call this in practice.
+  @Roles(UserRole.GOD_USER)
   @Get()
-  @ApiOperation({ summary: 'List manufacturing units (admin)' })
+  @ApiOperation({ summary: 'List manufacturing units (god-user only)' })
   async list(@Query('includeInactive') includeInactive?: string) {
     const data = await this.mfg.list(includeInactive === 'true');
     return ApiResponse.ok(data, 'Manufacturing units retrieved');
   }
 
-  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.GOD_USER)
   @Get(':id')
-  @ApiOperation({ summary: 'Get one manufacturing unit (admin)' })
+  @ApiOperation({ summary: 'Get one manufacturing unit (god-user only)' })
   async findOne(@Param('id') id: string) {
     const data = await this.mfg.findOne(id);
     return ApiResponse.ok(data, 'Manufacturing unit retrieved');

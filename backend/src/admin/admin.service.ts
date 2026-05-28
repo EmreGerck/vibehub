@@ -866,27 +866,28 @@ export class AdminService {
     return product;
   }
 
-  async adminUpdateProduct(productId: string, dto: AdminUpdateProductDto, actorId: string) {
+  async adminUpdateProduct(productId: string, dto: AdminUpdateProductDto, actorId: string, actorRole?: string) {
     const product = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw new NotFoundException('Product not found');
 
-    // Lock fulfilment + lane-1 money fields after the first order: snapshots are
-    // already in flight and flipping these would diverge stored vendorPayoutAmount
-    // from new orders. Same guard applied uniformly for all three.
+    // Lane-1 + fulfilment edits are GOD_USER only — same trust boundary as the
+    // manufacturing CRUD writes. A compromised PLATFORM_ADMIN could otherwise
+    // flip a product to VIBEHUB_MANAGED and silently redirect the artist's profit.
+    if (
+      actorRole !== 'GOD_USER' &&
+      (dto.fulfilment !== undefined ||
+       dto.manufacturingUnitId !== undefined ||
+       dto.profitSharePct !== undefined)
+    ) {
+      throw new ForbiddenException(
+        'Fulfilment, üretim birimi ve kâr payı yalnızca GOD_USER tarafından düzenlenebilir.',
+      );
+    }
+
     const mfgFieldsChange =
       (dto.fulfilment          !== undefined && dto.fulfilment          !== (product as any).fulfilment) ||
       (dto.manufacturingUnitId !== undefined && dto.manufacturingUnitId !== (product as any).manufacturingUnitId) ||
       (dto.profitSharePct      !== undefined && Number(dto.profitSharePct) !== Number((product as any).profitSharePct));
-    if (mfgFieldsChange) {
-      const existingOrders = await this.prisma.orderItem.count({
-        where: { variant: { productId } },
-      });
-      if (existingOrders > 0) {
-        throw new BadRequestException(
-          'Bu ürün için satış başladıktan sonra fulfilment / üretim / kâr payı değiştirilemez. Yeni bir ürün oluşturun.',
-        );
-      }
-    }
 
     // Cross-field validation: profit share + mfg unit only make sense when VIBEHUB_MANAGED.
     // Decide the *effective* mode by reading dto override or falling back to current.
@@ -901,26 +902,54 @@ export class AdminService {
       );
     }
 
-    const updated = await this.prisma.product.update({
-      where: { id: productId },
-      data: {
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.currency !== undefined && { currency: dto.currency }),
-        ...(dto.images !== undefined && { images: dto.images }),
-        ...(dto.previewVideoUrl !== undefined && { previewVideoUrl: dto.previewVideoUrl }),
-        ...(dto.tags !== undefined && { tags: dto.tags }),
-        ...(dto.translations !== undefined && { translations: dto.translations as any }),
-        ...(dto.imageSettings !== undefined && { imageSettings: dto.imageSettings as any }),
-        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
-        ...(dto.fulfilment !== undefined && { fulfilment: dto.fulfilment }),
-        ...(dto.manufacturingUnitId !== undefined && { manufacturingUnitId: dto.manufacturingUnitId }),
-        ...(dto.profitSharePct !== undefined && { profitSharePct: dto.profitSharePct }),
-        ...(dto.attributes !== undefined && { attributes: dto.attributes as any }),
-        ...(dto.sizeChart  !== undefined && { sizeChart:  dto.sizeChart  as any }),
-      },
-      include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
+    // Audit fix — Sprint 13: when admin flips VIBEHUB→VENDOR, force-clear the
+    // lane-1 fields so we don't leave a VENDOR_MANAGED product carrying a
+    // stale profitSharePct or mfg unit pointer. The order-time line-split
+    // ignores them but they confuse reports.
+    const forceClearLaneOne =
+      dto.fulfilment === 'VENDOR_MANAGED' && (product as any).fulfilment === 'VIBEHUB_MANAGED';
+
+    // Lock fulfilment + lane-1 money fields after the first order, atomically.
+    // Re-check the count INSIDE the transaction so a concurrent order between
+    // the initial check and the update can't slip through. We use a SERIALIZABLE
+    // transaction so the read and write are consistent.
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (mfgFieldsChange) {
+        const existingOrders = await tx.orderItem.count({
+          where: { variant: { productId } },
+        });
+        if (existingOrders > 0) {
+          throw new BadRequestException(
+            'Bu ürün için satış başladıktan sonra fulfilment / üretim / kâr payı değiştirilemez. Yeni bir ürün oluşturun.',
+          );
+        }
+      }
+      return tx.product.update({
+        where: { id: productId },
+        data: {
+          ...(dto.title !== undefined && { title: dto.title }),
+          ...(dto.description !== undefined && { description: dto.description }),
+          ...(dto.price !== undefined && { price: dto.price }),
+          ...(dto.currency !== undefined && { currency: dto.currency }),
+          ...(dto.images !== undefined && { images: dto.images }),
+          ...(dto.previewVideoUrl !== undefined && { previewVideoUrl: dto.previewVideoUrl }),
+          ...(dto.tags !== undefined && { tags: dto.tags }),
+          ...(dto.translations !== undefined && { translations: dto.translations as any }),
+          ...(dto.imageSettings !== undefined && { imageSettings: dto.imageSettings as any }),
+          ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+          ...(dto.fulfilment !== undefined && { fulfilment: dto.fulfilment }),
+          // forceClearLaneOne wins over dto so admin can't leave stale fields after the flip.
+          ...(forceClearLaneOne
+            ? { manufacturingUnitId: null, profitSharePct: null }
+            : {
+                ...(dto.manufacturingUnitId !== undefined && { manufacturingUnitId: dto.manufacturingUnitId }),
+                ...(dto.profitSharePct      !== undefined && { profitSharePct:      dto.profitSharePct }),
+              }),
+          ...(dto.attributes !== undefined && { attributes: dto.attributes as any }),
+          ...(dto.sizeChart  !== undefined && { sizeChart:  dto.sizeChart  as any }),
+        },
+        include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
+      });
     });
 
     await this.audit.log({
