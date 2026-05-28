@@ -1,0 +1,337 @@
+/* VibeHub document PDF styling — exec-friendly, brand-aligned */
+
+@page {
+  size: A4;
+  margin: 22mm 18mm 22mm 18mm;
+
+  @top-left {
+    content: string(doc-title);
+    font-family: -apple-system, "Inter", "Helvetica Neue", sans-serif;
+    font-size: 9pt;
+    color: #6b7280;
+  }
+  @top-right {
+    content: "VibeHub";
+    font-family: -apple-system, "Inter", "Helvetica Neue", sans-serif;
+    font-size: 9pt;
+    font-weight: 700;
+    color: #9333ea;
+  }
+  @bottom-center {
+    content: counter(page) " / " counter(pages);
+    font-family: -apple-system, "Inter", sans-serif;
+    font-size: 8.5pt;
+    color: #9ca3af;
+  }
+  @bottom-left {
+    content: "Confidential — VibeHub";
+    font-family: -apple-system, "Inter", sans-serif;
+    font-size: 8pt;
+    color: #9ca3af;
+  }
+  @bottom-right {
+    content: "vibehub.com.tr";
+    font-family: -apple-system, "Inter", sans-serif;
+    font-size: 8pt;
+    color: #9ca3af;
+  }
+}
+
+@page :first {
+  size: A4;
+  margin: 0;
+  background: linear-gradient(135deg, #0a0118 0%, #1a0a2e 50%, #2d0b3e 100%);
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-center { content: none; }
+  @bottom-left { content: none; }
+  @bottom-right { content: none; }
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue",
+               "Segoe UI", Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #111827;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Cover page — explicit A4 sizing (297mm height) since weasyprint
+   doesn't reliably support vh inside printed pages. */
+.cover {
+  width: 210mm;
+  height: 297mm;
+  box-sizing: border-box;
+  padding: 30mm 25mm;
+  color: #fff;
+  page-break-after: always;
+  position: relative;
+  /* Background lives on @page :first so it fills the bleed area perfectly. */
+}
+.cover-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14pt;
+}
+.cover-brand-dot {
+  width: 14pt;
+  height: 14pt;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 60%, #f59e0b 100%);
+  display: inline-block;
+}
+.cover-brand {
+  font-size: 36pt;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  color: #ffffff;
+  line-height: 1;
+}
+.cover-accent-bar {
+  height: 4pt;
+  width: 80mm;
+  margin-top: 14pt;
+  background: linear-gradient(90deg, #a855f7 0%, #ec4899 50%, #f59e0b 100%);
+  border-radius: 2pt;
+}
+.cover-tagline {
+  font-size: 11pt;
+  color: #d1d5db;
+  margin-top: 10pt;
+}
+.cover-title {
+  font-size: 36pt;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin: 0 0 12pt;
+  color: #ffffff;
+}
+.cover-subtitle {
+  font-size: 13pt;
+  color: #e9d5ff;
+  font-weight: 400;
+  line-height: 1.5;
+  max-width: 140mm;
+  margin-bottom: 24pt;
+}
+.cover-meta {
+  font-size: 10pt;
+  color: #c4b5fd;
+  line-height: 1.7;
+}
+.cover-meta strong { color: #ffffff; font-weight: 600; }
+.cover-footer {
+  position: absolute;
+  bottom: 25mm;
+  left: 25mm;
+  right: 25mm;
+  font-size: 9pt;
+  color: #9ca3af;
+  padding-top: 12pt;
+  border-top: 1px solid rgba(168, 85, 247, 0.35);
+}
+/* Vertical layout — top brand block, large title in middle, footer fixed */
+.cover-mid {
+  margin-top: 60mm;
+}
+
+/* Body content */
+.content { padding: 0; }
+
+h1 {
+  string-set: doc-title content();
+  color: #111827;
+  font-size: 22pt;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0 0 12pt;
+  padding-bottom: 8pt;
+  border-bottom: 3px solid #9333ea;
+  page-break-before: always;
+  page-break-after: avoid;
+}
+h1:first-of-type { page-break-before: avoid; }
+
+h2 {
+  color: #111827;
+  font-size: 15pt;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin: 18pt 0 8pt;
+  padding-bottom: 4pt;
+  border-bottom: 1px solid #e5e7eb;
+  page-break-after: avoid;
+}
+
+h3 {
+  color: #1f2937;
+  font-size: 12pt;
+  font-weight: 700;
+  margin: 14pt 0 6pt;
+  page-break-after: avoid;
+}
+
+h4 {
+  color: #374151;
+  font-size: 10.5pt;
+  font-weight: 700;
+  margin: 12pt 0 4pt;
+  page-break-after: avoid;
+}
+
+p {
+  margin: 0 0 6pt;
+  orphans: 3;
+  widows: 3;
+}
+
+a { color: #7e22ce; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+strong { font-weight: 700; color: #111827; }
+em { font-style: italic; color: #374151; }
+
+/* Lists */
+ul, ol {
+  margin: 4pt 0 8pt;
+  padding-left: 18pt;
+}
+li { margin-bottom: 3pt; }
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8pt 0 12pt;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+thead { background: #faf5ff; }
+th {
+  text-align: left;
+  padding: 5pt 8pt;
+  font-weight: 700;
+  color: #581c87;
+  border-bottom: 2px solid #c084fc;
+  font-size: 9pt;
+}
+td {
+  padding: 4pt 8pt;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+tbody tr:nth-child(even) { background: #fafafa; }
+
+/* Code */
+code {
+  font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+  font-size: 9pt;
+  background: #f3f4f6;
+  color: #831843;
+  padding: 1pt 4pt;
+  border-radius: 2pt;
+}
+pre {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 8pt 10pt;
+  border-radius: 4pt;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 8.5pt;
+  line-height: 1.45;
+  overflow-x: auto;
+  margin: 6pt 0 10pt;
+  page-break-inside: avoid;
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* Block quotes */
+blockquote {
+  border-left: 3pt solid #9333ea;
+  background: #faf5ff;
+  margin: 8pt 0 10pt;
+  padding: 6pt 10pt 6pt 12pt;
+  color: #4b5563;
+  font-style: italic;
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+/* Horizontal rule */
+hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 16pt 0;
+}
+
+/* Status indicators / emoji-driven cells */
+td:has(✅), td:has(🟢) { font-weight: 600; }
+
+/* Print-only helpers */
+.no-print { display: none; }
+
+/* Long-table page break hint */
+table.long {
+  page-break-inside: auto;
+}
+table.long tr {
+  page-break-inside: avoid;
+  page-break-after: auto;
+}
+
+/* TOC styling */
+h1.toc-heading {
+  string-set: doc-title content();
+  color: #111827;
+  font-size: 22pt;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0 0 16pt;
+  padding-bottom: 8pt;
+  border-bottom: 3px solid #9333ea;
+  page-break-before: avoid;
+  page-break-after: avoid;
+}
+nav#TOC {
+  page-break-after: always;
+  margin-bottom: 0;
+}
+nav#TOC ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+nav#TOC > ul > li {
+  font-size: 11pt;
+  font-weight: 600;
+  margin: 6pt 0 4pt;
+  padding-left: 0;
+  border-bottom: 1px dotted #e5e7eb;
+  padding-bottom: 4pt;
+}
+nav#TOC > ul > li > ul {
+  font-size: 10pt;
+  font-weight: 400;
+  padding-left: 18pt;
+  margin: 4pt 0;
+  border-bottom: none;
+}
+nav#TOC > ul > li > ul > li {
+  border-bottom: none;
+  margin-bottom: 2pt;
+  padding-bottom: 0;
+}
+nav#TOC a {
+  color: #1f2937;
+  text-decoration: none;
+}
+nav#TOC a:hover { color: #9333ea; }
