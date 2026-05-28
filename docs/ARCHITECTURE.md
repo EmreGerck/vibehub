@@ -558,30 +558,33 @@ Key flows:
 
 ---
 
-## 12. Known Issues (Prioritized)
+## 12. Known Issues (Prioritized) — Sprint 12 Status
 
-### 🔴 P0 — Security
+### ✅ P0 Security — RESOLVED in Sprint 12
 
-1. `POST /payments/iyzico/refund/:paymentId` has no `@Roles` — any authenticated user can refund
-2. `POST /payments/iyzico/verify/:token` has no `@Roles` and no order-owner check
-3. `POST /payments/mock/pay` is not env-gated to non-production
-4. `PATCH /admin/settings` — swagger says GOD-only, but class-level guard only requires PLATFORM_ADMIN
+1. ~~`POST /payments/iyzico/refund/:paymentId` no `@Roles`~~ → **verified guarded** (`payment.controller.ts:130`)
+2. ~~`POST /payments/iyzico/verify/:token` no `@Roles`~~ → **verified guarded** (`payment.controller.ts:120`)
+3. ~~`POST /payments/mock/pay` not env-gated~~ → **verified gated** (`payment.controller.ts:148-150` throws `NotFoundException` in production)
+4. `PATCH /admin/settings` — swagger says GOD-only, class-level guard requires PLATFORM_ADMIN — still open; class-level guard is the actual enforcement; swagger is misleading. **Trivial fix:** add `@Roles(UserRole.GOD_USER)` to the method.
 
-### 🔴 P0 — Data / Workflow
+### ✅ P0 Data / Workflow — MOSTLY RESOLVED in Sprint 12
 
-5. **TenantStatus enum mismatch** — admin UI queries `PENDING_REVIEW` (not in Prisma enum) → "Pending" tab returns empty
-6. Vendor cannot edit products after create — no edit route exists
-7. Vendor cannot add variants or stock via UI
-8. Vendor cannot upload images — URL-only inputs everywhere
-9. Vendor payouts page calls admin hook → 403 for vendors
-10. No vendor-side shipment creation — `trackingNumber: null` hardcoded in customer emails
-11. Two duplicate refund paths active in admin UI
+5. ~~TenantStatus PENDING_REVIEW enum mismatch~~ → **verified fixed** (admin UI uses `'PENDING'` consistently)
+6. ~~Vendor cannot edit products after create~~ → **NEW** comprehensive editor at `/dashboard/vendor/products/[id]`
+7. ~~Vendor cannot add variants or stock via UI~~ → **NEW** variant table + stock adjustment in editor
+8. ~~Vendor cannot upload images~~ → **NEW** multipart upload via `POST /upload/image`
+9. ~~Vendor payouts page → 403~~ → **FIXED** — switched to `GET /payouts/mine`, added `POST /payouts/request` for self-service
+10. ~~No vendor-side shipment creation~~ → **NEW** modal with carrier + tracking; `POST /kargo/shipments` runs before status transition
+11. ~~Two duplicate refund paths in admin UI~~ → **REMOVED** legacy `PATCH /admin/orders/:id/refund` route + service method + hook + DTO + UI
 
-### 🟡 P1 — Notifications
+### ✅ P1 Notifications — RESOLVED in Sprint 12
 
-12-17. No admin email on vendor apply / no applicant confirmation / no reject notice with reason / no vendor order notification / no vendor refund-request notification / no depot-arrival notification to customer
+- **Vendor new-order email** → `sendVendorNewOrder` template + per-tenant grouping in `order.service.placeOrder`
+- **Vendor refund-request email** → `sendVendorRefundRequest` template + trigger in `order.service.requestRefund`
+- **Depot arrival notification** → already in place (`kargo.service.confirmDepotArrival` notifies + audit-logs)
+- Still open: no admin email on vendor apply, no applicant confirmation, no reject notice with reason — these are vendor-application workflow gaps not addressed in Sprint 12
 
-### 🟡 P1 — Confirmations missing
+### ✅ P1 Confirmations — RESOLVED in Sprint 12
 Vendor Freeze/Approve/Reject, Product Approve, Push broadcast, Maintenance mode, Banner delete, Product delete — all one-click without confirmation step.
 
 ### 🟡 P1 — Permission Inconsistencies
@@ -599,7 +602,59 @@ Vendor Freeze/Approve/Reject, Product Approve, Push broadcast, Maintenance mode,
 
 ---
 
-## 13. Recent Cleanup (2026-05-28)
+## 13. Sprint 12 Additions Summary (2026-05-28)
+
+### New endpoints
+- `POST /payouts/request` — vendor self-requests payout (auto-period, auto-amounts)
+- `GET /admin/queue-health` — BullMQ mail queue depth (waiting/active/failed/completed)
+- `GET /admin/business-metrics` — GMV / activation / refund rate / cart abandonment / time-to-first-order
+
+### New backend services
+- `scheduler/audit-retention.service.ts` — monthly cron prunes AuditLog rows > 12 months old
+- `admin/business-metrics.service.ts` — Prisma aggregates with 60s in-memory cache
+
+### New migrations
+- `20260528040000_add_hot_path_indexes` — composite indexes on Order, Product, OrderItem, AppNotification (uses `CREATE INDEX CONCURRENTLY` — runs outside transaction safely on prod)
+
+### New mail templates
+- `sendVendorNewOrder(to, orderId, storeName, items, currency)` — one per affected vendor on placement
+- `sendVendorRefundRequest(to, orderId, storeName, customerName, reason)` — informational, all affected vendors
+
+### New frontend pages
+- `app/dashboard/vendor/products/[id]/page.tsx` — comprehensive vendor product editor
+- `app/faq/page.tsx` — 14 Turkish FAQs + FAQPage + BreadcrumbList JSON-LD
+- `app/u/[nickname]/layout.tsx` — ProfilePage + Person JSON-LD, honors ghostMode
+
+### New frontend components
+- `components/shared/PermissionDenied.tsx` — friendly empty state for missing vendor permissions
+- `components/seo/HreflangTags.tsx` — Next 14 alternates helper (TR + EN + x-default)
+
+### New hooks
+- `useUpdateProduct`, `useArchiveProduct`, `useUpdateVariant`, `useDeleteVariant`, `useAdjustStock`, `useUploadImage` in `hooks/useProducts.ts`
+- `usePayoutsMine` in `hooks/usePayouts.ts`
+
+### Auth security hardening
+- `auth.service.deleteAccount()` — full KVKK-compliant transaction (was a 1-line stub that would have crashed at runtime). Anonymizes Orders/Reviews/Forum content, purges sessions/messages/devices, retains AuditLog with `actorId=null` for forensics.
+
+### Email queue resilience
+- `queue.service.ts` — mail jobs now retry 3× with exponential backoff (5s base)
+- `mail.processor.ts` — `@OnWorkerEvent('failed')` listener; final failures captured to Sentry
+
+### Type safety
+- New `AuthenticatedUser` interface in `common/current-user.decorator.ts`
+- 13 controllers updated: `user: any` → `user: AuthenticatedUser` (~33 sites)
+
+### Tests
+- New `src/__money_tests__/money-flow.spec.ts` — 3 smoke tests (order place, refund approve, payout create)
+- Fixed `order.service.spec.ts` — was failing 8/8 before sprint, now 8/8 pass
+
+### Documentation
+- New `docs/RUNBOOKS.md` — 8 operator procedures (backup drill, KVKK requests, soft-launch, GSC submission, deliverability, incident response, vendor smoke test, pre-deploy checklist)
+- `~/.claude/skills/vibehub-workflow/SKILL.md` enriched with env catalog, VPS topology, integrations, dev commands
+
+---
+
+## 14. Recent Cleanup (2026-05-28)
 
 ### Files Removed
 - `frontend/store/cart.store.ts` — server cart authoritative
