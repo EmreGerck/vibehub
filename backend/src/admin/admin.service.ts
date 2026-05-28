@@ -870,17 +870,35 @@ export class AdminService {
     const product = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw new NotFoundException('Product not found');
 
-    // Lock fulfilment after the first order: snapshots are already in flight and
-    // flipping the mode now would diverge stored vendorPayoutAmount from new orders.
-    if (dto.fulfilment !== undefined && dto.fulfilment !== (product as any).fulfilment) {
+    // Lock fulfilment + lane-1 money fields after the first order: snapshots are
+    // already in flight and flipping these would diverge stored vendorPayoutAmount
+    // from new orders. Same guard applied uniformly for all three.
+    const mfgFieldsChange =
+      (dto.fulfilment          !== undefined && dto.fulfilment          !== (product as any).fulfilment) ||
+      (dto.manufacturingUnitId !== undefined && dto.manufacturingUnitId !== (product as any).manufacturingUnitId) ||
+      (dto.profitSharePct      !== undefined && Number(dto.profitSharePct) !== Number((product as any).profitSharePct));
+    if (mfgFieldsChange) {
       const existingOrders = await this.prisma.orderItem.count({
         where: { variant: { productId } },
       });
       if (existingOrders > 0) {
         throw new BadRequestException(
-          'Bu ürün için satış başladıktan sonra fulfilment modu değiştirilemez. Yeni bir ürün oluşturun.',
+          'Bu ürün için satış başladıktan sonra fulfilment / üretim / kâr payı değiştirilemez. Yeni bir ürün oluşturun.',
         );
       }
+    }
+
+    // Cross-field validation: profit share + mfg unit only make sense when VIBEHUB_MANAGED.
+    // Decide the *effective* mode by reading dto override or falling back to current.
+    const effectiveFulfilment = dto.fulfilment ?? (product as any).fulfilment;
+    if (
+      effectiveFulfilment === 'VENDOR_MANAGED' &&
+      ((dto.manufacturingUnitId && dto.manufacturingUnitId !== null) ||
+       (dto.profitSharePct      && dto.profitSharePct      !== null))
+    ) {
+      throw new BadRequestException(
+        'Üretim birimi ve kâr payı yalnızca VIBEHUB_MANAGED ürünler için tanımlanabilir.',
+      );
     }
 
     const updated = await this.prisma.product.update({
@@ -897,6 +915,8 @@ export class AdminService {
         ...(dto.imageSettings !== undefined && { imageSettings: dto.imageSettings as any }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
         ...(dto.fulfilment !== undefined && { fulfilment: dto.fulfilment }),
+        ...(dto.manufacturingUnitId !== undefined && { manufacturingUnitId: dto.manufacturingUnitId }),
+        ...(dto.profitSharePct !== undefined && { profitSharePct: dto.profitSharePct }),
       },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });

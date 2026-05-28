@@ -53,6 +53,12 @@ function makeProduct(tenant: typeof TENANT_A, suffix: string) {
     preOrderShipDate: null,
     tenantId: tenant.id,
     tenant,
+    // Stage 1/2: money-flow happy path stays in lane 2 (flat commission).
+    fulfilment: 'VENDOR_MANAGED' as const,
+    manufacturingUnitId: null,
+    profitSharePct: null,
+    manufacturingUnit: null,
+    category: null,
   };
 }
 

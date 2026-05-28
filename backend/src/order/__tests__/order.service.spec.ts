@@ -44,6 +44,13 @@ const PRODUCT_LIVE = {
   preOrderShipDate: null,
   tenantId: TENANT.id,
   tenant: TENANT,
+  // Stage 1: default operating mode for all common-path tests stays lane 2.
+  fulfilment: 'VENDOR_MANAGED' as const,
+  // Stage 2 lane-1 fields — null for VENDOR_MANAGED (DB default).
+  manufacturingUnitId: null,
+  profitSharePct: null,
+  manufacturingUnit: null,
+  category: null,
 };
 
 const VARIANT = {
@@ -281,14 +288,21 @@ describe('OrderService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    // Stage 1 dual-fulfilment: the OrderItem.fulfilment snapshot is what Stage 2
-    // (manufacturing cost + profit share) reads to choose its calc branch. If
-    // this snapshot ever stops being written, the lane-1 money math silently
-    // falls back to lane-2 commission. This test pins it.
-    it('snapshots fulfilment onto OrderItem from the product', async () => {
+    // Stage 1 dual-fulfilment: pins that OrderItem.fulfilment is snapshotted
+    // verbatim from Product.fulfilment. Stage 2's money math branches on this
+    // snapshot — if it ever stops being written, lane-1 silently falls back
+    // to lane-2 commission, silently miscalculating every Vibehub-managed payout.
+    it('snapshots VIBEHUB_MANAGED fulfilment + lane-1 fields onto OrderItem', async () => {
       const vibehubManaged = {
         ...VARIANT,
-        product: { ...PRODUCT_LIVE, fulfilment: 'VIBEHUB_MANAGED' as any },
+        product: {
+          ...PRODUCT_LIVE,
+          fulfilment: 'VIBEHUB_MANAGED' as any,
+          // Lane-1 prerequisites: category VAT + linked mfg unit + profit split.
+          category:          { vatRate: new Decimal('0.20') },
+          manufacturingUnit: { unitCostTRY: new Decimal('300.00'), active: true },
+          profitSharePct:    new Decimal('0.50'),
+        },
       };
       const createSpy = jest.fn().mockResolvedValue({ ...makeOrder(), items: [] });
       const prisma: any = makePrisma({ variantOverride: vibehubManaged });
@@ -300,10 +314,17 @@ describe('OrderService', () => {
       );
       const svc = await buildService({ prisma });
 
+      // VARIANT has qty=2 in the cart by default; unitPrice 50 → lineTotal 100.
+      // VAT 20% → vat 16.67, net 83.33, mfg 600 → distributable -516.67,
+      // vendor floored to 0, platform absorbs the loss. Snapshot fields must
+      // all be present (non-undefined) regardless of sign.
       await svc.placeOrder(CUSTOMER.id, { currency: 'TRY', shippingAddress: {} as any });
 
-      const createPayload = createSpy.mock.calls[0][0];
-      expect(createPayload.data.items.create[0].fulfilment).toBe('VIBEHUB_MANAGED');
+      const itemPayload = createSpy.mock.calls[0][0].data.items.create[0];
+      expect(itemPayload.fulfilment).toBe('VIBEHUB_MANAGED');
+      expect(itemPayload.manufacturingCostSnapshot).toBeDefined();
+      expect(itemPayload.profitSharePctSnapshot).toBeDefined();
+      expect(itemPayload.platformShareAmount).toBeDefined();
     });
   });
 });

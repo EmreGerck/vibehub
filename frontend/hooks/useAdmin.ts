@@ -310,7 +310,7 @@ export function useAdminCreateProduct() {
 export function useAdminUpdateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...body }: { id: string; title?: string; description?: string; price?: number; currency?: string; images?: string[]; tags?: string[]; translations?: Record<string, any>; previewVideoUrl?: string; categoryId?: string; imageSettings?: Record<string, { x: number; y: number }> }) => {
+    mutationFn: async ({ id, ...body }: { id: string; title?: string; description?: string; price?: number; currency?: string; images?: string[]; tags?: string[]; translations?: Record<string, any>; previewVideoUrl?: string; categoryId?: string; imageSettings?: Record<string, { x: number; y: number }>; fulfilment?: 'VENDOR_MANAGED' | 'VIBEHUB_MANAGED'; manufacturingUnitId?: string | null; profitSharePct?: number | null }) => {
       const res = await api.patch(`/admin/products/${id}`, body);
       return res.data.data;
     },

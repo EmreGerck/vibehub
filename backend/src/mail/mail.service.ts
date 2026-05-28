@@ -241,34 +241,65 @@ export class MailService {
   /**
    * Notify a vendor that a new order containing their items has been placed.
    * One email per affected vendor — only their slice of the order.
+   *
+   * Each line item now carries its own `vendorPayout` and `fulfilment` so the
+   * vendor sees an honest breakdown — especially important for VibeHub-managed
+   * items where the artist's earning isn't simply `unitPrice − commission` but
+   * the post-VAT, post-mfg-cost profit split.
+   *
    * Fired from order.service.placeOrder after the customer + admin notifications.
    */
   async sendVendorNewOrder(
     to: string,
     orderId: string,
     storeName: string,
-    items: Array<{ title: string; qty: number; unitPrice: number }>,
+    items: Array<{
+      title: string;
+      qty: number;
+      unitPrice: number;
+      vendorPayout: number;
+      fulfilment: 'VIBEHUB_MANAGED' | 'VENDOR_MANAGED';
+      manufacturingCost?: number;
+    }>,
     currency: string,
   ): Promise<void> {
     const shortId = orderId.slice(0, 8).toUpperCase();
-    const vendorTotal = items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
-    const formattedTotal = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(vendorTotal);
-    const itemList = items.slice(0, 10).map((i) =>
-      `<li style="padding:4px 0;color:#ddd;"><strong>${escapeHtml(i.title)}</strong> × ${i.qty}</li>`
-    ).join('');
-    const moreItems = items.length > 10 ? `<li style="color:#999;font-style:italic;">…ve ${items.length - 10} ürün daha</li>` : '';
-    const subject = `🎉 Yeni sipariş — #${shortId} (${formattedTotal})`;
+    const fmt = (n: number) =>
+      new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(n);
+
+    const vendorEarnings = items.reduce((s, i) => s + i.vendorPayout, 0);
+    const grossRevenue   = items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+
+    const itemList = items.slice(0, 10).map((i) => {
+      const tag = i.fulfilment === 'VIBEHUB_MANAGED'
+        ? `<span style="display:inline-block;font-size:11px;background:#7c3aed;color:#fff;padding:2px 8px;border-radius:999px;margin-left:8px;">VibeHub gönderir</span>`
+        : '';
+      const mfgLine = i.manufacturingCost != null
+        ? `<div style="font-size:11px;color:#999;padding-left:8px;">Üretim maliyeti düşüldü: ${fmt(i.manufacturingCost)}</div>`
+        : '';
+      return `<li style="padding:6px 0;color:#ddd;border-bottom:1px solid #1f2937;">
+        <strong>${escapeHtml(i.title)}</strong> × ${i.qty}${tag}
+        <div style="font-size:12px;color:#a78bfa;">Senin kazancın: <strong>${fmt(i.vendorPayout)}</strong></div>
+        ${mfgLine}
+      </li>`;
+    }).join('');
+    const moreItems = items.length > 10
+      ? `<li style="color:#999;font-style:italic;padding:6px 0;">…ve ${items.length - 10} ürün daha</li>`
+      : '';
+
+    const subject = `🎉 Yeni sipariş — #${shortId} (${fmt(vendorEarnings)} kazanç)`;
     const html = this.orderEmailHtml(
       `🎉 ${escapeHtml(storeName)} için yeni sipariş!`,
-      `<strong>${formattedTotal}</strong> tutarında bir sipariş aldın.<br/><br/>
+      `Müşteri toplam <strong>${fmt(grossRevenue)}</strong> tutarında bir sipariş verdi.<br/>
+      Bu siparişten senin payın: <strong style="color:#a78bfa;">${fmt(vendorEarnings)}</strong><br/><br/>
       <strong>Sipariş ID:</strong> #${shortId}<br/><br/>
       <strong>Ürünler:</strong>
-      <ul style="margin:8px 0 16px;padding-left:20px;">${itemList}${moreItems}</ul>
+      <ul style="margin:8px 0 16px;padding-left:20px;list-style:none;">${itemList}${moreItems}</ul>
       Müşteri ödemeyi tamamladığında siparişi onaylayıp kargoya verebilirsin.`,
       'Sipariş Panelimde Aç',
       `https://vibehub.com.tr/dashboard/vendor/orders`,
     );
-    await this.send(to, subject, html, `${formattedTotal} tutarında yeni sipariş: #${shortId}`);
+    await this.send(to, subject, html, `${fmt(vendorEarnings)} kazançlı yeni sipariş: #${shortId}`);
   }
 
   /**

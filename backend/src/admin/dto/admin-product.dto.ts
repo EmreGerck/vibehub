@@ -118,6 +118,19 @@ export class AdminUpdateProductDto {
   @IsOptional()
   @IsEnum(FulfilmentType)
   fulfilment?: FulfilmentType;
+
+  // Stage 2 — only meaningful for VIBEHUB_MANAGED products.
+  // `null` clears the link.
+  @IsOptional()
+  @IsString()
+  manufacturingUnitId?: string | null;
+
+  // Vendor's share of post-cost profit. 0.5 = 50/50, 0.6 = 60% vendor / 40% VibeHub.
+  // Same lock-after-first-order guard as fulfilment.
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Type(() => Number)
+  profitSharePct?: number | null;
 }
 
 // ── Dedicated discount endpoint ──────────────────────────────────────────────

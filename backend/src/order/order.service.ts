@@ -17,6 +17,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrdersDto } from './dto/query-orders.dto';
 import { NotificationType, OrderStatus, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { computeLineSplit } from './line-split';
 
 // Vendor-allowed status transitions
 const VENDOR_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -46,11 +47,21 @@ export class OrderService {
     const cartItems = await this.cart.getRawEntries(customerId);
     if (cartItems.length === 0) throw new BadRequestException('Cart is empty');
 
-    // Load all variants with their product + tenant commission rate
+    // Load variants with everything line-split needs: tenant commission (lane 2),
+    // category VAT + linked mfg unit (lane 1), and the product fulfilment column
+    // that picks which lane to walk.
     const variantIds = cartItems.map((c) => c.variantId);
     const variants = await this.prisma.productVariant.findMany({
       where: { id: { in: variantIds } },
-      include: { product: { include: { tenant: true } } },
+      include: {
+        product: {
+          include: {
+            tenant:            true,
+            category:          { select: { vatRate: true } },
+            manufacturingUnit: { select: { unitCostTRY: true, active: true } },
+          },
+        },
+      },
     });
 
     const variantMap = new Map(variants.map((v) => [v.id, v]));
@@ -103,32 +114,53 @@ export class OrderService {
       }
     }
 
-    // Calculate totals
+    // Calculate per-line money split via the single-source-of-truth helper.
+    // Lane chosen by Product.fulfilment — VENDOR_MANAGED = flat commission,
+    // VIBEHUB_MANAGED = VAT-strip → mfg-cost deduct → profit-share with vendor.
     let totalAmount = new Decimal(0);
     const lineItems = cartItems.map((entry) => {
       const v = variantMap.get(entry.variantId)!;
       const unitPrice = new Decimal(v.priceOverride ?? v.product.price);
-      if (unitPrice.isNegative()) throw new BadRequestException(`Invalid price for "${v.product.title}"`);
-      const commissionRate = new Decimal(v.product.tenant.commissionRate);
-      if (commissionRate.isNegative() || commissionRate.greaterThan(new Decimal(1))) {
-        throw new BadRequestException(`Invalid commission rate for store "${v.product.tenant.displayName}"`);
+
+      let split;
+      try {
+        split = computeLineSplit({
+          fulfilment:            v.product.fulfilment,
+          unitPrice,
+          qty:                   entry.qty,
+          commissionRate:        new Decimal(v.product.tenant.commissionRate),
+          vatRate:               v.product.category?.vatRate
+            ? new Decimal(v.product.category.vatRate)
+            : undefined,
+          manufacturingUnitCost: v.product.manufacturingUnit?.unitCostTRY
+            ? new Decimal(v.product.manufacturingUnit.unitCostTRY)
+            : null,
+          profitSharePct:        v.product.profitSharePct
+            ? new Decimal(v.product.profitSharePct)
+            : null,
+          productTitle:          v.product.title,
+          storeName:             v.product.tenant.displayName,
+        });
+      } catch (err: any) {
+        throw new BadRequestException(err.message);
       }
-      const lineTotal = unitPrice.mul(entry.qty);
-      const platformFee = lineTotal.mul(commissionRate);
-      const vendorPayout = lineTotal.sub(platformFee);
-      totalAmount = totalAmount.add(lineTotal);
+
+      totalAmount = totalAmount.add(split.lineTotal);
 
       return {
         variantId: entry.variantId,
         tenantId: v.product.tenantId,
         qty: entry.qty,
-        unitPriceSnapshot: unitPrice,
-        commissionRateSnapshot: commissionRate,
-        vendorPayoutAmount: vendorPayout,
-        // Stage 1 dual-fulfilment: snapshot who's responsible for shipping this line.
-        // Stage 2 will add manufacturingCostSnapshot/profitSharePctSnapshot when
-        // fulfilment === 'VIBEHUB_MANAGED'.
-        fulfilment: v.product.fulfilment,
+        unitPriceSnapshot:      split.unitPriceSnapshot,
+        commissionRateSnapshot: split.commissionRateSnapshot,
+        vendorPayoutAmount:     split.vendorPayoutAmount,
+        fulfilment:             v.product.fulfilment,
+        // Stage 2 lane-1 snapshots — undefined for VENDOR_MANAGED (stays NULL in DB).
+        ...(split.manufacturingCostSnapshot !== undefined && {
+          manufacturingCostSnapshot: split.manufacturingCostSnapshot,
+          profitSharePctSnapshot:    split.profitSharePctSnapshot,
+          platformShareAmount:       split.platformShareAmount,
+        }),
         // Pre-order snapshot — frozen at order time so future product edits
         // don't retroactively change an order's status semantics.
         isPreOrder: v.product.isPreOrder,
@@ -250,18 +282,31 @@ export class OrderService {
     }
 
     // Notify each VENDOR whose products are in this order — one email per tenant
-    // with only that vendor's slice of the items. Fire-and-forget; failures must
-    // not block the customer's order.
+    // with only that vendor's slice of the items. Includes lane-1 mfg-cost breakdown
+    // so VibeHub-managed vendors see the deduction explicitly. Fire-and-forget;
+    // failures must not block the customer's order.
     try {
-      const itemsByTenant = new Map<string, Array<{ title: string; qty: number; unitPrice: number }>>();
+      const itemsByTenant = new Map<string, Array<{
+        title: string;
+        qty: number;
+        unitPrice: number;
+        vendorPayout: number;
+        fulfilment: 'VIBEHUB_MANAGED' | 'VENDOR_MANAGED';
+        manufacturingCost?: number;
+      }>>();
       for (const it of order.items as any[]) {
         const tenantId = it.variant?.product?.tenantId;
         if (!tenantId) continue;
         const slice = itemsByTenant.get(tenantId) ?? [];
         slice.push({
-          title: it.variant?.product?.title ?? `Ürün ${it.variantId.slice(0, 8)}`,
-          qty: it.qty,
-          unitPrice: Number(it.unitPriceSnapshot ?? 0),
+          title:        it.variant?.product?.title ?? `Ürün ${it.variantId.slice(0, 8)}`,
+          qty:          it.qty,
+          unitPrice:    Number(it.unitPriceSnapshot ?? 0),
+          vendorPayout: Number(it.vendorPayoutAmount ?? 0),
+          fulfilment:   it.fulfilment ?? 'VENDOR_MANAGED',
+          manufacturingCost: it.manufacturingCostSnapshot != null
+            ? Number(it.manufacturingCostSnapshot)
+            : undefined,
         });
         itemsByTenant.set(tenantId, slice);
       }

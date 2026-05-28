@@ -21,6 +21,8 @@ import {
 import { useReviewProduct } from '../../../../hooks/useProducts';
 import { useAdminVendors } from '../../../../hooks/useAdmin';
 import { useCategories } from '../../../../hooks/useCategories';
+import { useManufacturingUnits } from '../../../../hooks/useManufacturing';
+import { useAuthStore } from '../../../../store/auth.store';
 import { formatPrice } from '../../../../lib/format';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -740,6 +742,191 @@ function ImageSettingsModal({ product, onClose }: { product: any; onClose: () =>
 
 const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
+// ── Fulfilment + manufacturing modal (GOD_USER only) ─────────────────────────
+
+function FulfilmentModal({ product, onClose }: { product: any; onClose: () => void }) {
+  const update = useAdminUpdateProduct();
+  const { data: units = [] } = useManufacturingUnits(false);
+
+  const [fulfilment, setFulfilment] = useState<'VENDOR_MANAGED' | 'VIBEHUB_MANAGED'>(
+    product.fulfilment ?? 'VENDOR_MANAGED',
+  );
+  const [unitId, setUnitId]         = useState<string>(product.manufacturingUnitId ?? '');
+  const [sharePct, setSharePct]     = useState<string>(
+    product.profitSharePct != null ? String(Number(product.profitSharePct) * 100) : '50',
+  );
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const selectedUnit = units.find((u) => u.id === unitId);
+  const price        = Number(product.price ?? 0);
+  const vatRate      = Number(product.category?.vatRate ?? 0.20);
+  const unitCost     = selectedUnit ? Number(selectedUnit.unitCostTRY) : 0;
+  const sharePctNum  = Number(sharePct) / 100;
+
+  // Live preview — recomputes line-split for qty=1 so admin sees what vendor will see.
+  const vatExtracted        = price * vatRate / (1 + vatRate);
+  const netRevenue          = price - vatExtracted;
+  const distributableProfit = netRevenue - unitCost;
+  const vendorPayout        = Math.max(distributableProfit * sharePctNum, 0);
+  const platformShare       = distributableProfit - vendorPayout;
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(n);
+
+  async function handleSave() {
+    setError('');
+    try {
+      await update.mutateAsync({
+        id: product.id,
+        fulfilment,
+        manufacturingUnitId: fulfilment === 'VIBEHUB_MANAGED' ? (unitId || null) : null,
+        profitSharePct:      fulfilment === 'VIBEHUB_MANAGED' ? sharePctNum : null,
+      });
+      setSaved(true);
+      setTimeout(onClose, 800);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Kaydedilemedi');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="card p-6 w-full max-w-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Fulfilment & Üretim — {product.title}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Bu ürün için kim üretiyor / kim gönderiyor ve ne tür bir para paylaşımı uygulanıyor?
+              İlk sipariş sonrası değişiklik yapılamaz.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl leading-none">×</button>
+        </div>
+
+        {error && <div className="rounded-lg bg-red-900/30 border border-red-700 px-3 py-2 text-sm text-red-200">{error}</div>}
+        {saved && <div className="rounded-lg bg-green-900/30 border border-green-700 px-3 py-2 text-sm text-green-200">Kaydedildi.</div>}
+
+        <div>
+          <label className="label">Operasyon modeli</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {(['VENDOR_MANAGED', 'VIBEHUB_MANAGED'] as const).map((mode) => {
+              const selected = fulfilment === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setFulfilment(mode)}
+                  className={`text-left rounded-lg border p-3 transition-colors ${
+                    selected
+                      ? 'border-brand-500 bg-brand-500/10'
+                      : 'border-surface-border hover:border-brand-500/40'
+                  }`}
+                >
+                  <p className="font-medium text-sm">{mode === 'VENDOR_MANAGED' ? 'Satıcı üretir & gönderir' : 'VibeHub üretir & gönderir'}</p>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    {mode === 'VENDOR_MANAGED'
+                      ? 'Satıştan sabit komisyon alınır.'
+                      : 'KDV ayrılır, üretim maliyeti düşülür, kalan kâr paylaşılır.'}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {fulfilment === 'VIBEHUB_MANAGED' && (
+          <>
+            <div>
+              <label className="label">Üretim birimi *</label>
+              <select
+                className="input w-full"
+                value={unitId}
+                onChange={(e) => setUnitId(e.target.value)}
+              >
+                <option value="">— Seç —</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} — {fmt(Number(u.unitCostTRY))}
+                  </option>
+                ))}
+              </select>
+              {units.length === 0 && (
+                <p className="mt-1 text-xs text-amber-400">
+                  Henüz üretim birimi yok. Önce "Üretim Birimleri" sayfasından bir birim oluştur.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="label">Sanatçı kâr payı (% — kalan kârın)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                className="input w-full"
+                value={sharePct}
+                onChange={(e) => setSharePct(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                ör. 50 → KDV ve üretim maliyeti düşüldükten sonra kalan kârın %50'si sanatçıya, %50'si VibeHub'a.
+              </p>
+            </div>
+
+            {/* Live preview */}
+            <div className="rounded-lg border border-surface-border bg-surface-2/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                Hesap önizleme (1 adet için)
+              </p>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr>
+                    <td className="py-1 text-gray-400">Satış fiyatı</td>
+                    <td className="py-1 text-right text-white tabular-nums">{fmt(price)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-gray-400">− KDV (%{(vatRate * 100).toFixed(0)})</td>
+                    <td className="py-1 text-right text-white tabular-nums">{fmt(vatExtracted)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-gray-400">− Üretim maliyeti</td>
+                    <td className="py-1 text-right text-white tabular-nums">{fmt(unitCost)}</td>
+                  </tr>
+                  <tr className="border-t border-surface-border">
+                    <td className="py-1 text-gray-300">Paylaşılacak kâr</td>
+                    <td className="py-1 text-right text-white font-medium tabular-nums">{fmt(distributableProfit)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-purple-300">→ Sanatçı kazanır</td>
+                    <td className="py-1 text-right text-purple-200 font-semibold tabular-nums">{fmt(vendorPayout)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-orange-300">→ VibeHub kazanır</td>
+                    <td className="py-1 text-right text-orange-200 font-semibold tabular-nums">{fmt(platformShare)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {distributableProfit < 0 && (
+                <p className="mt-2 text-xs text-amber-400">
+                  ⚠️ Üretim maliyeti net gelirden yüksek — satış zararla sonuçlanır. Sanatçı payı 0'a sabitlenir,
+                  zararı VibeHub üstlenir.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="btn-ghost">Kapat</button>
+          <button onClick={handleSave} disabled={update.isPending} className="btn-primary">
+            {update.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PreOrderModal({ product, onClose }: { product: any; onClose: () => void }) {
   const setPreOrder = useAdminSetProductPreOrder();
   const createVariant = useAdminCreateVariant();
@@ -952,6 +1139,9 @@ export default function AdminProductsPage() {
   const [pageSize, setPageSize] = usePageSize('admin-products', 20);
   const [showForm, setShowForm] = useState(false);
   const [variantsFor, setVariantsFor] = useState<any | null>(null);
+  const [fulfilmentFor, setFulfilmentFor] = useState<any | null>(null);
+  const currentUser = useAuthStore((s) => s.user);
+  const isGod = currentUser?.role === 'GOD_USER';
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [deleteProductConfirm, setDeleteProductConfirm] = useState<{ id: string; title: string } | null>(null);
   const [approveConfirm, setApproveConfirm] = useState<{ id: string; title: string } | null>(null);
@@ -1107,6 +1297,21 @@ export default function AdminProductsPage() {
                           Variants ({product.variants?.length ?? 0})
                         </button>
 
+                        {/* Fulfilment + Mfg (GOD_USER only) */}
+                        {isGod && (
+                          <button
+                            onClick={() => setFulfilmentFor(product)}
+                            className={`text-xs border px-2.5 py-1.5 rounded-lg transition-colors ${
+                              product.fulfilment === 'VIBEHUB_MANAGED'
+                                ? 'border-purple-400 dark:border-purple-600 text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20'
+                                : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-purple-400 dark:hover:border-purple-600 hover:text-purple-600 dark:hover:text-purple-400'
+                            }`}
+                            title="Fulfilment + üretim + kâr paylaşımı"
+                          >
+                            🏭 {product.fulfilment === 'VIBEHUB_MANAGED' ? 'VibeHub' : 'Satıcı'}
+                          </button>
+                        )}
+
                         {/* Pre-order config */}
                         <button
                           onClick={() => setPreOrderFor(product)}
@@ -1206,6 +1411,14 @@ export default function AdminProductsPage() {
         <VariantsModal
           product={items.find((p: any) => p.id === variantsFor.id) ?? variantsFor}
           onClose={() => setVariantsFor(null)}
+        />
+      )}
+
+      {/* Fulfilment + manufacturing modal (GOD_USER only) */}
+      {fulfilmentFor && (
+        <FulfilmentModal
+          product={items.find((p: any) => p.id === fulfilmentFor.id) ?? fulfilmentFor}
+          onClose={() => setFulfilmentFor(null)}
         />
       )}
 

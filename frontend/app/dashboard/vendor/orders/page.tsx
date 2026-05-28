@@ -172,11 +172,34 @@ export default function VendorOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {data?.items.map((order: any) => (
+                {data?.items.map((order: any) => {
+                  // Stage 2: surface the vendor's actual take per order (sum of
+                  // vendorPayoutAmount across this vendor's items) + a "VibeHub gönderir"
+                  // marker when any item in this order is co-manufactured.
+                  const vendorTake = (order.items ?? []).reduce(
+                    (s: number, i: any) => s + Number(i.vendorPayoutAmount ?? 0),
+                    0,
+                  );
+                  const hasVibehubManaged = (order.items ?? []).some(
+                    (i: any) => i.fulfilment === 'VIBEHUB_MANAGED',
+                  );
+                  return (
                   <tr key={order.id} className="border-b border-gray-200 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-900/50">
-                    <td className="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{order.id.slice(0, 8)}…</td>
+                    <td className="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {order.id.slice(0, 8)}…
+                      {hasVibehubManaged && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:text-purple-300">
+                          🏭 VibeHub
+                        </span>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{order.items?.length ?? 0}</td>
-                    <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">{formatPrice(order.totalAmount)}</td>
+                    <td className="px-5 py-3">
+                      <div className="text-gray-900 dark:text-white font-medium">{formatPrice(order.totalAmount)}</div>
+                      <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                        Senin payın: <strong>{formatPrice(vendorTake)}</strong>
+                      </div>
+                    </td>
                     <td className="px-5 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[order.status] ?? 'badge-gray'}`}>
                         {order.status}
@@ -215,7 +238,8 @@ export default function VendorOrdersPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

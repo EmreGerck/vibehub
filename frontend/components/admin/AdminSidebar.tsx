@@ -86,7 +86,8 @@ const NAV_GROUPS: NavGroup[] = [
     icon: '⚙️',
     defaultOpen: false,
     items: [
-      { href: '/dashboard/admin/settings', label: 'Platform Ayarları', icon: '⚙️' },
+      { href: '/dashboard/admin/settings',      label: 'Platform Ayarları', icon: '⚙️' },
+      { href: '/dashboard/admin/manufacturing', label: 'Üretim Birimleri',  icon: '🏭' },
     ],
   },
 ];

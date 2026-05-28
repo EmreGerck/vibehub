@@ -386,8 +386,12 @@ model Product {
   currency     String        @default("USD")
   status       ProductStatus @default(DRAFT)
   // Who ships this product. Defaults to VENDOR_MANAGED so existing flow stands.
-  // VIBEHUB_MANAGED triggers profit-share calc (Stage 2). Lockable once first order placed.
+  // VIBEHUB_MANAGED triggers profit-share calc. Lockable once first order placed.
   fulfilment   FulfilmentType @default(VENDOR_MANAGED)
+  // Stage 2: link to the shared mfg-cost catalogue + vendor's share of post-cost profit.
+  // Both nullable — only meaningful when fulfilment === 'VIBEHUB_MANAGED'.
+  manufacturingUnitId String?
+  profitSharePct      Decimal?  @db.Decimal(5, 4)   // e.g. 0.5000 = vendor gets 50%
   images          String[]
   tags            String[]
   translations    Json?
@@ -402,16 +406,18 @@ model Product {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  tenant   Tenant           @relation(fields: [tenantId], references: [id])
-  category Category?        @relation(fields: [categoryId], references: [id])
-  variants ProductVariant[]
-  reviews  Review[]
-  wishlist Wishlist[]
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  category          Category?          @relation(fields: [categoryId], references: [id])
+  manufacturingUnit ManufacturingUnit? @relation(fields: [manufacturingUnitId], references: [id])
+  variants          ProductVariant[]
+  reviews           Review[]
+  wishlist          Wishlist[]
 
   @@index([tenantId])
   @@index([status])
   @@index([tags])
   @@index([categoryId])
+  @@index([manufacturingUnitId])
   // Hot path: vendor product-list page (filter by status + tenantId).
   @@index([status, tenantId])
 }
@@ -479,8 +485,12 @@ model OrderItem {
   commissionRateSnapshot Decimal @db.Decimal(5, 4)
   vendorPayoutAmount     Decimal @db.Decimal(12, 2)
   // Snapshotted fulfilment mode at order time — never changes even if product is later edited.
-  // Stage 2 adds manufacturingCostSnapshot/profitSharePctSnapshot/platformShareAmount for VIBEHUB_MANAGED.
   fulfilment             FulfilmentType @default(VENDOR_MANAGED)
+  // Stage 2 lane-1 snapshots — only populated when fulfilment = VIBEHUB_MANAGED.
+  // Frozen at order time so a later mfg-cost edit doesn't retroactively change payouts.
+  manufacturingCostSnapshot Decimal? @db.Decimal(12, 2)  // unitCost × qty
+  profitSharePctSnapshot    Decimal? @db.Decimal(5, 4)
+  platformShareAmount       Decimal? @db.Decimal(12, 2)  // VibeHub's cut after VAT + mfg cost
   // ── Pre-order snapshot (copied from Product at order time) ────────────────
   isPreOrder       Boolean         @default(false)
   preOrderStatus   PreOrderStatus? // null for non-pre-order items
@@ -561,6 +571,27 @@ model Payout {
   @@index([tenantId])
   @@index([status])
   @@index([tenantId, periodStart, periodEnd])
+}
+
+// Shared catalogue of unit manufacturing costs that any VIBEHUB_MANAGED Product
+// can link to. Owned by GOD_USER — the cost is internal/sensitive and should not
+// be visible to vendors or PLATFORM_ADMIN listings.
+//
+// Example rows: "Oversize T-Shirt Beyaz — 300 TRY", "Hoodie Siyah — 550 TRY".
+// One unit can back multiple products (same base, different prints).
+model ManufacturingUnit {
+  id          String   @id @default(uuid())
+  name        String                              // e.g. "Oversize T-Shirt Beyaz"
+  unitCostTRY Decimal  @db.Decimal(12, 2)         // cost per unit, always TRY
+  notes       String?                             // "Tedarikçi: X, MOQ: 50, lead: 14 gün"
+  active      Boolean  @default(true)             // soft-archive without breaking links
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products    Product[]
+
+  @@index([active])
+  @@index([name])
 }
 
 model Review {
