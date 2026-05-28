@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -407,29 +408,29 @@ export class AdminController {
   @Post('banners')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new hero banner' })
-  async createBanner(@Body() dto: CreateBannerDto) {
-    const data = await this.adminService.createBanner(dto);
+  async createBanner(@Body() dto: CreateBannerDto, @CurrentUser('id') actorId: string) {
+    const data = await this.adminService.createBanner(dto, actorId);
     return ApiResponse.ok(data, 'Banner created');
   }
 
   @Patch('banners/:id')
   @ApiOperation({ summary: 'Update a hero banner' })
-  async updateBanner(@Param('id') id: string, @Body() dto: UpdateBannerDto) {
-    const data = await this.adminService.updateBanner(id, dto);
+  async updateBanner(@Param('id') id: string, @Body() dto: UpdateBannerDto, @CurrentUser('id') actorId: string) {
+    const data = await this.adminService.updateBanner(id, dto, actorId);
     return ApiResponse.ok(data, 'Banner updated');
   }
 
   @Delete('banners/:id')
   @ApiOperation({ summary: 'Delete a hero banner' })
-  async deleteBanner(@Param('id') id: string) {
-    const data = await this.adminService.deleteBanner(id);
+  async deleteBanner(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    const data = await this.adminService.deleteBanner(id, actorId);
     return ApiResponse.ok(data, 'Banner deleted');
   }
 
   @Patch('banners/:id/toggle')
   @ApiOperation({ summary: 'Toggle banner active state' })
-  async toggleBanner(@Param('id') id: string) {
-    const data = await this.adminService.toggleBanner(id);
+  async toggleBanner(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    const data = await this.adminService.toggleBanner(id, actorId);
     return ApiResponse.ok(data, 'Banner toggled');
   }
 
@@ -498,6 +499,39 @@ export class AdminController {
   async adminDeleteUser(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     const data = await this.adminService.adminDeleteUser(id, actorId);
     return ApiResponse.ok(data, 'User deleted');
+  }
+
+  @Get('users/:id')
+  @ApiOperation({ summary: 'Customer 360 view: profile + orders + addresses + activity in one call' })
+  async adminGetUserDetail(@Param('id') id: string) {
+    const data = await this.adminService.adminGetUserDetail(id);
+    return ApiResponse.ok(data, 'User detail retrieved');
+  }
+
+  @Post('users/:id/unlock')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Clear failed-login counter and lockedUntil for a user (does not change password)' })
+  async adminUnlockUser(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    const data = await this.adminService.adminUnlockUser(id, actorId);
+    return ApiResponse.ok(data, 'User account unlocked');
+  }
+
+  // ── Order CSV export ──────────────────────────────────────────────────────────
+
+  @Get('orders/export.csv')
+  @ApiOperation({ summary: 'Export orders to CSV (filtered by status, vendor, date range, search)' })
+  async exportOrdersCsv(
+    @Res({ passthrough: false }) res: any,
+    @Query('status')   status?: string,
+    @Query('tenantId') tenantId?: string,
+    @Query('from')     from?: string,
+    @Query('to')       to?: string,
+    @Query('q')        q?: string,
+  ) {
+    const { csv, filename } = await this.adminService.exportOrdersCsv({ status, tenantId, from, to, q });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
   }
 
   // ── Admin: tenant deep-edit ───────────────────────────────────────────────────

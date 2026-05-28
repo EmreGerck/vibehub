@@ -1171,6 +1171,25 @@ const translations: Record<Locale, Record<string, string>> = {
     'notif.noUnread': 'Okunmamış bildirim yok',
     'notif.totalNotifications': 'bildirim',
     'profile.notifications': 'Bildirimler',
+
+    // ── Trust strip (footer) ──
+    'trust.securePay.title': 'Güvenli Ödeme',
+    'trust.securePay.subtitle': 'Iyzico SSL korumalı',
+    'trust.returns.title': '14 Gün İade',
+    'trust.returns.subtitle': 'Cayma hakkı yasal güvence',
+    'trust.fastShip.title': 'Hızlı Kargo',
+    'trust.fastShip.subtitle': 'Aras & Yurtiçi',
+    'trust.kvkk.title': 'KVKK Uyumlu',
+    'trust.kvkk.subtitle': 'Verilerin güvende',
+
+    // ── Cart free-shipping progress ──
+    'cart.freeShipFrom': 'Kargo bedava için',
+    'cart.freeShipMore': '{{amount}} daha ekle',
+    'cart.freeShipUnlocked': 'Kargon bedava! 🎉',
+
+    // ── Order detail reorder ──
+    'orderDetail.reorder': 'Tekrar Sipariş Ver',
+    'orderDetail.reorderAdded': 'Ürünler sepetine eklendi',
     'auth.invalidResetLink': 'Geçersiz sıfırlama bağlantısı.',
     'auth.requestNewLink': 'Yeni bağlantı talep et',
     'auth.passwordResetSuccess': 'Şifreniz başarıyla sıfırlandı.',
@@ -2392,6 +2411,25 @@ const translations: Record<Locale, Record<string, string>> = {
     'notif.noUnread': 'No unread notifications',
     'notif.totalNotifications': 'notifications',
     'profile.notifications': 'Notifications',
+
+    // ── Trust strip (footer) ──
+    'trust.securePay.title': 'Secure Payment',
+    'trust.securePay.subtitle': 'Iyzico SSL protected',
+    'trust.returns.title': '14-Day Returns',
+    'trust.returns.subtitle': 'Legal cooling-off period',
+    'trust.fastShip.title': 'Fast Shipping',
+    'trust.fastShip.subtitle': 'Aras & Yurtiçi',
+    'trust.kvkk.title': 'KVKK Compliant',
+    'trust.kvkk.subtitle': 'Your data is safe',
+
+    // ── Cart free-shipping progress ──
+    'cart.freeShipFrom': 'Free shipping at',
+    'cart.freeShipMore': 'add {{amount}} more',
+    'cart.freeShipUnlocked': 'Your shipping is free! 🎉',
+
+    // ── Order detail reorder ──
+    'orderDetail.reorder': 'Buy Again',
+    'orderDetail.reorderAdded': 'Items added to cart',
     'auth.invalidResetLink': 'Invalid reset link.',
     'auth.requestNewLink': 'Request a new link',
     'auth.passwordResetSuccess': 'Your password has been reset successfully.',

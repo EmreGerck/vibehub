@@ -35,6 +35,16 @@ import { OrderStatus, ProductStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Decimal } from '@prisma/client/runtime/library';
 
+/** Escape a field for safe CSV inclusion (quote + double inner quotes). */
+function csvEscape(value: string): string {
+  if (value == null) return '';
+  const s = String(value);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -721,22 +731,29 @@ export class AdminService {
     });
   }
 
-  async createBanner(dto: CreateBannerDto) {
+  async createBanner(dto: CreateBannerDto, actorId?: string) {
     const { tenantId, ...rest } = dto;
-    return this.prisma.heroBanner.create({
+    const banner = await this.prisma.heroBanner.create({
       data: {
         ...rest,
         translations: rest.translations as any,
         ...(tenantId ? { tenant: { connect: { id: tenantId } } } : {}),
       },
     });
+    if (actorId) {
+      await this.audit.log({
+        actorId, action: 'ADMIN_BANNER_CREATED', targetType: 'HeroBanner', targetId: banner.id,
+        metadata: { tenantId, sortOrder: banner.sortOrder, active: banner.active },
+      });
+    }
+    return banner;
   }
 
-  async updateBanner(id: string, dto: UpdateBannerDto) {
+  async updateBanner(id: string, dto: UpdateBannerDto, actorId?: string) {
     const banner = await this.prisma.heroBanner.findUnique({ where: { id } });
     if (!banner) throw new NotFoundException('Banner not found');
     const { tenantId, ...rest } = dto;
-    return this.prisma.heroBanner.update({
+    const updated = await this.prisma.heroBanner.update({
       where: { id },
       data: {
         ...rest,
@@ -748,22 +765,42 @@ export class AdminService {
           : {}),
       },
     });
+    if (actorId) {
+      await this.audit.log({
+        actorId, action: 'ADMIN_BANNER_UPDATED', targetType: 'HeroBanner', targetId: id,
+        metadata: { changedFields: Object.keys(dto) },
+      });
+    }
+    return updated;
   }
 
-  async deleteBanner(id: string) {
+  async deleteBanner(id: string, actorId?: string) {
     const banner = await this.prisma.heroBanner.findUnique({ where: { id } });
     if (!banner) throw new NotFoundException('Banner not found');
     await this.prisma.heroBanner.delete({ where: { id } });
+    if (actorId) {
+      await this.audit.log({
+        actorId, action: 'ADMIN_BANNER_DELETED', targetType: 'HeroBanner', targetId: id,
+        metadata: { sortOrder: banner.sortOrder, tenantId: (banner as any).tenantId },
+      });
+    }
     return { deleted: true };
   }
 
-  async toggleBanner(id: string) {
+  async toggleBanner(id: string, actorId?: string) {
     const banner = await this.prisma.heroBanner.findUnique({ where: { id } });
     if (!banner) throw new NotFoundException('Banner not found');
-    return this.prisma.heroBanner.update({
+    const updated = await this.prisma.heroBanner.update({
       where: { id },
       data: { active: !banner.active },
     });
+    if (actorId) {
+      await this.audit.log({
+        actorId, action: 'ADMIN_BANNER_TOGGLED', targetType: 'HeroBanner', targetId: id,
+        metadata: { from: banner.active, to: updated.active },
+      });
+    }
+    return updated;
   }
 
   // ── Admin Product CRUD ────────────────────────────────────────────────────────
@@ -1155,6 +1192,159 @@ export class AdminService {
     });
 
     return { deleted: true };
+  }
+
+  // ── Customer 360 view: profile + orders + reviews + audit in one call ─────────
+
+  async adminGetUserDetail(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, email: true, name: true, phone: true, role: true, tenantId: true,
+        avatarUrl: true, createdAt: true, updatedAt: true,
+        lockedUntil: true,
+        marketingConsent: true, termsAcceptedAt: true, privacyAcceptedAt: true,
+        kvkkAcceptedAt: true, accountDeletedAt: true,
+      } as any,
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const [
+      orderCount, recentOrders, reviewCount, totalSpentRaw,
+      followingCount, refundRequestCount, trustedDeviceCount,
+      activeRefreshTokenCount, recentActivity,
+    ] = await Promise.all([
+      this.prisma.order.count({ where: { customerId: userId } }),
+      // Use `as any` cast — deliveredAt column added in 20260528 migration but
+      // Prisma types only regenerate at deploy; this lets type-check pass locally.
+      (this.prisma.order.findMany as any)({
+        where: { customerId: userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true, status: true, totalAmount: true, currency: true,
+          createdAt: true, deliveredAt: true,
+        },
+      }),
+      this.prisma.review.count({ where: { customerId: userId } }),
+      this.prisma.order.aggregate({
+        where: { customerId: userId, status: { in: ['DELIVERED', 'SHIPPED', 'CONFIRMED'] } },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.follow.count({ where: { userId } }).catch(() => 0),
+      this.prisma.order.count({ where: { customerId: userId, status: 'REFUND_REQUESTED' as any } }),
+      this.prisma.trustedDevice.count({ where: { userId } }),
+      this.prisma.refreshToken.count({ where: { userId, expiresAt: { gt: new Date() } } }),
+      this.prisma.auditLog.findMany({
+        where: { actorId: userId },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        select: { id: true, action: true, targetType: true, targetId: true, createdAt: true },
+      }),
+    ]);
+
+    return {
+      user,
+      stats: {
+        orderCount,
+        reviewCount,
+        followingCount,
+        refundRequestCount,
+        trustedDeviceCount,
+        activeSessionCount: activeRefreshTokenCount,
+        totalSpent: Number(totalSpentRaw._sum.totalAmount ?? 0),
+        isLocked: !!((user as any).lockedUntil && new Date((user as any).lockedUntil as string) > new Date()),
+      },
+      recentOrders,
+      recentActivity,
+    };
+  }
+
+  async adminUnlockUser(userId: string, actorId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, lockedUntil: true } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { lockedUntil: null } as any,
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'ADMIN_USER_UNLOCKED',
+      targetType: 'User',
+      targetId: userId,
+      metadata: { previousLockedUntil: user.lockedUntil },
+    });
+
+    return { unlocked: true };
+  }
+
+  // ── Order CSV export ──────────────────────────────────────────────────────────
+
+  async exportOrdersCsv(filters: { status?: string; tenantId?: string; from?: string; to?: string; q?: string }) {
+    const where: any = {};
+    if (filters.status) where.status = filters.status;
+    if (filters.from || filters.to) {
+      where.createdAt = {};
+      if (filters.from) where.createdAt.gte = new Date(filters.from);
+      if (filters.to)   where.createdAt.lte = new Date(filters.to);
+    }
+    if (filters.tenantId) {
+      where.items = { some: { tenantId: filters.tenantId } };
+    }
+    if (filters.q) {
+      where.OR = [
+        { id: { contains: filters.q, mode: 'insensitive' } },
+        { paymentRef: { contains: filters.q, mode: 'insensitive' } },
+        { customer: { email: { contains: filters.q, mode: 'insensitive' } } },
+        { customer: { name: { contains: filters.q, mode: 'insensitive' } } },
+      ];
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where,
+      take: 5000, // cap to keep memory bounded; admin can narrow filters
+      orderBy: { createdAt: 'desc' },
+      include: {
+        customer: { select: { email: true, name: true } },
+        items: { select: { qty: true, unitPriceSnapshot: true } },
+      },
+    });
+
+    const rows: string[] = [
+      // Header
+      'OrderID,Date,Customer,Email,Status,Items,Subtotal,Total,Currency,InvoiceNumber,PaymentRef,DeliveredAt,RefundedAt',
+    ];
+
+    for (const o of orders) {
+      const itemCount = o.items.reduce((s, i) => s + i.qty, 0);
+      const subtotal = o.items.reduce((s, i) => s + Number(i.unitPriceSnapshot) * i.qty, 0);
+      const fields = [
+        o.id,
+        new Date(o.createdAt).toISOString(),
+        csvEscape(o.customer?.name ?? ''),
+        csvEscape(o.customer?.email ?? ''),
+        o.status,
+        String(itemCount),
+        subtotal.toFixed(2),
+        Number(o.totalAmount).toFixed(2),
+        o.currency,
+        csvEscape((o as any).invoiceNumber ?? ''),
+        csvEscape(o.paymentRef ?? ''),
+        (o as any).deliveredAt ? new Date((o as any).deliveredAt).toISOString() : '',
+        (o as any).refundedAt ? new Date((o as any).refundedAt).toISOString() : '',
+      ];
+      rows.push(fields.join(','));
+    }
+
+    // Return the CSV as a plain text response; controller wraps in ApiResponse usually,
+    // but for download we need to return raw text. Caller can set headers in the controller.
+    return {
+      csv: rows.join('\n'),
+      filename: `vibehub-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      count: orders.length,
+    };
   }
 
   // ── Admin Tenant deep-edit ────────────────────────────────────────────────────

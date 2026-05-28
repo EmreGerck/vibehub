@@ -155,7 +155,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {customSchema && <JsonLd data={customSchema} />}
       </head>
       <body className={`${inter.className} pb-16 sm:pb-0`}>
-        <Providers>{children}</Providers>
+        {/* Skip-to-content link — visually hidden until keyboard focus.
+            WCAG 2.4.1 (Bypass Blocks): assistive-tech users can jump past nav. */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-purple-600 focus:text-white focus:font-semibold focus:shadow-lg"
+        >
+          İçeriğe geç
+        </a>
+        <Providers>
+          {/* div wrapper instead of <main> to avoid nesting conflicts with
+              per-page <main> elements (privacy, terms, admin/vendor/profile layouts) */}
+          <div id="main-content">{children}</div>
+        </Providers>
       </body>
     </html>
   );

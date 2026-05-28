@@ -73,6 +73,11 @@ export default function CartPage() {
             <div className="lg:w-72 shrink-0">
               <div className="card p-5 space-y-4 sticky top-20">
                 <h2 className="font-semibold text-lg">{t('cart.orderSummary')}</h2>
+
+                {/* Free shipping progress bar — hardcoded threshold ₺250 for now;
+                    pulls from PlatformSettings.freeShippingThreshold once wired */}
+                <FreeShippingBar total={cart.total} threshold={250} t={t} />
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-gray-500 dark:text-gray-400">
                     <span>{t('cart.subtotal')} ({cart.itemCount} {t('cart.items')})</span>
@@ -99,6 +104,42 @@ export default function CartPage() {
         )}
       </div>
     </>
+  );
+}
+
+function FreeShippingBar({
+  total, threshold, t,
+}: {
+  total: number;
+  threshold: number;
+  t: (key: string) => string;
+}) {
+  if (threshold <= 0) return null;
+  const remaining = Math.max(0, threshold - total);
+  const pct = Math.min(100, (total / threshold) * 100);
+  const unlocked = remaining <= 0;
+
+  return (
+    <div className="rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 p-3">
+      <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
+        {unlocked ? (
+          <span className="text-green-600 dark:text-green-400 font-semibold">{t('cart.freeShipUnlocked')}</span>
+        ) : (
+          <>
+            🚚 {t('cart.freeShipFrom')} ₺{threshold} —{' '}
+            <span className="font-semibold text-purple-700 dark:text-purple-300">
+              {t('cart.freeShipMore').replace('{{amount}}', `₺${remaining.toFixed(2)}`)}
+            </span>
+          </>
+        )}
+      </p>
+      <div className="mt-2 h-1.5 rounded-full bg-purple-100 dark:bg-purple-900/40 overflow-hidden">
+        <div
+          className={`h-full transition-all duration-500 ${unlocked ? 'bg-green-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 

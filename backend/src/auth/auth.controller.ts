@@ -91,9 +91,10 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('login/verify-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete MFA login by verifying the emailed OTP' })
+  @ApiOperation({ summary: 'Complete MFA login by verifying the emailed OTP (10/min per IP)' })
   async verifyLoginOtp(
     @Body() body: { challenge: string; code: string; trustDevice?: boolean },
     @Res({ passthrough: true }) res: Response,
@@ -104,9 +105,10 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { ttl: 3600000, limit: 5 } })
   @Post('login/resend-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resend the MFA OTP (respects 30s cooldown)' })
+  @ApiOperation({ summary: 'Resend the MFA OTP (5/hr per IP, plus 30s in-memory cooldown)' })
   async resendLoginOtp(@Body() body: { challenge: string }) {
     const result = await this.authService.resendLoginOtp(body.challenge);
     return ApiResponse.ok(result, 'New code sent');

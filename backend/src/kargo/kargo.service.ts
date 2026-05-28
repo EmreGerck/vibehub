@@ -88,6 +88,33 @@ export class KargoService {
 
   /** Create a new shipment and persist a Shipment record in the database. */
   async createShipment(params: ShipmentCreateParams): Promise<ShipmentResult> {
+    // Idempotency + status guards: prevent vendor from clobbering REFUND_REQUESTED
+    // back to SHIPPED, and prevent spamming N shipments for the same order.
+    const existingOrder = await this.prisma.order.findUnique({
+      where: { id: params.orderId },
+      select: { status: true },
+    });
+    if (!existingOrder) {
+      throw new BadRequestException('Order not found');
+    }
+    // Only allow shipment creation when order is awaiting shipment (CONFIRMED).
+    // Reject terminal/in-flight statuses so a vendor cannot overwrite refund state
+    // or re-trigger shipping notifications.
+    if (existingOrder.status !== ('CONFIRMED' as any)) {
+      throw new BadRequestException(
+        `Kargo oluşturulamadı: sipariş durumu uygun değil (mevcut: ${existingOrder.status}). Sipariş önce CONFIRMED olmalı.`,
+      );
+    }
+    // Idempotency: refuse if a shipment already exists for this order+tenant
+    const existingShipment = await this.prisma.shipment.findFirst({
+      where: { orderId: params.orderId, tenantId: params.tenantId },
+    });
+    if (existingShipment) {
+      throw new BadRequestException(
+        `Bu sipariş için zaten kargo oluşturulmuş: ${existingShipment.trackingNumber} (${existingShipment.carrier})`,
+      );
+    }
+
     const carrier = params.carrier ?? this.defaultCarrier;
 
     let result: ShipmentResult;
@@ -106,23 +133,24 @@ export class KargoService {
         ? new Date(Date.now() + result.estimatedDays * 86_400_000)
         : null;
 
-      // Persist to DB
-      await this.prisma.shipment.create({
-        data: {
-          tenantId:         params.tenantId,
-          orderId:          params.orderId,
-          carrier:          result.carrier,
-          trackingNumber:   result.trackingNumber,
-          status:           'CREATED',
-          estimatedDelivery,
-        },
-      });
-
-      // Update order status to SHIPPED + stamp shippedAt timestamp
-      await this.prisma.order.update({
-        where: { id: params.orderId },
-        data:  { status: 'SHIPPED' as any, shippedAt: new Date() } as any,
-      });
+      // Persist Shipment + flip order in one transaction (was previously serial,
+      // could leave half-applied state on DB hiccup between the two writes)
+      await this.prisma.$transaction([
+        this.prisma.shipment.create({
+          data: {
+            tenantId:         params.tenantId,
+            orderId:          params.orderId,
+            carrier:          result.carrier,
+            trackingNumber:   result.trackingNumber,
+            status:           'CREATED',
+            estimatedDelivery,
+          },
+        }),
+        this.prisma.order.update({
+          where: { id: params.orderId },
+          data:  { status: 'SHIPPED' as any, shippedAt: new Date() } as any,
+        }),
+      ]);
 
       // Notify customer through all 3 channels: email + push + in-app bell
       try {

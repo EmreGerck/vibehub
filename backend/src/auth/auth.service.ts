@@ -364,16 +364,26 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: record.userId },
-        data: { passwordHash },
+        data: { passwordHash, lockedUntil: null } as any,
       }),
       this.prisma.passwordResetToken.update({
         where: { id: record.id },
         data: { used: true },
       }),
-      this.prisma.refreshToken.deleteMany({
-        where: { userId: record.userId },
-      }),
+      // Kill all active sessions
+      this.prisma.refreshToken.deleteMany({ where: { userId: record.userId } }),
+      // Revoke ALL trusted devices — critical for account-takeover recovery.
+      // Otherwise attacker who triggered password-reset keeps their MFA bypass.
+      this.prisma.trustedDevice.deleteMany({ where: { userId: record.userId } }),
     ]);
+
+    await this.audit.log({
+      actorId: record.userId,
+      action: 'PASSWORD_RESET',
+      targetType: 'User',
+      targetId: record.userId,
+      metadata: { reason: 'forgot_password_flow' },
+    });
   }
 
   async changePassword(userId: string, dto: any) {
@@ -384,14 +394,25 @@ export class AuthService {
     if (!valid) throw new BadRequestException('Invalid current password');
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash },
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash },
+      }),
+      // Invalidate all sessions
+      this.prisma.refreshToken.deleteMany({ where: { userId } }),
+      // Revoke trusted devices — user just changed password, likely because they
+      // suspect a device was compromised. Old "trusted" devices should re-verify.
+      this.prisma.trustedDevice.deleteMany({ where: { userId } }),
+    ]);
+
+    await this.audit.log({
+      actorId: userId,
+      action: 'PASSWORD_CHANGED',
+      targetType: 'User',
+      targetId: userId,
     });
-    
-    // Invalidate all sessions by deleting all refresh tokens
-    await this.prisma.refreshToken.deleteMany({ where: { userId } });
-    
+
     return { success: true };
   }
 

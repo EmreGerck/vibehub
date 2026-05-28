@@ -19,6 +19,16 @@ export function Footer() {
   const vendors = (vendorsData?.items ?? []).filter((v: any) => v.status === 'ACTIVE');
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black transition-colors">
+      {/* Trust strip — visible just above the columns */}
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center sm:text-left">
+          <TrustItem icon="🔒" title={t('trust.securePay.title')} subtitle={t('trust.securePay.subtitle')} />
+          <TrustItem icon="↩️" title={t('trust.returns.title')} subtitle={t('trust.returns.subtitle')} />
+          <TrustItem icon="🚚" title={t('trust.fastShip.title')} subtitle={t('trust.fastShip.subtitle')} />
+          <TrustItem icon="🛡️" title={t('trust.kvkk.title')} subtitle={t('trust.kvkk.subtitle')} />
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
@@ -105,5 +115,17 @@ export function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function TrustItem({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3 justify-center sm:justify-start">
+      <span className="text-2xl shrink-0" aria-hidden>{icon}</span>
+      <div>
+        <p className="text-xs font-semibold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">{subtitle}</p>
+      </div>
+    </div>
   );
 }

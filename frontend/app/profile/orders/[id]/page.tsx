@@ -3,12 +3,14 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   useOrderDetail,
   useCancelOrder,
   useRequestRefund,
   useTrackShipment,
   useOrderReturnShipment,
+  useAddToCart,
 } from '../../../../hooks/useCart';
 import { useI18n } from '../../../../lib/i18n';
 import { formatPrice } from '../../../../lib/format';
@@ -348,15 +350,37 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const t = useI18n((s) => s.t);
   const { data: order, isLoading } = useOrderDetail(id);
   const cancelOrder   = useCancelOrder();
   const requestRefund = useRequestRefund();
+  const addToCart     = useAddToCart();
 
   const [showCancel,   setShowCancel]   = useState(false);
   const [showRefund,   setShowRefund]   = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [refundDone,   setRefundDone]   = useState(false);
+  const [reorderBusy,  setReorderBusy]  = useState(false);
+
+  async function handleReorder() {
+    if (!order?.items?.length) return;
+    setReorderBusy(true);
+    let added = 0;
+    for (const item of order.items) {
+      try {
+        await addToCart.mutateAsync({ variantId: item.variantId, qty: item.qty });
+        added++;
+      } catch { /* skip variants that are out-of-stock or deleted */ }
+    }
+    setReorderBusy(false);
+    if (added > 0) {
+      toast('success', `${t('orderDetail.reorderAdded')} (${added}/${order.items.length})`);
+      router.push('/cart');
+    } else {
+      toast('error', 'Hiçbir ürün sepete eklenemedi (stokta yok veya silinmiş olabilir)');
+    }
+  }
 
   function handleCancel() {
     cancelOrder.mutate(id, {
@@ -400,6 +424,7 @@ export default function OrderDetailPage() {
   const addr      = order.shippingAddress;
   const canCancel = order.status === 'PLACED' || order.status === 'CONFIRMED';
   const canRefund = order.status === 'DELIVERED';
+  const canReorder = ['DELIVERED', 'REFUNDED', 'CANCELLED'].includes(order.status);
   const isRefundPending = order.status === 'REFUND_REQUESTED';
   const isRefunded      = order.status === 'REFUNDED';
   const showReturnBanner = isRefundPending || isRefunded;
@@ -625,6 +650,25 @@ export default function OrderDetailPage() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* "Tekrar Sipariş Ver" — for terminal-state orders, re-fills cart with same items */}
+      {canReorder && (
+        <div className="mt-3 border border-purple-200 dark:border-purple-800/60 rounded-xl p-4 bg-purple-50/40 dark:bg-purple-900/10 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">🛒 {t('orderDetail.reorder')}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {order.items?.length ?? 0} ürün sepetine eklenecek (stokta olanlar).
+            </p>
+          </div>
+          <button
+            onClick={handleReorder}
+            disabled={reorderBusy}
+            className="btn-primary text-sm px-4 py-2 whitespace-nowrap disabled:opacity-50"
+          >
+            {reorderBusy ? '...' : t('orderDetail.reorder')}
+          </button>
         </div>
       )}
 

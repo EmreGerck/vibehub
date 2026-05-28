@@ -148,12 +148,21 @@ export class OrderService {
       });
 
       // Deduct stock for each variant — skip pre-order items (no stock kept).
+      // ATOMIC guard: updateMany with stockQty:{ gte: qty } prevents oversell
+      // race between two concurrent buyers reading stock then both decrementing.
       for (const item of lineItems) {
         if (item.isPreOrder) continue;
-        await tx.productVariant.update({
-          where: { id: item.variantId },
+        const result = await tx.productVariant.updateMany({
+          where: { id: item.variantId, stockQty: { gte: item.qty } },
           data: { stockQty: { decrement: item.qty } },
         });
+        if (result.count === 0) {
+          // Another customer drained this variant between validation and decrement
+          const v = variantMap.get(item.variantId);
+          throw new BadRequestException(
+            `Stok yetersiz: "${v?.product?.title ?? 'ürün'}" — başka bir müşteri az önce son adetleri aldı`,
+          );
+        }
       }
 
       return newOrder;
@@ -599,6 +608,25 @@ export class OrderService {
         `İade talebi yalnızca teslim edilmiş siparişler için oluşturulabilir (mevcut durum: ${order.status})`,
       );
     }
+    // 14-day cayma hakkı (Mesafeli Satış Yönetmeliği m.18, 6502 Sayılı Kanun)
+    // Customer can request refund only within 14 calendar days of delivery.
+    if (order.deliveredAt) {
+      const deliveredAt = new Date(order.deliveredAt);
+      const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+      const daysSinceDelivery = (Date.now() - deliveredAt.getTime()) / (24 * 60 * 60 * 1000);
+      if (Date.now() - deliveredAt.getTime() > fourteenDaysMs) {
+        throw new BadRequestException(
+          `14 günlük cayma hakkı süresi geçti (teslimat üzerinden ${Math.floor(daysSinceDelivery)} gün geçmiş). Yasal iade hakkın doldu.`,
+        );
+      }
+    }
+    // Block repeated requests: if a prior request was rejected, allow 1 retry max.
+    // refundNote being set means admin already rejected once.
+    if (order.refundNote && order.refundRequestedAt) {
+      throw new BadRequestException(
+        'Bu sipariş için iade talebin daha önce değerlendirildi. Tekrar talep oluşturamazsın — destek için iletişime geç.',
+      );
+    }
     if (!reason?.trim()) {
       throw new BadRequestException('İade nedeni boş bırakılamaz');
     }
@@ -682,21 +710,48 @@ export class OrderService {
   async approveRefund(orderId: string, adminId: string, note?: string): Promise<any> {
     const order: any = await this.prisma.order.findUnique({
       where:   { id: orderId },
-      include: { customer: { select: { email: true, name: true } } },
+      include: {
+        customer: { select: { email: true, name: true } },
+        items: { select: { variantId: true, qty: true, isPreOrder: true } },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== ('REFUND_REQUESTED' as any)) {
       throw new BadRequestException(`Bu sipariş iade beklemiyor (durum: ${order.status})`);
     }
 
-    const updated: any = await (this.prisma.order.update as any)({
-      where: { id: orderId },
-      data:  {
-        status:     OrderStatus.REFUNDED,
-        refundNote: note?.trim() ?? null,
-        refundedAt: new Date(),
-      },
+    // Single transaction: flip status + restock non-pre-order items.
+    // Stock restoration is critical for accurate inventory; otherwise refunded
+    // products silently vanish from sellable stock and vendor sees less inventory
+    // than they actually have.
+    const updated: any = await this.prisma.$transaction(async (tx: any) => {
+      const o = await tx.order.update({
+        where: { id: orderId },
+        data:  {
+          status:     OrderStatus.REFUNDED,
+          refundNote: note?.trim() ?? null,
+          refundedAt: new Date(),
+        },
+      });
+      // Restock physical items (pre-orders never had stock to begin with)
+      for (const item of order.items) {
+        if (item.isPreOrder) continue;
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data:  { stockQty: { increment: item.qty } },
+        });
+      }
+      return o;
     });
+
+    // NOTE: real payment refund (Iyzico) integration goes here when keys live.
+    // For now: status flips + customer is notified. Admin manually triggers the
+    // refund in the Iyzico panel. When real Iyzico integration is wired, replace
+    // the comment below with `await this.iyzico.refundPayment(order.paymentRef, order.totalAmount)`
+    // INSIDE the transaction above, and roll back on failure.
+    this.logger.warn(
+      `[REFUND] Order ${orderId} marked REFUNDED — manual payment refund still required in Iyzico panel`,
+    );
 
     // Customer email
     if (order.customer?.email) {
