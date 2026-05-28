@@ -20,6 +20,18 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { addDays } from '../common/date.util';
 
+/**
+ * Session lifetimes — tuned for mobile-app UX where users expect to log in
+ * once and never see the login screen again unless they explicitly sign out.
+ * Matches Instagram / Trendyol / Spotify pattern (~3 months refresh + 1 year
+ * trusted device).
+ *
+ * Both desktop and mobile share the same DB column, so they get the same
+ * lifetime — desktop benefits too (cookie set to expire matching DB lifetime).
+ */
+const REFRESH_TOKEN_LIFETIME_DAYS = 90;
+const TRUSTED_DEVICE_LIFETIME_DAYS = 365;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -232,11 +244,14 @@ export class AuthService {
 
     const tokens = await this.issueTokens(user);
 
-    // Issue a 30-day device token so next login from this device skips OTP
+    // Issue a long-lived device token so next login from this device skips OTP.
+    // 1 year is the right balance — long enough that users never see the OTP
+    // step again on their primary device, short enough that a stolen device
+    // re-auths within a reasonable window.
     let deviceToken: string | undefined;
     if (trustDevice) {
       deviceToken = uuidv4();
-      const expiresAt = addDays(new Date(), 30);
+      const expiresAt = addDays(new Date(), TRUSTED_DEVICE_LIFETIME_DAYS);
       await this.prisma.trustedDevice.create({
         data: { token: deviceToken, userId: user.id, expiresAt },
       });
@@ -474,7 +489,7 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     const refreshTokenValue = uuidv4();
-    const expiresAt = addDays(new Date(), 30);
+    const expiresAt = addDays(new Date(), REFRESH_TOKEN_LIFETIME_DAYS);
     await this.prisma.refreshToken.create({
       data: { token: refreshTokenValue, userId: user.id, expiresAt },
     });

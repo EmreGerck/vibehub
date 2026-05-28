@@ -250,7 +250,7 @@ export class AuthController {
       // 'none' is required when the API and frontend have different origins
       // even on the same VPS (e.g. api.vibehub.com.tr vs vibehub.com.tr)
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days — match REFRESH_TOKEN_LIFETIME_DAYS in auth.service.ts
       path: '/',
     });
   }
