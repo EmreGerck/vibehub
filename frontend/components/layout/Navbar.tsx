@@ -8,6 +8,7 @@ import { useCart } from '../../hooks/useCart';
 import { useVendors } from '../../hooks/useVendors';
 import { useMySocialProfile } from '../../hooks/useSocialProfile';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 import { useI18n } from '../../lib/i18n';
 
 export function Navbar() {
@@ -144,6 +145,9 @@ export function Navbar() {
           </button>
 
           <ThemeToggle />
+
+          {/* Notification bell — only for authenticated users */}
+          {mounted && user && <NotificationBell />}
 
           <Link
             href="/cart"

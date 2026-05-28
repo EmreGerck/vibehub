@@ -23,6 +23,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
 
   const NAV = [
     { href: '/profile/orders', label: t('profile.myOrders'), icon: '📦' },
+    { href: '/profile/notifications', label: t('profile.notifications'), icon: '🔔' },
     { href: '/profile/wishlist', label: t('profile.wishlist'), icon: '❤️' },
     { href: '/profile/social', label: t('profile.socialProfile'), icon: '👤' },
     { href: '/profile/visitors', label: t('profile.whoVisited'), icon: '👁' },
