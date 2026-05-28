@@ -4,6 +4,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { ApiResponse } from '../types';
 
+export interface CategorySchemaField {
+  key: string;
+  label: { tr: string; en: string };
+  type: 'text' | 'select' | 'boolean';
+  options?: string[];
+  required?: boolean;
+}
+
+export interface CategoryAttributeSchema {
+  fields: CategorySchemaField[];
+}
+
+export interface CategorySizeChart {
+  unit?: string;
+  measurements?: Array<{ key: string; label: { tr: string; en: string } }>;
+  sizes?: Array<Record<string, string | number>>;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -13,6 +31,8 @@ export interface Category {
   sortOrder: number;
   active: boolean;
   createdAt: string;
+  attributeSchema?: CategoryAttributeSchema | null;
+  sizeChartTemplate?: CategorySizeChart | null;
 }
 
 export function useCategories() {

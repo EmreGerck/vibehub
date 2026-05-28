@@ -52,6 +52,8 @@ export class ProductService {
         ...(dto.categoryId ? { categoryId: dto.categoryId } : {}),
         ...(dto.shippingNote !== undefined ? { shippingNote: dto.shippingNote } : {}),
         ...(dto.previewVideoUrl !== undefined ? { previewVideoUrl: dto.previewVideoUrl } : {}),
+        ...(dto.attributes !== undefined ? { attributes: dto.attributes as any } : {}),
+        ...(dto.sizeChart  !== undefined ? { sizeChart:  dto.sizeChart  as any } : {}),
       },
       include: { variants: true },
     });
@@ -79,7 +81,18 @@ export class ProductService {
 
     return this.prisma.product.update({
       where: { id: productId },
-      data: dto,
+      data: {
+        ...(dto.title           !== undefined && { title:           dto.title }),
+        ...(dto.description     !== undefined && { description:     dto.description }),
+        ...(dto.price           !== undefined && { price:           dto.price }),
+        ...(dto.images          !== undefined && { images:          dto.images }),
+        ...(dto.tags            !== undefined && { tags:            dto.tags }),
+        ...(dto.previewVideoUrl !== undefined && { previewVideoUrl: dto.previewVideoUrl }),
+        ...(dto.categoryId      !== undefined && { categoryId:      dto.categoryId }),
+        ...(dto.shippingNote    !== undefined && { shippingNote:    dto.shippingNote }),
+        ...(dto.attributes      !== undefined && { attributes:      dto.attributes as any }),
+        ...(dto.sizeChart       !== undefined && { sizeChart:       dto.sizeChart  as any }),
+      },
       include: { variants: true },
     });
   }

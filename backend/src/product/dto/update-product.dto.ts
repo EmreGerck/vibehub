@@ -4,6 +4,7 @@ import {
   IsPositive,
   IsOptional,
   IsArray,
+  IsObject,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -53,4 +54,18 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(300)
   shippingNote?: string;
+
+  // Stage 3 — structured specs keyed by Category.attributeSchema.
+  // e.g. { material: '100% pamuk', fit: 'oversize', nfc: true }
+  @ApiPropertyOptional({ description: 'Spec attributes keyed by category schema' })
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, unknown>;
+
+  // Optional per-product override of Category.sizeChartTemplate.
+  // e.g. { unit: 'cm', measurements: [...], sizes: [...] }
+  @ApiPropertyOptional({ description: 'Size chart override; falls back to category template' })
+  @IsOptional()
+  @IsObject()
+  sizeChart?: Record<string, unknown>;
 }

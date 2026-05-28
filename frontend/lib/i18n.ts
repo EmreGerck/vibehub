@@ -1092,6 +1092,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'pdp.onlyXLeft': 'Son {n} adet!',
     'pdp.shippingInfo': 'Kargo Bilgisi',
     'pdp.shippedBy': 'Kargo',
+    'pdp.specs': 'Özellikler',
+    'pdp.sizeChart': 'Beden Tablosu',
+    'pdp.size': 'Beden',
+    'pdp.sizeChartNote': 'Ölçüler ürün üzerinde, düz yatırılarak alınmıştır. ±1-2 cm tolerans olabilir.',
 
     // ── Newsletter ──
     'newsletter.title': 'Güncel Kal',
@@ -2902,6 +2906,10 @@ const translations: Record<Locale, Record<string, string>> = {
     'pdp.onlyXLeft': 'Only {n} left!',
     'pdp.shippingInfo': 'Shipping Info',
     'pdp.shippedBy': 'Shipped by',
+    'pdp.specs': 'Specifications',
+    'pdp.sizeChart': 'Size Guide',
+    'pdp.size': 'Size',
+    'pdp.sizeChartNote': 'Measurements taken from the garment laid flat. ±1-2 cm tolerance applies.',
 
     // ── Newsletter ──
     'newsletter.title': 'Stay in the Loop',

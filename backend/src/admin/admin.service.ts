@@ -917,6 +917,8 @@ export class AdminService {
         ...(dto.fulfilment !== undefined && { fulfilment: dto.fulfilment }),
         ...(dto.manufacturingUnitId !== undefined && { manufacturingUnitId: dto.manufacturingUnitId }),
         ...(dto.profitSharePct !== undefined && { profitSharePct: dto.profitSharePct }),
+        ...(dto.attributes !== undefined && { attributes: dto.attributes as any }),
+        ...(dto.sizeChart  !== undefined && { sizeChart:  dto.sizeChart  as any }),
       },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });

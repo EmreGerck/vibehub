@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsBoolean,
   IsInt,
+  IsObject,
   Min,
   MaxLength,
   MinLength,
@@ -73,4 +74,15 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  // Stage 3 — schema drives the vendor form + customer specs panel.
+  // Pass `null` to clear; passing undefined leaves it untouched.
+  @IsOptional()
+  @IsObject()
+  attributeSchema?: Record<string, unknown> | null;
+
+  // Default size chart shape for this category. Product.sizeChart can override.
+  @IsOptional()
+  @IsObject()
+  sizeChartTemplate?: Record<string, unknown> | null;
 }

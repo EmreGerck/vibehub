@@ -368,6 +368,13 @@ model Category {
   // Turkish KDV rate (0.20 = %20). Set per category — books may be 0.01,
   // food 0.08, services 0.18, most goods 0.20. Used for invoice generation.
   vatRate   Decimal   @default(0.200) @db.Decimal(4, 3)
+  // Stage 3 — schema describing what spec attributes a product in this category
+  // should carry. Renders the vendor's form and the customer's "Özellikler"
+  // panel. Shape: { fields: [{ key, label: {tr,en}, type, options?, required? }] }.
+  attributeSchema   Json?
+  // Default size chart shape for products in this category — Product can override.
+  // Shape: [{ label: "S", chest: 48, length: 70 }, ...] — units captured in schema.
+  sizeChartTemplate Json?
   createdAt DateTime  @default(now())
   products  Product[]
 
@@ -392,6 +399,11 @@ model Product {
   // Both nullable — only meaningful when fulfilment === 'VIBEHUB_MANAGED'.
   manufacturingUnitId String?
   profitSharePct      Decimal?  @db.Decimal(5, 4)   // e.g. 0.5000 = vendor gets 50%
+  // Stage 3 — structured spec values, key/value pairs validated against the
+  // owning Category.attributeSchema. e.g. { material: "100% pamuk", fit: "oversize", nfc: true }.
+  attributes  Json?
+  // Optional per-product override of Category.sizeChartTemplate.
+  sizeChart   Json?
   images          String[]
   tags            String[]
   translations    Json?

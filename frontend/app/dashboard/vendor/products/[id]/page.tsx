@@ -85,6 +85,8 @@ export default function VendorProductEditPage() {
     shippingNote: '',
   });
   const [images, setImages] = useState<string[]>([]);
+  // Stage 3 — structured attribute values keyed by Category.attributeSchema.
+  const [attributes, setAttributes] = useState<Record<string, any>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Reload form when product loads
@@ -99,6 +101,7 @@ export default function VendorProductEditPage() {
       shippingNote: product.shippingNote ?? '',
     });
     setImages(product.images ?? []);
+    setAttributes(((product as any).attributes as Record<string, any>) ?? {});
   }, [product]);
 
   const isEditableStatus = product?.status === 'DRAFT' || product?.status === 'ARCHIVED';
@@ -153,6 +156,11 @@ export default function VendorProductEditPage() {
         tags: form.tags.split(',').map((s) => s.trim()).filter(Boolean),
         categoryId: form.categoryId || undefined,
         shippingNote: form.shippingNote || undefined,
+        // Send the cleaned attributes — strip empty strings/null so we don't
+        // pollute the JSON column with noise. Boolean false is meaningful, keep it.
+        attributes: Object.fromEntries(
+          Object.entries(attributes).filter(([, v]) => v !== '' && v !== null && v !== undefined),
+        ),
       });
       toast('success', t('vendor.saved'));
     } catch (err: any) {
@@ -414,6 +422,15 @@ export default function VendorProductEditPage() {
               />
             </div>
           </div>
+
+          {/* Stage 3: dynamic spec form driven by the selected category's schema */}
+          <CategoryAttributeFields
+            category={categories.find((c: any) => c.id === form.categoryId)}
+            values={attributes}
+            onChange={setAttributes}
+            disabled={editLocked}
+          />
+
           <button
             type="submit"
             disabled={editLocked || updateProduct.isPending}
@@ -776,6 +793,102 @@ export default function VendorProductEditPage() {
         danger="critical"
         busy={deleteVariant.isPending}
       />
+    </div>
+  );
+}
+
+// ─── Stage 3: dynamic attribute form per category schema ──────────────────────
+
+function CategoryAttributeFields({
+  category,
+  values,
+  onChange,
+  disabled,
+}: {
+  category: any | undefined;
+  values: Record<string, any>;
+  onChange: (next: Record<string, any>) => void;
+  disabled?: boolean;
+}) {
+  const t      = useI18n((s) => s.t);
+  const locale = useI18n((s) => s.locale);
+
+  const fields: any[] = category?.attributeSchema?.fields ?? [];
+  if (!category || fields.length === 0) return null;
+
+  function set(key: string, val: any) {
+    onChange({ ...values, [key]: val });
+  }
+
+  const pickLabel = (l: { tr: string; en: string } | undefined) =>
+    l ? l[locale as 'tr' | 'en'] || l.tr || l.en || '' : '';
+
+  return (
+    <div className="border-t border-gray-200 dark:border-gray-800 pt-5 mt-2 space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('pdp.specs')}</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          {category.icon ? `${category.icon} ` : ''}{category.name} kategorisi için tanımlı özellikler. Doldurman alıcılarının doğru kararı vermesine yardım eder.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {fields.map((f) => {
+          const val = values[f.key];
+          const label = (
+            <label className="label">
+              {pickLabel(f.label)}{f.required && <span className="text-red-500"> *</span>}
+            </label>
+          );
+          if (f.type === 'select' && Array.isArray(f.options)) {
+            return (
+              <div key={f.key}>
+                {label}
+                <select
+                  className="input w-full"
+                  value={val ?? ''}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  disabled={disabled}
+                >
+                  <option value="">—</option>
+                  {f.options.map((opt: string) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          }
+          if (f.type === 'boolean') {
+            return (
+              <label key={f.key} className="flex items-center gap-2 mt-7 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(val)}
+                  onChange={(e) => set(f.key, e.target.checked)}
+                  disabled={disabled}
+                  className="rounded border-surface-border bg-transparent"
+                />
+                <span className="text-sm text-gray-300">
+                  {pickLabel(f.label)}{f.required && <span className="text-red-500"> *</span>}
+                </span>
+              </label>
+            );
+          }
+          // Default = text
+          return (
+            <div key={f.key}>
+              {label}
+              <input
+                type="text"
+                className="input w-full"
+                value={val ?? ''}
+                onChange={(e) => set(f.key, e.target.value)}
+                disabled={disabled}
+                maxLength={200}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

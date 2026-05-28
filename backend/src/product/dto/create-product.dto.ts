@@ -4,6 +4,7 @@ import {
   IsPositive,
   IsOptional,
   IsArray,
+  IsObject,
   MaxLength,
   MinLength,
   IsEnum,
@@ -56,4 +57,14 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(300)
   shippingNote?: string;
+
+  @ApiPropertyOptional({ description: 'Spec attributes keyed by category schema' })
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Size chart override; falls back to category template' })
+  @IsOptional()
+  @IsObject()
+  sizeChart?: Record<string, unknown>;
 }

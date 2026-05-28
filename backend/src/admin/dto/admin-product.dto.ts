@@ -131,6 +131,15 @@ export class AdminUpdateProductDto {
   @IsNumber({ maxDecimalPlaces: 4 })
   @Type(() => Number)
   profitSharePct?: number | null;
+
+  // Stage 3 — structured spec attrs + size-chart override (admin can edit either).
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  sizeChart?: Record<string, unknown>;
 }
 
 // ── Dedicated discount endpoint ──────────────────────────────────────────────

@@ -8,6 +8,7 @@ import {
   useAdminDeleteCategory,
   type Category,
 } from '../../../../hooks/useCategories';
+import { useAuthStore } from '../../../../store/auth.store';
 import { useI18n } from '../../../../lib/i18n';
 
 function slugify(str: string): string {
@@ -42,6 +43,10 @@ export default function AdminCategoriesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // Stage 3 schema editor (GOD_USER only)
+  const [schemaFor, setSchemaFor] = useState<Category | null>(null);
+  const currentUser = useAuthStore((s) => s.user);
+  const isGod = currentUser?.role === 'GOD_USER';
 
   function openCreate() {
     setEditingId(null);
@@ -276,6 +281,20 @@ export default function AdminCategoriesPage() {
                         {t('adminVendor.edit')}
                       </button>
 
+                      {isGod && (
+                        <button
+                          onClick={() => setSchemaFor(cat)}
+                          className={`text-xs border px-2.5 py-1.5 rounded-lg transition-colors ${
+                            (cat as any).attributeSchema
+                              ? 'border-purple-400 dark:border-purple-600 text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20'
+                              : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-purple-400 dark:hover:border-purple-600 hover:text-purple-600 dark:hover:text-purple-400'
+                          }`}
+                          title="Özellik şeması ve beden tablosu"
+                        >
+                          📋 Şema
+                        </button>
+                      )}
+
                       {deleteConfirm === cat.id ? (
                         <>
                           <button
@@ -307,6 +326,115 @@ export default function AdminCategoriesPage() {
           </table>
         </div>
       )}
+
+      {schemaFor && (
+        <SchemaModal
+          category={categories.find((c) => c.id === schemaFor.id) ?? schemaFor}
+          onClose={() => setSchemaFor(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Stage 3: Schema editor modal (GOD_USER only) ────────────────────────────
+
+function SchemaModal({ category, onClose }: { category: Category; onClose: () => void }) {
+  const update = useAdminUpdateCategory();
+  const [schemaText, setSchemaText] = useState(
+    JSON.stringify((category as any).attributeSchema ?? { fields: [] }, null, 2),
+  );
+  const [chartText, setChartText] = useState(
+    (category as any).sizeChartTemplate
+      ? JSON.stringify((category as any).sizeChartTemplate, null, 2)
+      : '',
+  );
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave() {
+    setError('');
+    let parsedSchema: any = null;
+    let parsedChart: any = null;
+    try {
+      parsedSchema = JSON.parse(schemaText);
+      if (!parsedSchema || !Array.isArray(parsedSchema.fields)) {
+        throw new Error('attributeSchema must be { "fields": [...] }');
+      }
+    } catch (e: any) {
+      setError(`attributeSchema JSON hatası: ${e.message}`);
+      return;
+    }
+    if (chartText.trim()) {
+      try {
+        parsedChart = JSON.parse(chartText);
+      } catch (e: any) {
+        setError(`sizeChartTemplate JSON hatası: ${e.message}`);
+        return;
+      }
+    }
+    try {
+      await update.mutateAsync({
+        id: category.id,
+        attributeSchema:   parsedSchema,
+        sizeChartTemplate: parsedChart,
+      } as any);
+      setSaved(true);
+      setTimeout(onClose, 800);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Kaydedilemedi');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="card p-6 w-full max-w-3xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              Şema — {category.icon} {category.name}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Bu kategorideki ürünlerin özellik formunu ve beden tablosunu kontrol eder.
+              JSON formatı: <code className="font-mono">{`{ fields: [{ key, label: {tr,en}, type, options?, required? }] }`}</code>
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 dark:hover:text-white text-xl leading-none">×</button>
+        </div>
+
+        {error && <div className="rounded-lg bg-red-900/30 border border-red-700 px-3 py-2 text-sm text-red-200">{error}</div>}
+        {saved && <div className="rounded-lg bg-green-900/30 border border-green-700 px-3 py-2 text-sm text-green-200">Kaydedildi.</div>}
+
+        <div>
+          <label className="label">attributeSchema (JSON)</label>
+          <textarea
+            className="input font-mono text-xs w-full"
+            rows={14}
+            value={schemaText}
+            onChange={(e) => setSchemaText(e.target.value)}
+            spellCheck={false}
+          />
+        </div>
+
+        <div>
+          <label className="label">sizeChartTemplate (JSON, optional)</label>
+          <textarea
+            className="input font-mono text-xs w-full"
+            rows={10}
+            value={chartText}
+            onChange={(e) => setChartText(e.target.value)}
+            placeholder='{"unit":"cm","measurements":[...],"sizes":[...]}'
+            spellCheck={false}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="btn-ghost">İptal</button>
+          <button onClick={handleSave} disabled={update.isPending} className="btn-primary">
+            {update.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

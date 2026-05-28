@@ -345,6 +345,12 @@ export function ProductPageClient() {
               )}
             </div>
 
+            {/* Stage 3: Specs panel — labels from category.attributeSchema, values from product.attributes */}
+            <ProductSpecs product={product} />
+
+            {/* Stage 3: Size chart — product.sizeChart or fallback to category.sizeChartTemplate */}
+            <ProductSizeChart product={product} />
+
             {/* Shipping note */}
             {product.shippingNote && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
@@ -649,5 +655,127 @@ function RelatedProducts({ tenantId, currentProductId, tenantSlug }: { tenantId:
         })}
       </div>
     </section>
+  );
+}
+
+// ─── Stage 3: Specs + Size chart ──────────────────────────────────────────────
+
+interface SchemaField {
+  key:      string;
+  label:    { tr: string; en: string };
+  type:     'text' | 'select' | 'boolean';
+  options?: string[];
+  required?: boolean;
+}
+
+function pickLabel(label: { tr: string; en: string } | undefined, locale: 'tr' | 'en'): string {
+  if (!label) return '';
+  return label[locale] || label.tr || label.en || '';
+}
+
+function ProductSpecs({ product }: { product: any }) {
+  const t      = useI18n((s) => s.t);
+  const locale = useI18n((s) => s.locale);
+
+  const attrs: Record<string, unknown> = product.attributes ?? {};
+  const fields: SchemaField[] = product.category?.attributeSchema?.fields ?? [];
+
+  // Build rows in schema order so the UI is consistent across products.
+  // Fall back to raw attribute keys when no schema is registered for the category.
+  let rows: Array<{ key: string; label: string; value: string }> = [];
+  if (fields.length > 0) {
+    for (const f of fields) {
+      const raw = attrs[f.key];
+      if (raw === undefined || raw === null || raw === '') continue;
+      const value = typeof raw === 'boolean'
+        ? (raw ? (locale === 'tr' ? 'Var' : 'Yes') : (locale === 'tr' ? 'Yok' : 'No'))
+        : String(raw);
+      rows.push({ key: f.key, label: pickLabel(f.label, locale), value });
+    }
+  } else {
+    // Schema-less fallback: show raw keys (humanised) for resilience.
+    for (const [key, val] of Object.entries(attrs)) {
+      if (val === undefined || val === null || val === '') continue;
+      rows.push({
+        key,
+        label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()),
+        value: typeof val === 'boolean' ? (val ? '✓' : '×') : String(val),
+      });
+    }
+  }
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+        {t('pdp.specs')}
+      </h3>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        {rows.map((r) => (
+          <div key={r.key} className="flex items-baseline justify-between gap-3 py-1 border-b border-dashed border-gray-200 dark:border-gray-800 last:border-0">
+            <dt className="text-gray-500 dark:text-gray-400">{r.label}</dt>
+            <dd className="text-gray-900 dark:text-white font-medium text-right">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+interface SizeChart {
+  unit?: string;
+  measurements?: Array<{ key: string; label: { tr: string; en: string } }>;
+  sizes?: Array<Record<string, string | number>>;
+}
+
+function ProductSizeChart({ product }: { product: any }) {
+  const t      = useI18n((s) => s.t);
+  const locale = useI18n((s) => s.locale);
+  const [open, setOpen] = useState(false);
+
+  const chart: SizeChart | null = product.sizeChart ?? product.category?.sizeChartTemplate ?? null;
+  if (!chart || !chart.measurements?.length || !chart.sizes?.length) return null;
+
+  return (
+    <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between text-sm font-semibold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-300 transition-colors"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2"><span>📏</span> {t('pdp.sizeChart')}</span>
+        <span className={`transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-500 dark:text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-800">
+                <th className="text-left px-3 py-2 font-medium">{t('pdp.size')}</th>
+                {chart.measurements!.map((m) => (
+                  <th key={m.key} className="text-right px-3 py-2 font-medium">
+                    {pickLabel(m.label, locale)} {chart.unit ? `(${chart.unit})` : ''}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chart.sizes!.map((s, idx) => (
+                <tr key={idx} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{String(s.label ?? '—')}</td>
+                  {chart.measurements!.map((m) => (
+                    <td key={m.key} className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 tabular-nums">
+                      {s[m.key] !== undefined ? String(s[m.key]) : '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('pdp.sizeChartNote')}</p>
+        </div>
+      )}
+    </div>
   );
 }

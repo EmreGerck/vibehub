@@ -64,7 +64,16 @@ export class CategoryService {
 
     return this.prisma.category.update({
       where: { id },
-      data: dto,
+      data: {
+        ...(dto.name              !== undefined && { name:              dto.name }),
+        ...(dto.nameEn            !== undefined && { nameEn:            dto.nameEn }),
+        ...(dto.slug              !== undefined && { slug:              dto.slug }),
+        ...(dto.icon              !== undefined && { icon:              dto.icon }),
+        ...(dto.sortOrder         !== undefined && { sortOrder:         dto.sortOrder }),
+        ...(dto.active            !== undefined && { active:            dto.active }),
+        ...(dto.attributeSchema   !== undefined && { attributeSchema:   dto.attributeSchema   as any }),
+        ...(dto.sizeChartTemplate !== undefined && { sizeChartTemplate: dto.sizeChartTemplate as any }),
+      },
     });
   }
 

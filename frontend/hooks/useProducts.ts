@@ -125,6 +125,8 @@ export function useUpdateProduct() {
       categoryId?: string;
       shippingNote?: string;
       previewVideoUrl?: string;
+      attributes?: Record<string, unknown>;
+      sizeChart?: Record<string, unknown>;
     }) => {
       const res = await api.patch<ApiResponse<Product>>(`/products/${id}`, body);
       return res.data.data;
