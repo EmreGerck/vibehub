@@ -78,6 +78,27 @@ export class VendorService {
     // immediately (still bound by tenant.status === ACTIVE for storefront visibility).
     await this.permissions.grantDefaults(tenant.newTenant.id, tenant.ownerId);
 
+    // Applicant confirmation — let them know we received their application.
+    await this.queue.sendMail({
+      type: 'VENDOR_APPLICATION_RECEIVED',
+      to: dto.ownerEmail,
+      displayName: dto.displayName,
+    });
+
+    // Admin alert — notify all platform admins so they can review without polling.
+    const adminUsers = await this.prisma.user.findMany({
+      where: { role: { in: [UserRole.PLATFORM_ADMIN, UserRole.GOD_USER] } },
+      select: { email: true },
+    });
+    for (const admin of adminUsers) {
+      await this.queue.sendMail({
+        type: 'ADMIN_VENDOR_APPLIED',
+        to: admin.email,
+        tenantDisplayName: tenant.newTenant.displayName,
+        ownerEmail: dto.ownerEmail,
+      });
+    }
+
     return tenant.newTenant;
   }
 
@@ -107,17 +128,24 @@ export class VendorService {
       metadata: { reason: dto.reason, newStatus },
     });
 
-    if (newStatus === TenantStatus.ACTIVE) {
-      const owner = await this.prisma.user.findFirst({
-        where: { tenantId, role: UserRole.VENDOR_OWNER },
-        select: { email: true },
-      });
+    const owner = await this.prisma.user.findFirst({
+      where: { tenantId, role: UserRole.VENDOR_OWNER },
+      select: { email: true },
+    });
 
-      if (owner) {
+    if (owner) {
+      if (newStatus === TenantStatus.ACTIVE) {
         await this.queue.sendMail({
           type: 'VENDOR_WELCOME',
           to: owner.email,
           tenantDisplayName: updated.displayName,
+        });
+      } else if (newStatus === TenantStatus.REJECTED) {
+        await this.queue.sendMail({
+          type: 'VENDOR_REJECTED',
+          to: owner.email,
+          tenantDisplayName: updated.displayName,
+          reason: dto.reason,
         });
       }
     }

@@ -19,6 +19,7 @@ import { PaymentController } from '../payment.controller';
 import { IyzicoService } from '../iyzico.service';
 import { EInvoiceService } from '../../einvoice/einvoice.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../../mail/mail.service';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -102,11 +103,14 @@ const mockEInvoice = {
   getInvoiceStatus: jest.fn().mockResolvedValue({ status: 'ACCEPTED' }),
 } as unknown as EInvoiceService;
 
+const mockMail = { sendMail: jest.fn().mockResolvedValue(undefined) } as unknown as MailService;
+
 async function buildController(opts: {
   iyzico?: IyzicoService;
   prisma?: PrismaService;
   config?: ConfigService;
   einvoice?: EInvoiceService;
+  mail?: MailService;
 }): Promise<PaymentController> {
   const module: TestingModule = await Test.createTestingModule({
     controllers: [PaymentController],
@@ -115,6 +119,7 @@ async function buildController(opts: {
       { provide: PrismaService,   useValue: opts.prisma   ?? makePrisma() },
       { provide: ConfigService,   useValue: opts.config   ?? makeConfig() },
       { provide: EInvoiceService, useValue: opts.einvoice ?? mockEInvoice },
+      { provide: MailService,     useValue: opts.mail     ?? mockMail },
     ],
   }).compile();
 

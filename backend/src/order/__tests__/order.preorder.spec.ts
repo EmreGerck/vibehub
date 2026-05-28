@@ -18,6 +18,7 @@ import { QueueService } from '../../queue/queue.service';
 import { CartService } from '../../cart/cart.service';
 import { PushService } from '../../push/push.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { MailService } from '../../mail/mail.service';
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,7 @@ const mockQueue   = { sendMail: jest.fn() } as unknown as QueueService;
 const mockCart    = { getRawEntries: jest.fn().mockResolvedValue([]), clearCart: jest.fn() } as unknown as CartService;
 const mockPush    = { sendToUsers: jest.fn() } as unknown as PushService;
 const mockNotifs  = { createNotification: jest.fn() } as unknown as NotificationsService;
+const mockMail    = { sendMail: jest.fn().mockResolvedValue(undefined) } as unknown as MailService;
 
 async function build(prismaOverride?: any): Promise<OrderService> {
   const module: TestingModule = await Test.createTestingModule({
@@ -108,6 +110,7 @@ async function build(prismaOverride?: any): Promise<OrderService> {
       { provide: CartService,          useValue: mockCart },
       { provide: PushService,          useValue: mockPush },
       { provide: NotificationsService, useValue: mockNotifs },
+      { provide: MailService,          useValue: mockMail },
     ],
   }).compile();
   return module.get<OrderService>(OrderService);

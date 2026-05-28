@@ -25,7 +25,33 @@ export interface ShipmentNotificationMailJob {
   carrier: string | null;
 }
 
-export type MailJob = WelcomeMailJob | OrderConfirmationMailJob | ShipmentNotificationMailJob;
+export interface VendorApplicationReceivedMailJob {
+  type: 'VENDOR_APPLICATION_RECEIVED';
+  to: string;
+  displayName: string;
+}
+
+export interface AdminVendorAppliedMailJob {
+  type: 'ADMIN_VENDOR_APPLIED';
+  to: string;
+  tenantDisplayName: string;
+  ownerEmail: string;
+}
+
+export interface VendorRejectedMailJob {
+  type: 'VENDOR_REJECTED';
+  to: string;
+  tenantDisplayName: string;
+  reason?: string;
+}
+
+export type MailJob =
+  | WelcomeMailJob
+  | OrderConfirmationMailJob
+  | ShipmentNotificationMailJob
+  | VendorApplicationReceivedMailJob
+  | AdminVendorAppliedMailJob
+  | VendorRejectedMailJob;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -49,6 +75,18 @@ export class MailProcessor extends WorkerHost {
 
       case 'SHIPMENT_NOTIFICATION':
         await this.mail.sendShipmentNotification(data.to, data.orderId, data.trackingNumber, data.carrier);
+        break;
+
+      case 'VENDOR_APPLICATION_RECEIVED':
+        await this.mail.sendVendorApplicationReceived(data.to, data.displayName);
+        break;
+
+      case 'ADMIN_VENDOR_APPLIED':
+        await this.mail.sendAdminVendorApplied(data.to, data.tenantDisplayName, data.ownerEmail);
+        break;
+
+      case 'VENDOR_REJECTED':
+        await this.mail.sendVendorRejected(data.to, data.tenantDisplayName, data.reason);
         break;
 
       default:

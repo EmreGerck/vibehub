@@ -58,6 +58,7 @@ function makePrisma(overrides: any = {}): PrismaService {
     user: {
       findUnique: jest.fn().mockResolvedValue(overrides.user ?? null),
       findFirst:  jest.fn().mockResolvedValue(overrides.ownerUser ?? { email: 'owner@test.com' }),
+      findMany:   jest.fn().mockResolvedValue(overrides.adminUsers ?? []),
       create:     jest.fn().mockResolvedValue({ id: USER_ID, email: 'owner@test.com', role: 'VENDOR_OWNER' }),
     },
     follow: {
@@ -138,14 +139,19 @@ describe('VendorService', () => {
       expect(mockQueue.sendMail).toHaveBeenCalledWith(expect.objectContaining({ type: 'VENDOR_WELCOME' }));
     });
 
-    it('rejects a PENDING vendor and does NOT send welcome email', async () => {
+    it('rejects a PENDING vendor and sends rejection email (not welcome)', async () => {
       const prisma = makePrisma({ tenant: PENDING_TENANT });
       const svc = await build(prisma);
       await svc.review(TENANT_ID, { decision: VendorDecision.REJECT, reason: 'Policy violation' }, 'admin-1');
       expect(prisma.tenant.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'REJECTED' }) }),
       );
-      expect(mockQueue.sendMail).not.toHaveBeenCalled();
+      expect(mockQueue.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'VENDOR_REJECTED', reason: 'Policy violation' }),
+      );
+      expect(mockQueue.sendMail).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'VENDOR_WELCOME' }),
+      );
     });
 
     it('throws BadRequestException when vendor is not PENDING', async () => {

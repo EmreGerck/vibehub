@@ -14,6 +14,9 @@ import { ConfigService } from '@nestjs/config';
 import { KargoService } from '../kargo.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../mail/mail.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { PushService } from '../../push/push.service';
+import { AuditService } from '../../audit/audit.service';
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -46,25 +49,34 @@ function makeConfig(opts: { arasKey?: string; yurticiUser?: string; defaultCarri
 function makePrisma(): PrismaService {
   return {
     shipment: {
-      create:   jest.fn().mockResolvedValue({ id: 'ship-1' }),
-      findMany: jest.fn().mockResolvedValue([{ id: 'ship-1', trackingNumber: 'MOCK-123' }]),
-      count:    jest.fn().mockResolvedValue(1),
+      create:    jest.fn().mockResolvedValue({ id: 'ship-1' }),
+      findMany:  jest.fn().mockResolvedValue([{ id: 'ship-1', trackingNumber: 'MOCK-123' }]),
+      count:     jest.fn().mockResolvedValue(1),
+      findFirst: jest.fn().mockResolvedValue(null),
     },
     order: {
-      update: jest.fn().mockResolvedValue({ id: 'order-001', status: 'SHIPPED' }),
+      findUnique: jest.fn().mockResolvedValue({ status: 'CONFIRMED' }),
+      update:     jest.fn().mockResolvedValue({ id: 'order-001', status: 'SHIPPED' }),
     },
+    $transaction: jest.fn().mockImplementation((ops: Promise<any>[]) => Promise.all(ops)),
   } as unknown as PrismaService;
 }
 
-const mockMail = { sendMail: jest.fn().mockResolvedValue(undefined) } as unknown as MailService;
+const mockMail    = { sendMail: jest.fn().mockResolvedValue(undefined) } as unknown as MailService;
+const mockNotifs  = { createNotification: jest.fn().mockResolvedValue(undefined) } as unknown as NotificationsService;
+const mockPush    = { sendToUsers: jest.fn().mockResolvedValue(undefined) } as unknown as PushService;
+const mockAudit   = { log: jest.fn().mockResolvedValue(undefined) } as unknown as AuditService;
 
 async function buildService(configOpts?: any, prismaOverride?: any): Promise<KargoService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       KargoService,
-      { provide: ConfigService, useValue: makeConfig(configOpts) },
-      { provide: PrismaService, useValue: prismaOverride ?? makePrisma() },
-      { provide: MailService,   useValue: mockMail },
+      { provide: ConfigService,        useValue: makeConfig(configOpts) },
+      { provide: PrismaService,        useValue: prismaOverride ?? makePrisma() },
+      { provide: MailService,          useValue: mockMail },
+      { provide: NotificationsService, useValue: mockNotifs },
+      { provide: PushService,          useValue: mockPush },
+      { provide: AuditService,         useValue: mockAudit },
     ],
   }).compile();
   return module.get<KargoService>(KargoService);
@@ -140,7 +152,7 @@ describe('KargoService', () => {
       const svc = await buildService({}, prisma);
       await svc.createShipment(BASE_PARAMS);
       expect(prisma.order.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: 'SHIPPED' } }),
+        expect.objectContaining({ data: expect.objectContaining({ status: 'SHIPPED' }) }),
       );
     });
 

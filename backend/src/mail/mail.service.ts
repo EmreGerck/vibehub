@@ -604,6 +604,75 @@ export class MailService {
     }
   }
 
+  async sendVendorApplicationReceived(to: string, displayName: string): Promise<void> {
+    const subject = `VibeHub — Başvurunuz alındı`;
+    const html = `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0B1022;color:#fff;border-radius:12px;">
+        <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">Başvurunuz alındı!</h1>
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          Merhaba, <strong style="color:#fff;">${escapeHtml(displayName)}</strong> mağazanız için VibeHub satıcı başvurunuz başarıyla iletildi.
+        </p>
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          Ekibimiz başvurunuzu en kısa sürede inceleyecek ve size e-posta ile geri dönecektir.
+          Ortalama inceleme süresi <strong style="color:#fff;">1-3 iş günüdür</strong>.
+        </p>
+        <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;">
+          Herhangi bir sorunuz için <a href="mailto:support@vibehub.com.tr" style="color:#a855f7;">support@vibehub.com.tr</a> adresine yazabilirsiniz.
+        </p>
+      </div>
+    `.trim();
+    const text = `VibeHub satıcı başvurunuz alındı. Ekibimiz 1-3 iş günü içinde inceleyecek ve size dönecektir.`;
+    await this.send(to, subject, html, text);
+  }
+
+  async sendAdminVendorApplied(to: string, tenantDisplayName: string, ownerEmail: string): Promise<void> {
+    const subject = `[VibeHub] Yeni satıcı başvurusu — ${tenantDisplayName}`;
+    const html = `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0B1022;color:#fff;border-radius:12px;">
+        <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">Yeni satıcı başvurusu</h1>
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          <strong style="color:#fff;">${escapeHtml(tenantDisplayName)}</strong> mağazası için yeni bir satıcı başvurusu alındı.
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
+          <tr><td style="padding:6px 0;color:#94a3b8;font-size:13px;width:120px;">Mağaza adı</td><td style="padding:6px 0;color:#fff;font-size:13px;">${escapeHtml(tenantDisplayName)}</td></tr>
+          <tr><td style="padding:6px 0;color:#94a3b8;font-size:13px;">E-posta</td><td style="padding:6px 0;color:#fff;font-size:13px;">${escapeHtml(ownerEmail)}</td></tr>
+        </table>
+        <a href="https://vibehub.com.tr/dashboard/admin/vendors"
+           style="display:inline-block;padding:12px 28px;background:#7c3aed;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;font-size:15px;">
+          Başvuruyu İncele
+        </a>
+      </div>
+    `.trim();
+    const text = `Yeni satıcı başvurusu: ${tenantDisplayName} (${ownerEmail}). İncelemek için: https://vibehub.com.tr/dashboard/admin/vendors`;
+    await this.send(to, subject, html, text);
+  }
+
+  async sendVendorRejected(to: string, tenantDisplayName: string, reason?: string): Promise<void> {
+    const subject = `VibeHub — Satıcı başvurusu sonucu`;
+    const reasonSection = reason
+      ? `<p style="margin:0 0 16px;color:#94a3b8;font-size:14px;"><strong style="color:#fff;">Değerlendirme notu:</strong><br/><em style="color:#ccc;">"${escapeHtml(reason)}"</em></p>`
+      : '';
+    const html = `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0B1022;color:#fff;border-radius:12px;">
+        <h1 style="margin:0 0 8px;font-size:20px;color:#fff;">Başvurunuz değerlendirildi</h1>
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          Merhaba, <strong style="color:#fff;">${escapeHtml(tenantDisplayName)}</strong> mağazanız için yaptığınız başvuruyu inceledik.
+          Maalesef bu aşamada başvurunuzu onaylayamıyoruz.
+        </p>
+        ${reasonSection}
+        <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">
+          Koşullarınız değiştiğinde tekrar başvurabilirsiniz. Sorularınız için
+          <a href="mailto:support@vibehub.com.tr" style="color:#a855f7;">support@vibehub.com.tr</a> adresine yazabilirsiniz.
+        </p>
+        <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;">VibeHub ekibi</p>
+      </div>
+    `.trim();
+    const text = reason
+      ? `VibeHub satıcı başvurunuz bu aşamada onaylanamadı. Değerlendirme notu: "${reason}"`
+      : `VibeHub satıcı başvurunuz bu aşamada onaylanamadı.`;
+    await this.send(to, subject, html, text);
+  }
+
   /** Generic send for one-off emails (contact form, admin notifications, etc.) */
   async sendGeneric(to: string, subject: string, html: string, text = ''): Promise<void> {
     return this.send(to, subject, html, text || subject);
