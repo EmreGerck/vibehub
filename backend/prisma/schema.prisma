@@ -160,12 +160,10 @@ model User {
   @@index([tenantId])
 }
 
-/**
- * Lightweight page-view log for device analytics.
- * Stores parsed user-agent (browser, OS, device brand/model) + hashed IP
- * so admin can see "most visitors are on Samsung Galaxy S24 Ultra".
- * Privacy: IP is hashed, no full UA stored, no behavioral profiling.
- */
+/// Lightweight page-view log for device analytics.
+/// Stores parsed user-agent (browser, OS, device brand/model) + hashed IP
+/// so admin can see "most visitors are on Samsung Galaxy S24 Ultra".
+/// Privacy: IP is hashed, no full UA stored, no behavioral profiling.
 model PageView {
   id          String   @id @default(uuid())
   ipHash      String?  // SHA-256 truncated, not the raw IP
