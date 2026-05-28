@@ -24,7 +24,6 @@ import {
   AdminResetPasswordDto,
   AdminUpdateTenantDto,
   AdminCancelOrderDto,
-  AdminRefundOrderDto,
   AdminQueryReviewsDto,
   AdminUpdateReviewDto,
   AdminCreateVendorDto,
@@ -1432,49 +1431,8 @@ export class AdminService {
     return updated;
   }
 
-  async adminRefundOrder(orderId: string, dto: AdminRefundOrderDto, actorId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
-    if (!order) throw new NotFoundException('Order not found');
-
-    if (order.status === OrderStatus.REFUNDED) {
-      throw new BadRequestException('Order is already refunded');
-    }
-
-    const restock = dto.restock ?? false;
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const o = await tx.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.REFUNDED },
-      });
-      if (restock) {
-        for (const item of order.items) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stockQty: { increment: item.qty } },
-          });
-        }
-      }
-      return o;
-    });
-
-    await this.audit.log({
-      actorId,
-      action: 'ADMIN_ORDER_REFUNDED',
-      targetType: 'Order',
-      targetId: orderId,
-      metadata: {
-        reason: dto.reason,
-        amount: dto.amount ?? Number(order.totalAmount),
-        restock,
-        previousStatus: order.status,
-      },
-    });
-
-    return updated;
-  }
+  // adminRefundOrder() removed 2026-05-28 — see admin.controller.ts note.
+  // Use OrderService.approveRefundRequest() for the customer-initiated flow.
 
   // ── Admin Review moderation ───────────────────────────────────────────────────
 

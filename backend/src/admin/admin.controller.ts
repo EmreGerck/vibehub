@@ -36,7 +36,6 @@ import {
   AdminResetPasswordDto,
   AdminUpdateTenantDto,
   AdminCancelOrderDto,
-  AdminRefundOrderDto,
   AdminQueryReviewsDto,
   AdminUpdateReviewDto,
   AdminCreateVendorDto,
@@ -560,16 +559,11 @@ export class AdminController {
     return ApiResponse.ok(data, 'Order cancelled');
   }
 
-  @Patch('orders/:id/refund')
-  @ApiOperation({ summary: 'Mark any order as REFUNDED (records reason + amount in audit log)' })
-  async adminRefundOrder(
-    @Param('id') id: string,
-    @Body() dto: AdminRefundOrderDto,
-    @CurrentUser('id') actorId: string,
-  ) {
-    const data = await this.adminService.adminRefundOrder(id, dto, actorId);
-    return ApiResponse.ok(data, 'Order refunded');
-  }
+  // Legacy `PATCH orders/:id/refund` removed 2026-05-28 — refunds now flow through
+  // the customer-requested workflow only (`PATCH /order/admin/:id/approve-refund`
+  // in order.controller.ts) which notifies the customer + integrates with the
+  // return shipment workflow. Force-refund without a request is intentionally
+  // unavailable; admins cancel the order with restock instead.
 
   // ── Admin: review moderation ──────────────────────────────────────────────────
 

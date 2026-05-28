@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAdminOrders } from '../../../../hooks/useOrders';
-import { useAdminCancelOrder, useAdminRefundOrder } from '../../../../hooks/useAdmin';
+import { useAdminCancelOrder } from '../../../../hooks/useAdmin';
 import {
   useAdminApproveRefund,
   useAdminRejectRefund,
@@ -460,12 +460,11 @@ export default function AdminOrdersPage() {
   const [statusFilter,   setStatusFilter]   = useState('');
   const [search,         setSearch]         = useState('');
   const [expanded,       setExpanded]       = useState<string | null>(null);
-  const [actionModal,    setActionModal]    = useState<{ order: any; kind: 'cancel' | 'refund' } | null>(null);
+  const [actionModal,    setActionModal]    = useState<{ order: any; kind: 'cancel' } | null>(null);
   const [refundModal,    setRefundModal]    = useState<any | null>(null);
   const [shipmentModal,  setShipmentModal]  = useState<any | null>(null);
   const [actionReason, setActionReason] = useState('');
   const [actionRestock, setActionRestock] = useState(true);
-  const [actionAmount,  setActionAmount]  = useState('');
   const [actionError,   setActionError]   = useState('');
 
   const { data, isLoading } = useAdminOrders({ page, limit: 20, status: statusFilter || undefined });
@@ -483,15 +482,13 @@ export default function AdminOrdersPage() {
     );
   })();
   const cancel = useAdminCancelOrder();
-  const refund = useAdminRefundOrder();
 
   const refundCount = pendingRefunds?.items?.length ?? 0;
 
-  function openAction(order: any, kind: 'cancel' | 'refund') {
+  function openAction(order: any, kind: 'cancel') {
     setActionModal({ order, kind });
     setActionReason('');
-    setActionRestock(kind === 'cancel');
-    setActionAmount(kind === 'refund' ? String(order.totalAmount) : '');
+    setActionRestock(true);
     setActionError('');
   }
 
@@ -499,11 +496,7 @@ export default function AdminOrdersPage() {
     if (!actionModal) return;
     setActionError('');
     try {
-      if (actionModal.kind === 'cancel') {
-        await cancel.mutateAsync({ id: actionModal.order.id, reason: actionReason || undefined, restock: actionRestock });
-      } else {
-        await refund.mutateAsync({ id: actionModal.order.id, reason: actionReason || undefined, amount: actionAmount ? Number(actionAmount) : undefined, restock: actionRestock });
-      }
+      await cancel.mutateAsync({ id: actionModal.order.id, reason: actionReason || undefined, restock: actionRestock });
       setActionModal(null);
     } catch (err: any) {
       setActionError(err?.response?.data?.message ?? 'Action failed');
@@ -748,12 +741,12 @@ export default function AdminOrdersPage() {
         </>
       )}
 
-      {/* ── Cancel / manual refund modal (legacy) ────────────────────────────── */}
+      {/* ── Cancel order modal (refunds go through RefundReviewModal below) ───── */}
       {actionModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="card p-6 w-full max-w-md space-y-4">
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              {actionModal.kind === 'cancel' ? t('adminOrder.cancel') : t('adminOrder.refund')} —
+              {t('adminOrder.cancel')} —
               <span className="font-mono text-xs ml-2">{actionModal.order.id.slice(0, 8)}…</span>
             </h3>
             {actionError && <p className="text-red-600 dark:text-red-400 text-sm">{actionError}</p>}
@@ -761,20 +754,13 @@ export default function AdminOrdersPage() {
               <label className="label">{t('adminOrder.reason')}</label>
               <textarea value={actionReason} onChange={e => setActionReason(e.target.value)} className="input min-h-[60px]" />
             </div>
-            {actionModal.kind === 'refund' && (
-              <div>
-                <label className="label">{t('adminOrder.amount')}</label>
-                <input type="number" step="0.01" value={actionAmount} onChange={e => setActionAmount(e.target.value)} className="input" />
-              </div>
-            )}
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input type="checkbox" checked={actionRestock} onChange={e => setActionRestock(e.target.checked)} className="h-4 w-4 accent-purple-600" />
               {t('adminOrder.restock')}
             </label>
             <div className="flex gap-3">
-              <button onClick={runAction} disabled={cancel.isPending || refund.isPending}
-                className={`flex-1 ${actionModal.kind === 'cancel' ? 'btn-primary' : 'bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium'}`}>
-                {cancel.isPending || refund.isPending ? t('adminOrder.processing') : (actionModal.kind === 'cancel' ? t('adminOrder.cancel') : t('adminOrder.refund'))}
+              <button onClick={runAction} disabled={cancel.isPending} className="flex-1 btn-primary">
+                {cancel.isPending ? t('adminOrder.processing') : t('adminOrder.cancel')}
               </button>
               <button onClick={() => setActionModal(null)} className="flex-1 btn-ghost">{t('adminOrder.close')}</button>
             </div>

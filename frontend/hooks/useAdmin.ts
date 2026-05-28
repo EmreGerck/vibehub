@@ -771,26 +771,9 @@ export function useAdminCancelOrder() {
   });
 }
 
-export function useAdminRefundOrder() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      reason,
-      amount,
-      restock,
-    }: {
-      id: string;
-      reason?: string;
-      amount?: number;
-      restock?: boolean;
-    }) => {
-      const res = await api.patch(`/admin/orders/${id}/refund`, { reason, amount, restock });
-      return res.data.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-orders'] }),
-  });
-}
+// useAdminRefundOrder removed 2026-05-28 — legacy /admin/orders/:id/refund route
+// deleted. Use useAdminApproveRefund() which calls the customer-requested workflow
+// (PATCH /order/admin/:id/approve-refund) with notification + return-shipment integration.
 
 // ── Admin: review moderation ─────────────────────────────────────────────────
 

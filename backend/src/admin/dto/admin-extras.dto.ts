@@ -228,22 +228,8 @@ export class AdminCancelOrderDto {
   restock?: boolean;
 }
 
-export class AdminRefundOrderDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(280)
-  reason?: string;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  @Type(() => Number)
-  amount?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  restock?: boolean;
-}
+// AdminRefundOrderDto removed 2026-05-28 — legacy `PATCH /admin/orders/:id/refund`
+// route deleted; refunds go through OrderService.approveRefundRequest() instead.
 
 // ── Reviews ────────────────────────────────────────────────────────────────────
 
