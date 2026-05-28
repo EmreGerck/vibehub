@@ -125,6 +125,10 @@ export class OrderService {
         unitPriceSnapshot: unitPrice,
         commissionRateSnapshot: commissionRate,
         vendorPayoutAmount: vendorPayout,
+        // Stage 1 dual-fulfilment: snapshot who's responsible for shipping this line.
+        // Stage 2 will add manufacturingCostSnapshot/profitSharePctSnapshot when
+        // fulfilment === 'VIBEHUB_MANAGED'.
+        fulfilment: v.product.fulfilment,
         // Pre-order snapshot — frozen at order time so future product edits
         // don't retroactively change an order's status semantics.
         isPreOrder: v.product.isPreOrder,

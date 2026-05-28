@@ -31,6 +31,13 @@ export class ProductService {
   // ── Product CRUD ─────────────────────────────────────────────────────────────
 
   async create(tenantId: string, dto: CreateProductDto, actorId: string) {
+    // Inherit the vendor's preferred fulfilment mode by default. Admin can override
+    // per-product later (or vendor self-flips if granted PRODUCT_PUBLISH_DIRECT).
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { defaultFulfilment: true },
+    });
+
     const product = await this.prisma.product.create({
       data: {
         tenantId,
@@ -41,6 +48,7 @@ export class ProductService {
         images: dto.images ?? [],
         tags: dto.tags ?? [],
         status: ProductStatus.DRAFT,
+        fulfilment: tenant?.defaultFulfilment ?? 'VENDOR_MANAGED',
         ...(dto.categoryId ? { categoryId: dto.categoryId } : {}),
         ...(dto.shippingNote !== undefined ? { shippingNote: dto.shippingNote } : {}),
         ...(dto.previewVideoUrl !== undefined ? { previewVideoUrl: dto.previewVideoUrl } : {}),

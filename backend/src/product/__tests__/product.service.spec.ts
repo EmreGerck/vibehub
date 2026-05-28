@@ -63,6 +63,9 @@ function makePrisma(overrides: any = {}): PrismaService {
       delete:     jest.fn().mockResolvedValue({ id: 'var-1' }),
     },
     follow: { findMany: jest.fn().mockResolvedValue([]) },
+    tenant: {
+      findUnique: jest.fn().mockResolvedValue(overrides.tenant ?? { defaultFulfilment: 'VENDOR_MANAGED' }),
+    },
   } as unknown as PrismaService;
 }
 

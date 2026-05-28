@@ -176,9 +176,22 @@ export function ProductPageClient() {
           {/* Info */}
           <div className="flex flex-col gap-6">
             {product.tenant && (
-              <Link href={`/store/${product.tenant.slug}`} className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium">
-                {product.tenant.displayName}
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href={`/store/${product.tenant.slug}`} className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium">
+                  {product.tenant.displayName}
+                </Link>
+                {/* Stage 1 dual-fulfilment: who ships this — customer trust + legal clarity. */}
+                {(product as any).fulfilment && (
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    (product as any).fulfilment === 'VIBEHUB_MANAGED'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                  }`}>
+                    <span aria-hidden>📦</span>
+                    {t('pdp.shippedBy')}: {(product as any).fulfilment === 'VIBEHUB_MANAGED' ? 'VibeHub' : product.tenant.displayName}
+                  </span>
+                )}
+              </div>
             )}
 
             <div>

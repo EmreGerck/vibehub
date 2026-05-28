@@ -75,6 +75,7 @@ export function useApplyVendor() {
       bio?: string;
       ownerEmail: string;
       ownerPassword: string;
+      defaultFulfilment?: 'VENDOR_MANAGED' | 'VIBEHUB_MANAGED';
       /** Honeypot — must stay empty for real users. */
       website?: string;
     }) => {

@@ -31,6 +31,7 @@ export default function ApplyVendorPage() {
     ownerEmail: '',
     ownerPassword: '',
     confirmPassword: '',
+    defaultFulfilment: 'VENDOR_MANAGED' as 'VENDOR_MANAGED' | 'VIBEHUB_MANAGED',
     // Honeypot — see register page for rationale
     website: '',
   });
@@ -66,6 +67,7 @@ export default function ApplyVendorPage() {
         bio: form.bio || undefined,
         ownerEmail: form.ownerEmail,
         ownerPassword: form.ownerPassword,
+        defaultFulfilment: form.defaultFulfilment,
         website: form.website,
       });
       setDone(true);
@@ -176,6 +178,42 @@ export default function ApplyVendorPage() {
                 maxLength={500}
               />
               <p className="mt-1 text-xs text-gray-500">{form.bio.length}/500</p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="label">{t('vendorApply.fulfilmentTitle')}</label>
+              <div className="grid grid-cols-1 gap-2">
+                {(['VENDOR_MANAGED', 'VIBEHUB_MANAGED'] as const).map((mode) => {
+                  const selected = form.defaultFulfilment === mode;
+                  const titleKey = mode === 'VENDOR_MANAGED' ? 'vendorApply.fulfilmentVendor' : 'vendorApply.fulfilmentVibehub';
+                  const descKey  = mode === 'VENDOR_MANAGED' ? 'vendorApply.fulfilmentVendorDesc' : 'vendorApply.fulfilmentVibehubDesc';
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, defaultFulfilment: mode }))}
+                      className={`text-left rounded-lg border p-3 transition-colors ${
+                        selected
+                          ? 'border-brand-500 bg-brand-500/10'
+                          : 'border-surface-border hover:border-brand-500/40'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-1 h-4 w-4 shrink-0 rounded-full border-2 ${
+                          selected ? 'border-brand-500 bg-brand-500' : 'border-gray-500'
+                        }`}>
+                          {selected && <div className="h-full w-full rounded-full bg-white scale-[0.35]" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{t(titleKey)}</p>
+                          <p className="mt-0.5 text-xs text-gray-400">{t(descKey)}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500">{t('vendorApply.fulfilmentHint')}</p>
             </div>
 
             <div className="space-y-1 pt-2">

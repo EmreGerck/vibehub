@@ -13,7 +13,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PreOrderStatus } from '@prisma/client';
+import { PreOrderStatus, FulfilmentType } from '@prisma/client';
 
 export class AdminCreateProductDto {
   @IsString()
@@ -111,6 +111,13 @@ export class AdminUpdateProductDto {
   @IsOptional()
   @IsObject()
   imageSettings?: Record<string, { x: number; y: number }>;
+
+  // Admin-only flip of the fulfilment mode. Backend refuses the flip once any
+  // OrderItem already exists for this product — the snapshots would diverge
+  // from the live setting and the audit story would get muddy.
+  @IsOptional()
+  @IsEnum(FulfilmentType)
+  fulfilment?: FulfilmentType;
 }
 
 // ── Dedicated discount endpoint ──────────────────────────────────────────────

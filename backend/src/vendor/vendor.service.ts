@@ -59,6 +59,9 @@ export class VendorService {
           artistType: dto.artistType,
           bio: dto.bio,
           status: TenantStatus.PENDING,
+          // Stage 1 dual-fulfilment: capture the vendor's intended operating mode.
+          // Admin can flip this later; new products inherit from here.
+          ...(dto.defaultFulfilment && { defaultFulfilment: dto.defaultFulfilment }),
         },
       });
 

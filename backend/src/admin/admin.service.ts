@@ -870,6 +870,19 @@ export class AdminService {
     const product = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw new NotFoundException('Product not found');
 
+    // Lock fulfilment after the first order: snapshots are already in flight and
+    // flipping the mode now would diverge stored vendorPayoutAmount from new orders.
+    if (dto.fulfilment !== undefined && dto.fulfilment !== (product as any).fulfilment) {
+      const existingOrders = await this.prisma.orderItem.count({
+        where: { variant: { productId } },
+      });
+      if (existingOrders > 0) {
+        throw new BadRequestException(
+          'Bu ürün için satış başladıktan sonra fulfilment modu değiştirilemez. Yeni bir ürün oluşturun.',
+        );
+      }
+    }
+
     const updated = await this.prisma.product.update({
       where: { id: productId },
       data: {
@@ -883,6 +896,7 @@ export class AdminService {
         ...(dto.translations !== undefined && { translations: dto.translations as any }),
         ...(dto.imageSettings !== undefined && { imageSettings: dto.imageSettings as any }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.fulfilment !== undefined && { fulfilment: dto.fulfilment }),
       },
       include: { variants: true, tenant: { select: { id: true, slug: true, displayName: true } } },
     });

@@ -7,7 +7,7 @@ import {
   Matches,
   IsOptional,
 } from 'class-validator';
-import { ArtistType } from '@prisma/client';
+import { ArtistType, FulfilmentType } from '@prisma/client';
 
 export class ApplyVendorDto {
   // Tenant fields
@@ -40,6 +40,13 @@ export class ApplyVendorDto {
   @MinLength(8)
   @MaxLength(72)
   ownerPassword: string;
+
+  // How the vendor intends to operate. VENDOR_MANAGED = vendor manufactures & ships
+  // (legacy default — flat commission). VIBEHUB_MANAGED = VibeHub manufactures & ships,
+  // profit-share negotiated per-product by admin. Admin can override later.
+  @IsOptional()
+  @IsEnum(FulfilmentType)
+  defaultFulfilment?: FulfilmentType;
 
   /** Honeypot — see RegisterDto for rationale. */
   @IsOptional()

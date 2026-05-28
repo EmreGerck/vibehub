@@ -1091,6 +1091,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'pdp.lowStock': 'Az',
     'pdp.onlyXLeft': 'Son {n} adet!',
     'pdp.shippingInfo': 'Kargo Bilgisi',
+    'pdp.shippedBy': 'Kargo',
 
     // ── Newsletter ──
     'newsletter.title': 'Güncel Kal',
@@ -1317,6 +1318,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'vendorApply.artistInfluencer': 'Influencer / İçerik Üreticisi',
     'vendorApply.artistVisual': 'Görsel Sanatçı',
     'vendorApply.artistOther': 'Diğer',
+    'vendorApply.fulfilmentTitle': 'Operasyon modeli',
+    'vendorApply.fulfilmentHint': 'Sonradan değiştirebilirsin — ekibimizle birlikte. Her iki modeli karma kullanmak da mümkün.',
+    'vendorApply.fulfilmentVendor': 'Kendim üretip göndereceğim',
+    'vendorApply.fulfilmentVendorDesc': 'Ürünleri sen üretirsin, sen kargolarsın. VibeHub satıştan sabit komisyon alır.',
+    'vendorApply.fulfilmentVibehub': 'VibeHub üretsin ve göndersin',
+    'vendorApply.fulfilmentVibehubDesc': 'VibeHub üretim + kargo yapar. Satıştan üretim maliyeti düşülür, kalan kâr aramızda paylaşılır.',
 
     // ── Public Social Profile (u/[nickname]) ──
     'social.editProfile': 'Profili Düzenle',
@@ -2760,6 +2767,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'vendorApply.artistInfluencer': 'Influencer / Content Creator',
     'vendorApply.artistVisual': 'Visual Artist',
     'vendorApply.artistOther': 'Other',
+    'vendorApply.fulfilmentTitle': 'Operations model',
+    'vendorApply.fulfilmentHint': 'You can change this later — together with our team. Mixing both models per-product is also possible.',
+    'vendorApply.fulfilmentVendor': "I'll manufacture and ship myself",
+    'vendorApply.fulfilmentVendorDesc': 'You make + ship. VibeHub takes a flat commission of each sale.',
+    'vendorApply.fulfilmentVibehub': 'VibeHub manufactures and ships',
+    'vendorApply.fulfilmentVibehubDesc': "VibeHub handles production + shipping. We deduct manufacturing cost from each sale and split the remaining profit between us.",
 
     // ── Public Social Profile (u/[nickname]) ──
     'social.editProfile': 'Edit Profile',
@@ -2888,6 +2901,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'pdp.lowStock': 'Low',
     'pdp.onlyXLeft': 'Only {n} left!',
     'pdp.shippingInfo': 'Shipping Info',
+    'pdp.shippedBy': 'Shipped by',
 
     // ── Newsletter ──
     'newsletter.title': 'Stay in the Loop',

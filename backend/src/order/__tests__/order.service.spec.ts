@@ -280,5 +280,30 @@ describe('OrderService', () => {
         svc.placeOrder(CUSTOMER.id, { currency: 'TRY', shippingAddress: {} as any }),
       ).rejects.toThrow(BadRequestException);
     });
+
+    // Stage 1 dual-fulfilment: the OrderItem.fulfilment snapshot is what Stage 2
+    // (manufacturing cost + profit share) reads to choose its calc branch. If
+    // this snapshot ever stops being written, the lane-1 money math silently
+    // falls back to lane-2 commission. This test pins it.
+    it('snapshots fulfilment onto OrderItem from the product', async () => {
+      const vibehubManaged = {
+        ...VARIANT,
+        product: { ...PRODUCT_LIVE, fulfilment: 'VIBEHUB_MANAGED' as any },
+      };
+      const createSpy = jest.fn().mockResolvedValue({ ...makeOrder(), items: [] });
+      const prisma: any = makePrisma({ variantOverride: vibehubManaged });
+      (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) =>
+        fn({
+          order:          { create: createSpy },
+          productVariant: { update: jest.fn(), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        }),
+      );
+      const svc = await buildService({ prisma });
+
+      await svc.placeOrder(CUSTOMER.id, { currency: 'TRY', shippingAddress: {} as any });
+
+      const createPayload = createSpy.mock.calls[0][0];
+      expect(createPayload.data.items.create[0].fulfilment).toBe('VIBEHUB_MANAGED');
+    });
   });
 });
