@@ -925,8 +925,10 @@ export interface SecurityEvent {
   id: string;
   action: string;
   targetType: string;
-  targetId: string;
-  actorEmail: string;
+  /** Nullable — system events (HONEYPOT_HIT, TRAP_ROUTE_HIT, anonymous LOGIN_FAILED) have no target. */
+  targetId: string | null;
+  /** Nullable when actor is system / no logged-in user. */
+  actorEmail: string | null;
   actorRole: string;
   metadata: Record<string, any>;
   createdAt: string;

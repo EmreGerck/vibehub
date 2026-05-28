@@ -65,9 +65,13 @@ function EventRow({ event }: { event: SecurityEvent }) {
             </span>
           </div>
           <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">
-            <span className="font-mono">{event.actorEmail}</span>
+            <span className="font-mono">{event.actorEmail ?? 'system'}</span>
             {' → '}
-            <span className="font-mono">{event.targetId.slice(0, 24)}{event.targetId.length > 24 ? '…' : ''}</span>
+            <span className="font-mono">
+              {event.targetId
+                ? `${event.targetId.slice(0, 24)}${event.targetId.length > 24 ? '…' : ''}`
+                : '—'}
+            </span>
           </div>
         </div>
         {hasMetadata && (
