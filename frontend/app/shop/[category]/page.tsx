@@ -51,7 +51,21 @@ export async function generateStaticParams(): Promise<{ category: string }[]> {
   }
 }
 
-export default function CategoryPage({ params }: Props) {
-  // Redirect to shop with category filter — the shop page handles all state
-  redirect(`/shop?categorySlug=${encodeURIComponent(params.category)}`);
+export default async function CategoryPage({ params }: Props) {
+  // The shop page filters by categoryId — look up the category by slug
+  // so we can redirect with the correct param (was previously sending
+  // ?categorySlug= which shop page ignored → filter broken).
+  try {
+    const res = await fetch(`${API_BASE}/categories`, { next: { revalidate: 3600 } });
+    if (res.ok) {
+      const json = await res.json();
+      const cats: any[] = json?.data ?? [];
+      const cat = cats.find((c) => c.slug === params.category);
+      if (cat?.id) {
+        redirect(`/shop?categoryId=${encodeURIComponent(cat.id)}`);
+      }
+    }
+  } catch { /* fall through to plain redirect */ }
+  // Unknown slug → at least hand off to /shop (no filter) instead of 404
+  redirect(`/shop`);
 }

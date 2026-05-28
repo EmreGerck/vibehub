@@ -1240,6 +1240,8 @@ const translations: Record<Locale, Record<string, string>> = {
     // ── Public Social Profile (u/[nickname]) ──
     'social.editProfile': 'Profili Düzenle',
     'social.message': 'Mesaj',
+    'social.profileNotFound': 'Profil bulunamadı',
+    'social.goHome': 'Ana Sayfaya Dön',
     'social.memberSince': 'Üyelik tarihi',
 
     // ── Search palette ──
@@ -2459,6 +2461,8 @@ const translations: Record<Locale, Record<string, string>> = {
     // ── Public Social Profile (u/[nickname]) ──
     'social.editProfile': 'Edit Profile',
     'social.message': 'Message',
+    'social.profileNotFound': 'Profile not found',
+    'social.goHome': 'Go home',
     'social.memberSince': 'Member since',
 
     // ── Search palette ──

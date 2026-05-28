@@ -47,8 +47,8 @@ export default function PublicProfilePage() {
         <div className="flex-1 flex items-center justify-center text-center px-4 py-32">
           <div className="space-y-4">
             <p className="text-6xl">👤</p>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">Profile not found</p>
-            <Link href="/" className="btn-primary inline-flex px-6 py-2.5">Go home</Link>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{t('social.profileNotFound')}</p>
+            <Link href="/" className="btn-primary inline-flex px-6 py-2.5">{t('social.goHome')}</Link>
           </div>
         </div>
       )}

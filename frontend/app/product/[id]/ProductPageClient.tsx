@@ -48,6 +48,7 @@ export function ProductPageClient() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   const t = useI18n((s) => s.t);
 
   const [heartPop, setHeartPop] = useState(false);
@@ -131,29 +132,41 @@ export function ProductPageClient() {
         </nav>
 
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-          {/* Images */}
+          {/* Images — main + clickable thumbnail strip */}
           <div className="space-y-3">
             <div className="aspect-square rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 overflow-hidden flex items-center justify-center">
               <ProductImage
-                src={product.images?.[0]}
+                src={product.images?.[activeImageIdx] ?? product.images?.[0]}
                 alt={product.title}
                 tenantSlug={product.tenant?.slug}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-opacity duration-200"
               />
             </div>
             {product.images?.length > 1 && (
-              <div className="flex gap-2">
-                {product.images.slice(1).map((img, i) => {
-                  const fpi = (product.imageSettings as any)?.[String(i + 1)];
+              <div className="flex gap-2 overflow-x-auto">
+                {product.images.map((img, i) => {
+                  const fpi = (product.imageSettings as any)?.[String(i)];
+                  const isActive = i === activeImageIdx;
                   return (
-                    <div key={i} className="relative h-20 w-20 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setActiveImageIdx(i)}
+                      aria-label={`Görsel ${i + 1}`}
+                      aria-current={isActive}
+                      className={`relative h-20 w-20 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                        isActive
+                          ? 'border-purple-500 ring-2 ring-purple-200 dark:ring-purple-900/40'
+                          : 'border-gray-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 opacity-80 hover:opacity-100'
+                      }`}
+                    >
                       <img
                         src={img}
                         alt=""
                         className="w-full h-full object-cover"
                         style={{ objectPosition: fpi ? `${fpi.x}% ${fpi.y}%` : '50% 50%' }}
                       />
-                    </div>
+                    </button>
                   );
                 })}
               </div>

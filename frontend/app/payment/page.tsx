@@ -394,8 +394,8 @@ export default function PaymentPage() {
       <footer className="mt-8 py-4 border-t border-gray-200 dark:border-gray-800 text-center text-xs text-gray-400">
         <p>Ödeme altyapısı <span className="font-bold text-[#ff6c2c]">iyzico</span> tarafından güvence altındadır • PCI-DSS Uyumlu • 256-bit SSL</p>
         <div className="flex items-center justify-center gap-4 mt-2">
-          <Link href="/legal/privacy" className="hover:text-gray-600 transition-colors">Gizlilik Politikası</Link>
-          <Link href="/legal/terms" className="hover:text-gray-600 transition-colors">Kullanım Koşulları</Link>
+          <Link href="/privacy" className="hover:text-gray-600 transition-colors">Gizlilik Politikası</Link>
+          <Link href="/terms" className="hover:text-gray-600 transition-colors">Kullanım Koşulları</Link>
           <Link href="/support" className="hover:text-gray-600 transition-colors">Yardım</Link>
         </div>
       </footer>
