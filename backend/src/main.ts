@@ -84,9 +84,16 @@ async function bootstrap() {
     .map((slug) => `https://${slug}.vercel.app`);
   allowedVercelPreviews.forEach((o) => allowedOrigins.add(o));
 
-  // Always allow localhost for local dev
+  // Always allow localhost for local dev — both web (Next.js) and mobile (Expo).
+  // Expo's web mode picks one of these ports depending on what's free:
+  //   8081 = default Metro/Expo web
+  //   8083 = our launch.json mobile-web preview server
+  //   19006 = legacy Expo web
   allowedOrigins.add('http://localhost:3000');
   allowedOrigins.add('http://localhost:3001');
+  allowedOrigins.add('http://localhost:8081');
+  allowedOrigins.add('http://localhost:8083');
+  allowedOrigins.add('http://localhost:19006');
 
   app.enableCors({
     origin: (origin, callback) => {
