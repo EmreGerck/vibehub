@@ -14,3 +14,6 @@ prisma/seed.d.ts
 prisma/seed-vendors.js
 prisma/seed-vendors.js.map
 prisma/seed-vendors.d.ts
+
+# Local Redis dump (created when running redis-server locally without --save off)
+dump.rdb

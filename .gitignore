@@ -36,3 +36,7 @@ mobile/dist/
 mobile/
 .claude/
 frontend/.claude/
+
+### Stale HTML previews (don't commit)
+docs/*-preview.html
+docs/.Rhistory
