@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { usePageSize } from '../../../../hooks/usePageSize';
 import { PageSizeSelector } from '../../../../components/ui/PageSizeSelector';
@@ -220,27 +221,35 @@ export default function VendorProductsPage() {
                     {(product.variants?.length ?? 0)} {t('admin.variants')}
                   </td>
                   <td className="px-5 py-3">
-                    {product.status === 'DRAFT' && canSubmit && (
-                      <button
-                        onClick={() => handleSubmit(product.id)}
-                        disabled={submitProduct.isPending}
-                        className="text-xs bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
-                        title={canPublishDirect ? t('perm.publishHint') : undefined}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/dashboard/vendor/products/${product.id}`}
+                        className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1 rounded-lg transition-colors"
                       >
-                        {canPublishDirect ? t('perm.publishLabel') : t('vendor.submitForReview')}
-                      </button>
-                    )}
-                    {product.status === 'DRAFT' && !canSubmit && (
-                      <span className="text-xs text-gray-500 italic" title={t('perm.revokedNote')}>
-                        {t('perm.submitDisabled')}
-                      </span>
-                    )}
-                    {product.status === 'PENDING_REVIEW' && (
-                      <span className="text-xs text-yellow-600 dark:text-yellow-400">{t('vendor.underReview')}</span>
-                    )}
-                    {product.status === 'LIVE' && (
-                      <span className="text-xs text-green-600 dark:text-green-400">{t('vendor.published')}</span>
-                    )}
+                        {t('vendor.edit')}
+                      </Link>
+                      {product.status === 'DRAFT' && canSubmit && (
+                        <button
+                          onClick={() => handleSubmit(product.id)}
+                          disabled={submitProduct.isPending}
+                          className="text-xs bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
+                          title={canPublishDirect ? t('perm.publishHint') : undefined}
+                        >
+                          {canPublishDirect ? t('perm.publishLabel') : t('vendor.submitForReview')}
+                        </button>
+                      )}
+                      {product.status === 'DRAFT' && !canSubmit && (
+                        <span className="text-xs text-gray-500 italic" title={t('perm.revokedNote')}>
+                          {t('perm.submitDisabled')}
+                        </span>
+                      )}
+                      {product.status === 'PENDING_REVIEW' && (
+                        <span className="text-xs text-yellow-600 dark:text-yellow-400">{t('vendor.underReview')}</span>
+                      )}
+                      {product.status === 'LIVE' && (
+                        <span className="text-xs text-green-600 dark:text-green-400">{t('vendor.published')}</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

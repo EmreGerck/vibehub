@@ -76,7 +76,7 @@ export default function SocialProfilePage() {
             <polyline points="15 3 21 3 21 9" />
             <line x1="10" y1="14" x2="21" y2="3" />
           </svg>
-          View public profile → vibehub.com.tr/u/{profile.nickname}
+          {t('profileSocial.viewPublic')} → vibehub.com.tr/u/{profile.nickname}
         </a>
       )}
 
@@ -101,7 +101,7 @@ export default function SocialProfilePage() {
               maxLength={30}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">3–30 chars, letters, numbers, _ and - only</p>
+          <p className="text-xs text-gray-500 mt-1">{t('profileSocial.nicknameHint')}</p>
         </div>
 
         <div>

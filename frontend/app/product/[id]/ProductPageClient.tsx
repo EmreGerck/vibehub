@@ -601,6 +601,7 @@ function ReviewSection({ productId }: { productId: string }) {
 }
 
 function RelatedProducts({ tenantId, currentProductId, tenantSlug }: { tenantId: string; currentProductId: string; tenantSlug: string }) {
+  const t = useI18n((s) => s.t);
   const { data } = useProducts({ tenantId, limit: 5 });
   const related = (data?.items ?? []).filter((p) => p.id !== currentProductId).slice(0, 4);
 
@@ -608,7 +609,7 @@ function RelatedProducts({ tenantId, currentProductId, tenantSlug }: { tenantId:
 
   return (
     <section className="mt-16 pt-10 border-t border-gray-200 dark:border-gray-800">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">{useI18n.getState().t('pdp.relatedProducts')}</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">{t('pdp.relatedProducts')}</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {related.map((p) => {
           const price = p.variants?.[0]?.priceOverride ?? p.price;

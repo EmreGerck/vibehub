@@ -38,13 +38,13 @@ const CARRIER_LABELS: Record<string, string> = {
   mock:    'Demo Kargo',
 };
 
-// ── Return shipment status labels ─────────────────────────────────────────────
-const RETURN_STATUS: Record<string, { label: string; icon: string; color: string }> = {
-  INITIATED:        { label: 'Kargoya Bekliyor',     icon: '📦', color: 'text-blue-600 dark:text-blue-400' },
-  DROPPED_OFF:      { label: 'Kargoya Teslim Edildi', icon: '🚚', color: 'text-purple-600 dark:text-purple-400' },
-  IN_TRANSIT:       { label: 'Yolda',                icon: '🔄', color: 'text-yellow-600 dark:text-yellow-400' },
-  ARRIVED_AT_DEPOT: { label: 'Depoda İnceleniyor',   icon: '🏭', color: 'text-orange-600 dark:text-orange-400' },
-  COMPLETED:        { label: 'Tamamlandı',           icon: '✅', color: 'text-green-600 dark:text-green-400' },
+// ── Return shipment status icon/color (label resolved via i18n keys) ──────────
+const RETURN_STATUS_META: Record<string, { i18nKey: string; icon: string; color: string }> = {
+  INITIATED:        { i18nKey: 'returnStatus.INITIATED',        icon: '📦', color: 'text-blue-600 dark:text-blue-400' },
+  DROPPED_OFF:      { i18nKey: 'returnStatus.DROPPED_OFF',      icon: '🚚', color: 'text-purple-600 dark:text-purple-400' },
+  IN_TRANSIT:       { i18nKey: 'returnStatus.IN_TRANSIT',       icon: '🔄', color: 'text-yellow-600 dark:text-yellow-400' },
+  ARRIVED_AT_DEPOT: { i18nKey: 'returnStatus.ARRIVED_AT_DEPOT', icon: '🏭', color: 'text-orange-600 dark:text-orange-400' },
+  COMPLETED:        { i18nKey: 'returnStatus.COMPLETED',        icon: '✅', color: 'text-green-600 dark:text-green-400' },
 };
 
 // ── Status timeline ────────────────────────────────────────────────────────────
@@ -128,6 +128,7 @@ function ShipmentTracker({ trackingNumber, carrier, estimatedDelivery }: {
   carrier: string;
   estimatedDelivery?: string;
 }) {
+  const t = useI18n((s) => s.t);
   const { data: tracking, isLoading } = useTrackShipment(trackingNumber, carrier);
   const carrierLabel = CARRIER_LABELS[carrier] ?? carrier;
   const [expanded, setExpanded] = useState(true);
@@ -154,7 +155,7 @@ function ShipmentTracker({ trackingNumber, carrier, estimatedDelivery }: {
           </span>
           {estimatedDelivery && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Tahmini: {new Date(estimatedDelivery).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' })}
+              {t('profileOrders.estimated')}: {new Date(estimatedDelivery).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' })}
             </p>
           )}
         </div>
@@ -165,7 +166,7 @@ function ShipmentTracker({ trackingNumber, carrier, estimatedDelivery }: {
         onClick={() => setExpanded(!expanded)}
         className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
       >
-        {expanded ? '▲' : '▼'} Kargo Hareketleri {events.length > 0 ? `(${events.length})` : ''}
+        {expanded ? '▲' : '▼'} {t('profileOrders.shipmentMovements')} {events.length > 0 ? `(${events.length})` : ''}
       </button>
 
       {expanded && (
@@ -205,7 +206,7 @@ function ShipmentTracker({ trackingNumber, carrier, estimatedDelivery }: {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-gray-400 dark:text-gray-500 py-2">Henüz kargo hareketi bulunmuyor.</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 py-2">{t('profileOrders.noMovements')}</p>
         )
       )}
     </div>
@@ -230,7 +231,7 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
       {/* Header */}
       <div className="bg-amber-50 dark:bg-amber-900/20 px-5 py-3 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
         <span className="text-lg">📦</span>
-        <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">İade Süreci</h3>
+        <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">{t('profileOrders.returnProcessTitle')}</h3>
       </div>
 
       <div className="p-5 space-y-5">
@@ -251,13 +252,13 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
             <div className="text-5xl select-none">🏷️</div>
             <div className="flex-1 text-center sm:text-left">
               <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-1">
-                İade Kargo Kodun
+                {t('profileOrders.returnBarcodeTitle')}
               </p>
               <p className="text-2xl font-mono font-bold tracking-widest text-gray-900 dark:text-white select-all">
                 {rs.returnBarcode}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {carrierLabel} şubesine götür · Personele bu kodu göster
+                {t('profileOrders.returnBarcodeHint').replace('{carrier}', carrierLabel)}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <a
@@ -284,7 +285,7 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
           </div>
         ) : (
           <div className="flex items-center gap-3 py-1">
-            <span className="font-mono text-sm text-gray-500 dark:text-gray-400">Barkod:</span>
+            <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{t('profileOrders.barcode')}:</span>
             <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{rs.returnBarcode}</span>
           </div>
         )}
@@ -292,13 +293,13 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
         {/* Instructions — only for very early stages */}
         {rs.status === 'INITIATED' && (
           <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-sm text-gray-600 dark:text-gray-300 space-y-2">
-            <p className="font-semibold text-gray-900 dark:text-white text-xs uppercase tracking-wider">Nasıl kullanılır?</p>
+            <p className="font-semibold text-gray-900 dark:text-white text-xs uppercase tracking-wider">{t('profileOrders.howToUse')}</p>
             <ol className="list-decimal list-inside space-y-1 text-xs leading-relaxed">
-              <li>Ürünü hasarsız, orijinal ambalajında paketle.</li>
-              <li>En yakın <strong>{carrierLabel}</strong> şubesine git.</li>
-              <li>Personele yukarıdaki kodu göster.</li>
-              <li>Paketin VibeHub deposuna yönlendirilecek.</li>
-              <li>Depoya ulaşınca otomatik bildirim alırsın.</li>
+              <li>{t('profileOrders.howToUse1')}</li>
+              <li>{t('profileOrders.howToUse2').replace('{carrier}', carrierLabel)}</li>
+              <li>{t('profileOrders.howToUse3')}</li>
+              <li>{t('profileOrders.howToUse4')}</li>
+              <li>{t('profileOrders.howToUse5')}</li>
             </ol>
           </div>
         )}
@@ -312,7 +313,7 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
 
         {rs.arrivedAtDepotAt && (
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Depoya ulaşma: {new Date(rs.arrivedAtDepotAt).toLocaleString('tr-TR')}
+            {t('profileOrders.depotArrivedAt')}: {new Date(rs.arrivedAtDepotAt).toLocaleString('tr-TR')}
           </p>
         )}
 
@@ -378,7 +379,7 @@ export default function OrderDetailPage() {
       toast('success', `${t('orderDetail.reorderAdded')} (${added}/${order.items.length})`);
       router.push('/cart');
     } else {
-      toast('error', 'Hiçbir ürün sepete eklenemedi (stokta yok veya silinmiş olabilir)');
+      toast('error', t('profileOrders.reorderFailed'));
     }
   }
 
@@ -393,17 +394,17 @@ export default function OrderDetailPage() {
 
   function handleRefundSubmit() {
     if (!refundReason.trim()) {
-      toast('error', 'Lütfen iade nedenini belirtin.');
+      toast('error', t('profileOrders.refundReasonRequired'));
       return;
     }
     requestRefund.mutate({ orderId: id, reason: refundReason }, {
       onSuccess: () => {
         setRefundDone(true);
         setShowRefund(false);
-        toast('success', 'İade talebiniz alındı. Kargo barkod kodunuz e-posta ile gönderildi.');
+        toast('success', t('profileOrders.refundSubmitOk'));
       },
       onError: (err: any) => {
-        toast('error', err?.response?.data?.message ?? 'İade talebi gönderilemedi.');
+        toast('error', err?.response?.data?.message ?? t('profileOrders.refundSubmitErr'));
       },
     });
   }
@@ -450,13 +451,13 @@ export default function OrderDetailPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">⏳</span>
             <div className="flex-1">
-              <p className="font-semibold text-amber-800 dark:text-amber-300">İade Talebiniz İnceleniyor</p>
+              <p className="font-semibold text-amber-800 dark:text-amber-300">{t('profileOrders.refundPendingTitle')}</p>
               <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
-                Ekibimiz 1-3 iş günü içinde talebinizi değerlendirip size e-posta ile bilgi verecektir.
+                {t('profileOrders.refundPendingDesc')}
               </p>
               {order.refundReason && (
                 <div className="mt-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg px-3 py-2">
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-0.5">Belirttiğiniz neden:</p>
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-0.5">{t('profileOrders.refundPendingReasonLabel')}:</p>
                   <p className="text-sm text-amber-700 dark:text-amber-400 italic">"{order.refundReason}"</p>
                 </div>
               )}
@@ -470,16 +471,16 @@ export default function OrderDetailPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">✅</span>
             <div>
-              <p className="font-semibold text-blue-800 dark:text-blue-300">İadeniz Tamamlandı</p>
+              <p className="font-semibold text-blue-800 dark:text-blue-300">{t('profileOrders.refundCompletedTitle')}</p>
               <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                {formatPrice(order.totalAmount)} tutarındaki iade, ödeme yönteminize 5-10 iş günü içinde yansıyacaktır.
+                {t('profileOrders.refundCompletedDesc').replace('{amount}', formatPrice(order.totalAmount))}
               </p>
               {order.refundNote && (
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 italic">Not: {order.refundNote}</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 italic">{t('profileOrders.refundNote')}: {order.refundNote}</p>
               )}
               {order.refundedAt && (
                 <p className="text-xs text-blue-400 mt-1">
-                  İşlem tarihi: {new Date(order.refundedAt).toLocaleDateString('tr-TR')}
+                  {t('profileOrders.refundedAt')}: {new Date(order.refundedAt).toLocaleDateString('tr-TR')}
                 </p>
               )}
             </div>
@@ -493,7 +494,7 @@ export default function OrderDetailPage() {
           <div className="flex items-center gap-3">
             <span className="text-2xl">📧</span>
             <p className="text-sm text-green-700 dark:text-green-300">
-              İade talebiniz iletildi. İade kargo barkodunuz e-posta adresinize gönderildi.
+              {t('profileOrders.refundSubmitted')}
             </p>
           </div>
         </div>
@@ -659,7 +660,7 @@ export default function OrderDetailPage() {
           <div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">🛒 {t('orderDetail.reorder')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {order.items?.length ?? 0} ürün sepetine eklenecek (stokta olanlar).
+              {t('profileOrders.reorderHint').replace('{n}', String(order.items?.length ?? 0))}
             </p>
           </div>
           <button
@@ -741,14 +742,14 @@ function RefundRequestPanel({
           <div>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('refundForm.title')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              14 gün içinde herhangi bir gerekçe göstermeksizin iade talep edebilirsin.
+              {t('profileOrders.withdrawal14Note')}
             </p>
           </div>
           <button
             onClick={onOpen}
             className="ml-4 shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
           >
-            ↩️ İade Talebi Oluştur
+            {t('profileOrders.refundCta')}
           </button>
         </div>
       ) : (
@@ -756,7 +757,7 @@ function RefundRequestPanel({
           <div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">{t('refundForm.reasonLabel')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Onay sonrası kargo iade kodun anında oluşturulur.
+              {t('profileOrders.refundReasonInline')}
             </p>
           </div>
 
@@ -796,9 +797,7 @@ function RefundRequestPanel({
           {/* 14-day legal note */}
           <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-              🏛️ <strong>Yasal Bilgi:</strong> 6502 Sayılı Tüketicinin Korunması Hakkında Kanun kapsamında teslimattan itibaren
-              <strong> 14 takvim günü</strong> içinde cayma hakkını kullanabilirsin. Onaylanan iadeler
-              <strong> 5-10 iş günü</strong> içinde orijinal ödeme yöntemine iade edilir.
+              {t('profileOrders.refundLegal')}
             </p>
           </div>
 

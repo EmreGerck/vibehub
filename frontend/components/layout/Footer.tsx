@@ -65,6 +65,7 @@ export function Footer() {
               <li><Link href="/profile/orders" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.myOrders')}</Link></li>
               <li><Link href="/profile/settings" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.settings')}</Link></li>
               <li><Link href="/cart" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.cart')}</Link></li>
+              <li><Link href="/faq" className="hover:text-gray-900 dark:hover:text-white transition-colors">{t('footer.faq')}</Link></li>
             </ul>
           </div>
 
@@ -110,6 +111,7 @@ export function Footer() {
             <Link href="/privacy" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">{t('footer.privacy')}</Link>
             <Link href="/terms" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">{t('footer.terms')}</Link>
             <Link href="/kvkk" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">KVKK</Link>
+            <Link href="/faq" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">{t('footer.faq')}</Link>
             <Link href="/support" className="hover:text-gray-600 dark:hover:text-gray-400 transition-colors">{t('footer.support')}</Link>
           </div>
         </div>

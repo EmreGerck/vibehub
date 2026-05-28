@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useOrderDetail, useMockPay } from '../../hooks/useCart';
 import { formatPrice } from '../../lib/format';
+import { useI18n } from '../../lib/i18n';
 import { Spinner } from '../../components/ui/Spinner';
 import { ProductImage } from '../../components/ui/ProductImage';
 
@@ -27,6 +28,7 @@ export default function PaymentPage() {
   const orderId      = params.get('orderId') ?? '';
   const mockPay      = useMockPay();
   const { data: order, isLoading: orderLoading } = useOrderDetail(orderId);
+  const t = useI18n((s) => s.t);
 
   const [step,     setStep]     = useState<Step>('form');
   const [error,    setError]    = useState('');
@@ -44,8 +46,8 @@ export default function PaymentPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-3">
-          <p className="text-gray-500">Geçersiz ödeme oturumu.</p>
-          <Link href="/checkout" className="btn-primary text-sm">Sepete Dön</Link>
+          <p className="text-gray-500">{t('payment.invalidSession')}</p>
+          <Link href="/checkout" className="btn-primary text-sm">{t('payment.backToCart')}</Link>
         </div>
       </div>
     );
@@ -57,9 +59,9 @@ export default function PaymentPage() {
     setError('');
 
     const raw = cardNum.replace(/\s/g, '');
-    if (raw.length < 16) { setError('Geçersiz kart numarası.'); return; }
-    if (expiry.length < 5) { setError('Son kullanma tarihi eksik.'); return; }
-    if (cvv.length < 3) { setError('CVV eksik.'); return; }
+    if (raw.length < 16) { setError(t('payment.invalidCardNumber')); return; }
+    if (expiry.length < 5) { setError(t('payment.expiryMissing')); return; }
+    if (cvv.length < 3) { setError(t('payment.cvvMissing')); return; }
 
     // Step 1: show 3D-Secure spinner
     setStep('secure');
@@ -86,7 +88,7 @@ export default function PaymentPage() {
         }, 600);
       } catch (err: any) {
         setStep('failed');
-        setError(err?.response?.data?.message ?? 'Ödeme işlemi başarısız oldu. Lütfen tekrar deneyin.');
+        setError(err?.response?.data?.message ?? t('payment.failed'));
       }
     }, 2200);
   }
@@ -101,8 +103,8 @@ export default function PaymentPage() {
             <span className="text-white font-bold text-xl">🏦</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">3D Güvenli Ödeme</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Bankanız işleminizi doğruluyor…</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{t('payment.secure3DTitle')}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('payment.secure3DSubtitle')}</p>
           </div>
           {/* Progress bar */}
           <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -111,7 +113,7 @@ export default function PaymentPage() {
               style={{ width: `${secProg}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400">Lütfen bu sayfayı kapatmayın</p>
+          <p className="text-xs text-gray-400">{t('payment.dontClose')}</p>
         </div>
       </div>
     );
@@ -126,14 +128,14 @@ export default function PaymentPage() {
             <span className="text-3xl">✕</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Ödeme Başarısız</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{t('payment.failedTitle')}</h2>
             <p className="text-sm text-red-500">{error}</p>
           </div>
           <button onClick={() => setStep('form')} className="btn-primary w-full">
-            Tekrar Dene
+            {t('payment.tryAgain')}
           </button>
           <Link href="/cart" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            Sepete Dön
+            {t('payment.backToCart')}
           </Link>
         </div>
       </div>
@@ -154,11 +156,11 @@ export default function PaymentPage() {
           {/* Secure badge */}
           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="text-green-500">🔒</span>
-            <span>256-bit SSL ile korumalı</span>
+            <span>{t('payment.sslBadge')}</span>
           </div>
           {/* iyzico brand */}
           <div className="flex items-center gap-1 text-xs text-gray-400">
-            <span>Güvenli ödeme altyapısı:</span>
+            <span>{t('payment.poweredBy')}</span>
             <span className="font-bold text-[#ff6c2c]">iyzico</span>
           </div>
         </div>
@@ -176,7 +178,7 @@ export default function PaymentPage() {
               style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 0%, transparent 60%), radial-gradient(circle at 80% 20%, white 0%, transparent 50%)' }} />
             <div className="relative z-10 flex flex-col h-full text-white">
               <div className="flex justify-between items-start">
-                <span className="text-xs font-medium opacity-70">Kredi / Banka Kartı</span>
+                <span className="text-xs font-medium opacity-70">{t('payment.cardKind')}</span>
                 <span className="text-2xl">💳</span>
               </div>
               <div className="flex-1 flex items-center">
@@ -186,11 +188,11 @@ export default function PaymentPage() {
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-xs opacity-60 uppercase tracking-wider">Kart Sahibi</p>
+                  <p className="text-xs opacity-60 uppercase tracking-wider">{t('payment.cardHolder')}</p>
                   <p className="text-sm font-semibold">{holder || 'AD SOYAD'}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs opacity-60 uppercase tracking-wider">Son Tarih</p>
+                  <p className="text-xs opacity-60 uppercase tracking-wider">{t('payment.cardExpiry')}</p>
                   <p className="text-sm font-semibold">{expiry || 'AA/YY'}</p>
                 </div>
               </div>
@@ -202,16 +204,16 @@ export default function PaymentPage() {
             <div className="mb-5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 flex items-start gap-2">
               <span className="text-amber-500 shrink-0">ℹ️</span>
               <div className="text-xs text-amber-700 dark:text-amber-300">
-                <p className="font-semibold mb-0.5">Test kartı kullanın (sadece geliştirme)</p>
-                <p>Kart No: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">4242 4242 4242 4242</code></p>
-                <p>Son Tarih: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">12/30</code> &nbsp; CVV: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">123</code></p>
+                <p className="font-semibold mb-0.5">{t('payment.testCardTitle')}</p>
+                <p>{t('payment.cardNumber')}: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">4242 4242 4242 4242</code></p>
+                <p>{t('payment.expiryLabel')}: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">12/30</code> &nbsp; CVV: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">123</code></p>
               </div>
             </div>
           )}
 
           {/* Form */}
           <form onSubmit={handlePay} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900 dark:text-white mb-2">Kart Bilgileri</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white mb-2">{t('payment.cardInfo')}</h2>
 
             {error && step === 'form' && (
               <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-600 dark:text-red-400">
@@ -221,7 +223,7 @@ export default function PaymentPage() {
 
             {/* Card number */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Kart Numarası</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('payment.cardNumber')}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -236,7 +238,7 @@ export default function PaymentPage() {
 
             {/* Holder */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Kart Üzerindeki İsim</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('payment.cardName')}</label>
               <input
                 type="text"
                 placeholder="AD SOYAD"
@@ -250,7 +252,7 @@ export default function PaymentPage() {
             {/* Expiry + CVV */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Son Kullanma Tarihi</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('payment.expiryLabel')}</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -263,7 +265,7 @@ export default function PaymentPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">CVV / CVC</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('payment.cvvLabel')}</label>
                 <input
                   type="password"
                   inputMode="numeric"
@@ -279,12 +281,12 @@ export default function PaymentPage() {
 
             {/* Installments */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Taksit Seçeneği</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('payment.installment')}</label>
               <select className="input w-full bg-white dark:bg-gray-900">
-                <option value="1">Tek Çekim</option>
-                <option value="3">3 Taksit</option>
-                <option value="6">6 Taksit</option>
-                <option value="9">9 Taksit</option>
+                <option value="1">{t('payment.installmentOnce')}</option>
+                <option value="3">{t('payment.installmentN').replace('{n}', '3')}</option>
+                <option value="6">{t('payment.installmentN').replace('{n}', '6')}</option>
+                <option value="9">{t('payment.installmentN').replace('{n}', '9')}</option>
               </select>
             </div>
 
@@ -300,7 +302,7 @@ export default function PaymentPage() {
                 <span className="flex items-center justify-center gap-2">
                   <span>🔒</span>
                   <span>
-                    Güvenli Öde
+                    {t('payment.payNow')}
                     {order ? ` · ${formatPrice(order.totalAmount ?? order.total ?? 0)}` : ''}
                   </span>
                 </span>
@@ -320,7 +322,7 @@ export default function PaymentPage() {
           {/* Back link */}
           <div className="mt-4 text-center">
             <Link href="/checkout" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              ← Teslimat bilgilerine dön
+              {t('payment.backToShipping')}
             </Link>
           </div>
         </div>
@@ -329,7 +331,7 @@ export default function PaymentPage() {
         <div className="lg:w-80 shrink-0">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-5 sticky top-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-              Sipariş Özeti
+              {t('payment.orderSummary')}
             </h3>
 
             {orderLoading ? (
@@ -338,7 +340,7 @@ export default function PaymentPage() {
               <div className="space-y-3">
                 {order.items?.map((item: any) => {
                   const imageUrl  = item.variant?.product?.images?.[0] ?? item.product?.images?.[0];
-                  const title     = item.variant?.product?.title ?? item.product?.title ?? 'Ürün';
+                  const title     = item.variant?.product?.title ?? item.product?.title ?? t('profileOrders.product');
                   const variant   = item.variant?.label ?? item.variant?.sku;
                   const unitPrice = Number(item.unitPriceSnapshot ?? item.unitPrice ?? item.price ?? 0);
                   return (
@@ -362,15 +364,15 @@ export default function PaymentPage() {
 
                 <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-1.5">
                   <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <span>Ara Toplam</span>
+                    <span>{t('payment.subtotal')}</span>
                     <span>{formatPrice(order.totalAmount ?? order.total ?? 0)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <span>Kargo</span>
-                    <span className="text-green-600 dark:text-green-400 font-medium">Ücretsiz</span>
+                    <span>{t('payment.shipping')}</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">{t('payment.free')}</span>
                   </div>
                   <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-100 dark:border-gray-800">
-                    <span>Toplam (KDV dahil)</span>
+                    <span>{t('payment.totalKdv')}</span>
                     <span className="text-purple-600 dark:text-purple-400">
                       {formatPrice(order.totalAmount ?? order.total ?? 0)}
                     </span>
@@ -378,13 +380,13 @@ export default function PaymentPage() {
                 </div>
 
                 <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 p-3 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                  <p className="flex items-center gap-1.5"><span>📧</span> Sipariş onayı e-posta ile gönderilecek</p>
-                  <p className="flex items-center gap-1.5"><span>🧾</span> e-Arşiv fatura otomatik kesilecek</p>
-                  <p className="flex items-center gap-1.5"><span>↩️</span> 14 gün içinde cayma hakkı</p>
+                  <p className="flex items-center gap-1.5"><span>📧</span> {t('payment.confirmEmail')}</p>
+                  <p className="flex items-center gap-1.5"><span>🧾</span> {t('payment.eInvoice')}</p>
+                  <p className="flex items-center gap-1.5"><span>↩️</span> {t('payment.withdrawal14')}</p>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-400 text-center py-4">Sipariş bilgisi yüklenemedi</p>
+              <p className="text-sm text-gray-400 text-center py-4">{t('payment.orderLoadFailed')}</p>
             )}
           </div>
         </div>
@@ -392,11 +394,11 @@ export default function PaymentPage() {
 
       {/* Footer strip */}
       <footer className="mt-8 py-4 border-t border-gray-200 dark:border-gray-800 text-center text-xs text-gray-400">
-        <p>Ödeme altyapısı <span className="font-bold text-[#ff6c2c]">iyzico</span> tarafından güvence altındadır • PCI-DSS Uyumlu • 256-bit SSL</p>
+        <p>{t('payment.footer')}</p>
         <div className="flex items-center justify-center gap-4 mt-2">
-          <Link href="/privacy" className="hover:text-gray-600 transition-colors">Gizlilik Politikası</Link>
-          <Link href="/terms" className="hover:text-gray-600 transition-colors">Kullanım Koşulları</Link>
-          <Link href="/support" className="hover:text-gray-600 transition-colors">Yardım</Link>
+          <Link href="/privacy" className="hover:text-gray-600 transition-colors">{t('payment.privacy')}</Link>
+          <Link href="/terms" className="hover:text-gray-600 transition-colors">{t('payment.terms')}</Link>
+          <Link href="/support" className="hover:text-gray-600 transition-colors">{t('payment.help')}</Link>
         </div>
       </footer>
     </div>

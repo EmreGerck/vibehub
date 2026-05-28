@@ -104,6 +104,7 @@ function BentoHero({ products }: { products: Product[] }) {
 function BentoCard({ product, price, isLarge, layoutClass, hidden, delay }: {
   product: any; price: any; isLarge: boolean; layoutClass: string; hidden: boolean; delay: number;
 }) {
+  const t = useI18n((s) => s.t);
   const [hovered, setHovered] = useState(false);
   const fp = (product.imageSettings as any)?.[0];
   const objPos = fp ? `${fp.x}% ${fp.y}%` : '50% 50%';
@@ -177,7 +178,7 @@ function BentoCard({ product, price, isLarge, layoutClass, hidden, delay }: {
             )}
           </div>
           <span className={`text-xs transition-all ${hovered ? 'text-white translate-x-1' : 'text-white/60'}`}>
-            {useI18n.getState().t('shop.view')}
+            {t('shop.view')}
           </span>
         </div>
       </div>
@@ -575,6 +576,7 @@ function FilterIcon() {
 }
 
 function ShopProductCard({ product }: { product: Product }) {
+  const t = useI18n((s) => s.t);
   const price = product.variants?.[0]?.priceOverride ?? product.price;
   const defaultVariant = product.variants?.[0];
   const addToCart = useAddToCart();
@@ -589,7 +591,6 @@ function ShopProductCard({ product }: { product: Product }) {
   function handleToggleWishlist(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const t = useI18n.getState().t;
     if (!user) {
       toast('info', t('wishlist.loginRequired'));
       return;
@@ -605,7 +606,7 @@ function ShopProductCard({ product }: { product: Product }) {
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
-      toast('info', useI18n.getState().t('shop.loginToAdd'));
+      toast('info', t('shop.loginToAdd'));
       return;
     }
     if (!defaultVariant) return;
@@ -615,10 +616,10 @@ function ShopProductCard({ product }: { product: Product }) {
       { variantId: defaultVariant.id, qty: 1 },
       {
         onSuccess: () => {
-          toast('success', `${product.title} ${useI18n.getState().t('shop.addedToCart')}`);
+          toast('success', `${product.title} ${t('shop.addedToCart')}`);
           window.dispatchEvent(new CustomEvent('cart:bump'));
         },
-        onError: () => toast('error', useI18n.getState().t('shop.failedToAdd')),
+        onError: () => toast('error', t('shop.failedToAdd')),
       },
     );
   }
@@ -716,7 +717,7 @@ function ShopProductCard({ product }: { product: Product }) {
         <div className="mt-auto pt-2 flex items-end justify-between">
           <PriceBadge price={price} compareAtPrice={product.compareAtPrice} />
           <span className="text-xs text-purple-500 dark:text-purple-400 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all">
-            {useI18n.getState().t('shop.view')}
+            {t('shop.view')}
           </span>
         </div>
       </div>

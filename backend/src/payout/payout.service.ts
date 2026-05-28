@@ -46,6 +46,59 @@ export class PayoutService {
   }
 
   /**
+   * Vendor-initiated payout request. Computes the period as:
+   *   periodStart = end of last non-FAILED payout (or tenant.createdAt if first request)
+   *   periodEnd   = now
+   * Then delegates to create() which auto-computes amounts from DELIVERED orders.
+   * Refuses if there are no DELIVERED orders in the period yet (nothing to pay out).
+   */
+  async requestForTenant(tenantId: string, actorId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, createdAt: true },
+    });
+    if (!tenant) throw new NotFoundException('Vendor not found');
+
+    const lastPayout = await this.prisma.payout.findFirst({
+      where: { tenantId, status: { not: PayoutStatus.FAILED } },
+      orderBy: { periodEnd: 'desc' },
+      select: { periodEnd: true },
+    });
+
+    const periodStart = lastPayout?.periodEnd ?? tenant.createdAt;
+    const periodEnd = new Date();
+
+    if (periodEnd.getTime() - periodStart.getTime() < 60_000) {
+      throw new BadRequestException(
+        'Son talebinin üzerinden henüz vakit geçmedi. Lütfen yeni teslimat olduktan sonra tekrar dene.',
+      );
+    }
+
+    // Pre-flight: any DELIVERED orders in the period? If not, there's nothing to
+    // pay out — fail fast with a friendly message instead of creating a 0 TL row.
+    const deliveredCount = await this.prisma.orderItem.count({
+      where: {
+        tenantId,
+        order: { status: 'DELIVERED', createdAt: { gte: periodStart, lte: periodEnd } },
+      },
+    });
+    if (deliveredCount === 0) {
+      throw new BadRequestException(
+        'Bu döneme ait teslim edilmiş sipariş bulunmuyor. Ödeme talep edebilmen için en az bir teslim edilmiş siparişin olmalı.',
+      );
+    }
+
+    return this.create(
+      {
+        tenantId,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+      } as CreatePayoutDto,
+      actorId,
+    );
+  }
+
+  /**
    * Create a payout for a vendor. If amounts are omitted, they're computed from
    * settled (non-cancelled / non-refunded) order items in the given period whose
    * order has been DELIVERED.

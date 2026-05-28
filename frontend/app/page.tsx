@@ -184,6 +184,7 @@ function ProductCard({ product }: { product: Product }) {
 // ── Artist Card ──────────────────────────────────────────────────────────────
 
 function ArtistCard({ vendor }: { vendor: any }) {
+  const t = useI18n((s) => s.t);
   return (
     <Link
       href={`/store/${vendor.slug}`}
@@ -202,7 +203,7 @@ function ArtistCard({ vendor }: { vendor: any }) {
           <p className="text-white/60 text-sm mt-1">{vendor.artistType}</p>
         )}
         <span className="text-purple-300 text-sm font-medium mt-2 group-hover:text-purple-200 transition-colors">
-          {useI18n.getState().t('home.shopCollection')}
+          {t('home.shopCollection')}
         </span>
       </div>
     </Link>

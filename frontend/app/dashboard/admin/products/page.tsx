@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useI18n } from '../../../../lib/i18n';
 import { usePageSize } from '../../../../hooks/usePageSize';
 import { PageSizeSelector } from '../../../../components/ui/PageSizeSelector';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
 import {
   useAdminAllProducts,
   useAdminPendingProducts,
@@ -952,7 +953,8 @@ export default function AdminProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [variantsFor, setVariantsFor] = useState<any | null>(null);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteProductConfirm, setDeleteProductConfirm] = useState<{ id: string; title: string } | null>(null);
+  const [approveConfirm, setApproveConfirm] = useState<{ id: string; title: string } | null>(null);
   const [rejectModal, setRejectModal] = useState<{ id: string; title: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [photoSettingsFor, setPhotoSettingsFor] = useState<any | null>(null);
@@ -981,13 +983,16 @@ export default function AdminProductsPage() {
     setEditingProduct(null);
   }
 
-  async function handleDelete(id: string) {
-    await deleteProduct.mutateAsync(id);
-    setDeleteConfirm(null);
+  async function handleConfirmDelete() {
+    if (!deleteProductConfirm) return;
+    await deleteProduct.mutateAsync(deleteProductConfirm.id);
+    setDeleteProductConfirm(null);
   }
 
-  async function handleApprove(id: string) {
-    try { await review.mutateAsync({ id, decision: 'APPROVE' }); } catch {}
+  async function handleConfirmApprove() {
+    if (!approveConfirm) return;
+    try { await review.mutateAsync({ id: approveConfirm.id, decision: 'APPROVE' }); } catch {}
+    setApproveConfirm(null);
   }
 
   async function handleReject() {
@@ -1147,7 +1152,7 @@ export default function AdminProductsPage() {
                         {activeTab === 'pending' && product.status === 'PENDING_REVIEW' && (
                           <>
                             <button
-                              onClick={() => handleApprove(product.id)}
+                              onClick={() => setApproveConfirm({ id: product.id, title: product.title })}
                               disabled={review.isPending}
                               className="text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                             >
@@ -1163,29 +1168,12 @@ export default function AdminProductsPage() {
                         )}
 
                         {/* Delete */}
-                        {deleteConfirm === product.id ? (
-                          <>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              className="text-xs text-red-600 border border-red-300 dark:border-red-800 px-2.5 py-1.5 rounded-lg transition-colors"
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(null)}
-                              className="text-xs text-gray-500 px-2 py-1.5 rounded-lg"
-                            >
-                              ×
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirm(product.id)}
-                            className="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 rounded-lg transition-colors"
-                          >
-                            Delete
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setDeleteProductConfirm({ id: product.id, title: product.title })}
+                          className="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1261,6 +1249,32 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+
+      {/* Approve & publish confirmation */}
+      <ConfirmModal
+        open={!!approveConfirm}
+        onClose={() => setApproveConfirm(null)}
+        onConfirm={handleConfirmApprove}
+        title="Bu ürün onaylanıp yayınlanacak"
+        description={approveConfirm ? `"${approveConfirm.title}" canlıya alınacak ve mağazada satın alınabilir hale gelecek.` : ''}
+        danger="info"
+        confirmLabel="Onayla ve Yayınla"
+        cancelLabel="Vazgeç"
+        busy={review.isPending}
+      />
+
+      {/* Product delete confirmation */}
+      <ConfirmModal
+        open={!!deleteProductConfirm}
+        onClose={() => setDeleteProductConfirm(null)}
+        onConfirm={handleConfirmDelete}
+        title="Bu ürün silinecek"
+        description={deleteProductConfirm ? `"${deleteProductConfirm.title}" platformdan kalıcı olarak kaldırılacak. Varyantlar, sepet öğeleri ve geçmiş veriler etkilenebilir.` : ''}
+        danger="warning"
+        confirmLabel="Sil"
+        cancelLabel="Vazgeç"
+        busy={deleteProduct.isPending}
+      />
     </div>
   );
 }

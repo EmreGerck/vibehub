@@ -9,6 +9,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { OtpService } from './otp.service';
+import { CartModule } from '../cart/cart.module';
 
 @Module({
   imports: [
@@ -21,6 +22,9 @@ import { OtpService } from './otp.service';
       }),
       inject: [ConfigService],
     }),
+    // CartModule is needed for KVKK account-deletion (clearCart) — the cart
+    // lives in Redis, not Postgres, so prisma.user.delete doesn't touch it.
+    CartModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy, JwtAuthGuard, RolesGuard, OtpService],

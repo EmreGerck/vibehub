@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from '../common/jwt-payload.interface';
 import { OtpService } from './otp.service';
 import { MailService } from '../mail/mail.service';
+import { CartService } from '../cart/cart.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { addDays } from '../common/date.util';
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
+    private readonly cart: CartService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -431,6 +433,34 @@ export class AuthService {
     return { success: true };
   }
 
+  /**
+   * KVKK Art. 11 / GDPR Art. 17 — Right to erasure.
+   *
+   * We cannot fully `DELETE FROM "User"` because several FK relationships
+   * intentionally keep records around for accounting/tax/compliance:
+   *   - Order.customerId        — REQUIRED to keep for 10 years (Turkish tax law)
+   *   - OrderItem               — accounting trail follows Order
+   *   - Review.customerId       — content survives, attribution anonymised
+   *   - ForumTopic / ForumReply — anonymised, kept so threads don't break
+   *   - AuditLog.actorId        — REQUIRED for forensics, anonymised only
+   *
+   * The strategy:
+   *   1. Refuse if customer has active orders (vendor still needs to ship).
+   *   2. Purge everything tied 1:1 to identity (profile, devices, push, DMs,
+   *      cart, wishlist, follows, profile-visits, notifications, page-views).
+   *      Most of these cascade automatically via `onDelete: Cascade` once we
+   *      anonymise User in step 4, but we run explicit deletes first to be
+   *      defensive against schema drift.
+   *   3. Anonymise foreign-key references that must survive (Order, Review,
+   *      Forum*, AuditLog, NFC tag ownership).
+   *   4. Wipe PII from User itself (email/name/phone/avatar/passwordHash) and
+   *      set `accountDeletedAt` instead of hard-deleting.
+   *
+   * Why anonymise instead of full delete? Turkish KVKK explicitly permits
+   * keeping anonymised data where there is a legal obligation to retain
+   * (Maliye Bakanlığı: 10-year invoice retention). Anonymisation is the
+   * KVKK-defensible alternative when full deletion would break a legal duty.
+   */
   async deleteAccount(userId: string, password: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found');
@@ -438,7 +468,113 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new BadRequestException('Invalid password');
 
-    await this.prisma.user.delete({ where: { id: userId } });
+    // 1. Refuse if there's an in-flight order — vendor still owes fulfillment.
+    // Allowed terminal statuses: DELIVERED, CANCELLED, REFUNDED.
+    // Blocked: PLACED, CONFIRMED, SHIPPED, REFUND_REQUESTED.
+    const activeOrderCount = await this.prisma.order.count({
+      where: {
+        customerId: userId,
+        status: { in: ['PLACED', 'CONFIRMED', 'SHIPPED', 'REFUND_REQUESTED'] },
+      },
+    });
+    if (activeOrderCount > 0) {
+      throw new BadRequestException(
+        `Hesabını silmeden önce ${activeOrderCount} adet açık siparişinin tamamlanması gerekiyor (teslim, iptal veya iade). Lütfen sipariş durumlarını sayfanda kontrol et.`,
+      );
+    }
+
+    // 2 + 3 + 4: do all of it in one transaction so a mid-flight crash never
+    // leaves the user half-anonymised. The transaction runs the long sequence
+    // of explicit deletes (defensive, even though many cascade) and then the
+    // PII wipe on User itself.
+    const anonEmail = `deleted-${userId}@anonymised.vibehub.local`;
+    await this.prisma.$transaction([
+      // ─── Hard purge — user-tied identity & behavioural data ────────────────
+      this.prisma.userProfile.deleteMany({ where: { userId } }),
+      this.prisma.refreshToken.deleteMany({ where: { userId } }),
+      this.prisma.trustedDevice.deleteMany({ where: { userId } }),
+      this.prisma.passwordResetToken.deleteMany({ where: { userId } }),
+      this.prisma.wishlist.deleteMany({ where: { userId } }),
+      this.prisma.follow.deleteMany({ where: { userId } }),
+      this.prisma.pushDevice.deleteMany({ where: { userId } }),
+      this.prisma.appNotification.deleteMany({ where: { userId } }),
+      this.prisma.pageView.deleteMany({ where: { userId } }),
+      this.prisma.forumReaction.deleteMany({ where: { userId } }),
+      // ProfileVisit — purge both directions (as visitor and as target)
+      this.prisma.profileVisit.deleteMany({
+        where: { OR: [{ visitorId: userId }, { profileUserId: userId }] },
+      }),
+      // DirectMessage — purge entire correspondence on both sides
+      this.prisma.directMessage.deleteMany({
+        where: { OR: [{ senderId: userId }, { recipientId: userId }] },
+      }),
+
+      // ─── Anonymise — references that must survive ──────────────────────────
+      // Order: keep the order + line items for accounting, drop PII from shipping address.
+      // We can't NULL customerId (FK is NOT NULL in schema), so we keep it but
+      // strip the snapshot address JSON. customer.email is cleared in step 4.
+      this.prisma.order.updateMany({
+        where: { customerId: userId },
+        // We deliberately do NOT null customerId — schema requires it, and the
+        // anonymised User row still satisfies the FK while leaking no PII.
+        data: { shippingAddress: { anonymisedAt: new Date().toISOString() } },
+      }),
+      // Review: keep the rating + comment (other shoppers benefit), strip nothing
+      // (customer.name is cleared in step 4, so the avatar/handle vanishes).
+      // No update needed here.
+
+      // ForumTopic / ForumReply / NfcTag: authorId stays for thread integrity
+      // and tag ownership history; anonymising the User row in step 4 is what
+      // hides the identity.
+
+      // AuditLog: KEEP for forensics — anonymise actorId only.
+      // Required by KVKK + Turkish security standards (TS ISO/IEC 27001).
+      this.prisma.auditLog.updateMany({
+        where: { actorId: userId },
+        data: { actorId: null },
+      }),
+
+      // ─── PII wipe on User itself ───────────────────────────────────────────
+      // We keep the row so non-nullable FKs (Order.customerId, Review.customerId,
+      // ForumTopic.authorId, etc.) remain valid. Every PII field is cleared.
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: anonEmail,
+          name: null,
+          phone: null,
+          avatarUrl: null,
+          // Random password the user can never re-discover — prevents accidental
+          // resurrection if email column ever gets edited.
+          passwordHash: '$2b$12$' + uuidv4().replace(/-/g, '') + uuidv4().slice(0, 22),
+          tenantId: null,
+          marketingConsent: false,
+          marketingConsentAt: null,
+          accountDeletedAt: new Date(),
+          lockedUntil: null,
+        },
+      }),
+    ]);
+
+    // Server-side cart lives in Redis, outside the transaction.
+    // Best-effort: a failure here is acceptable since cart TTLs in 7 days anyway.
+    try {
+      await this.cart.clearCart(userId);
+    } catch (err: any) {
+      this.logger.warn(`[deleteAccount] cart clear failed for ${userId}: ${err?.message}`);
+    }
+
+    // Audit-log the deletion itself with the actorId still attached (the
+    // anonymised actorId update above runs in the same transaction, so this
+    // audit row is the LAST one to show the real user did it — exactly what
+    // forensics needs).
+    this.audit.log({
+      actorId: userId,
+      action: 'ACCOUNT_DELETED',
+      targetType: 'User',
+      targetId: userId,
+      metadata: { method: 'self_service_kvkk' },
+    }).catch(() => {});
   }
 
   async listTrustedDevices(userId: string) {

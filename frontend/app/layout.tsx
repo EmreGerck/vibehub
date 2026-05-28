@@ -52,9 +52,13 @@ export async function generateMetadata(): Promise<Metadata> {
     publisher: 'VibeHub',
     alternates: {
       canonical: SITE_URL,
+      // hreflang advertises TR + EN variants to Google.
+      // TODO: When dedicated /en/* routes ship, swap ?lang=en for /en path-prefixed URLs.
       languages: {
+        tr: SITE_URL,
         'tr-TR': SITE_URL,
-        // 'en-US': `${SITE_URL}/en`, // ← re-enable once /en locale route exists
+        en: `${SITE_URL}/?lang=en`,
+        'x-default': SITE_URL,
       },
     },
     openGraph: {

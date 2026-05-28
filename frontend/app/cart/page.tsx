@@ -151,6 +151,7 @@ function CartRow({
   onRemove: () => void;
   loading: boolean;
 }) {
+  const t = useI18n((s) => s.t);
   const price = item.variant.priceOverride ?? item.variant.price;
   const attrs = Object.values(item.variant.attributes).join(' / ');
 
@@ -165,7 +166,7 @@ function CartRow({
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 dark:text-white truncate">{item.product.title}</p>
         <p className="text-xs text-gray-500 mt-0.5">{attrs} · SKU: {item.variant.sku}</p>
-        <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">{formatPrice(price)} / {useI18n.getState().t('pdp.each')}</p>
+        <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">{formatPrice(price)} / {t('pdp.each')}</p>
       </div>
       <div className="flex flex-col items-end gap-2 shrink-0">
         <p className="font-semibold text-gray-900 dark:text-white">{formatPrice(item.lineTotal)}</p>
@@ -183,7 +184,7 @@ function CartRow({
           >+</button>
         </div>
         <button onClick={onRemove} disabled={loading} className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-          {useI18n.getState().t('cart.remove')}
+          {t('cart.remove')}
         </button>
       </div>
     </div>

@@ -6,12 +6,30 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://vibehub.com.tr';
 export const metadata: Metadata = {
   title: 'Destek & SSS',
   description: 'VibeHub destek merkezi. Sipariş takibi, iade, kargo ve hesap işlemleri hakkında sık sorulan sorular ve yardım rehberi.',
-  alternates: { canonical: `${SITE_URL}/support` },
+  // hreflang alternates — TR canonical + EN via ?lang=en (until /en/* routes ship).
+  alternates: {
+    canonical: `${SITE_URL}/support`,
+    languages: {
+      tr: `${SITE_URL}/support`,
+      'tr-TR': `${SITE_URL}/support`,
+      en: `${SITE_URL}/support?lang=en`,
+      'x-default': `${SITE_URL}/support`,
+    },
+  },
   openGraph: {
     title: 'Destek & SSS — VibeHub',
     description: 'Sipariş takibi, iade, kargo ve hesap işlemleri hakkında yardım alın.',
     url: `${SITE_URL}/support`,
+    siteName: 'VibeHub',
+    locale: 'tr_TR',
     type: 'website',
+    images: [{ url: `${SITE_URL}/opengraph-image`, width: 1200, height: 630, alt: 'Destek & SSS — VibeHub' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Destek & SSS — VibeHub',
+    description: 'Sipariş takibi, iade, kargo ve hesap işlemleri hakkında yardım alın.',
+    images: [`${SITE_URL}/opengraph-image`],
   },
 };
 

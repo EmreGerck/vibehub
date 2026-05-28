@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePlatformSettings, useUpdatePlatformSettings, PlatformSettings } from '../../../../hooks/useAdmin';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
 
 type FormState = Omit<PlatformSettings, 'id' | 'updatedAt' | 'metaTitle' | 'metaDescription' | 'ogImageUrl' | 'twitterHandle' | 'facebookPixelId' | 'googleTagManagerId' | 'robotsTxt' | 'schemaOrgJson'>;
 
@@ -138,6 +139,7 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState<FormState>(DEFAULTS);
+  const [maintenanceConfirm, setMaintenanceConfirm] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -380,7 +382,13 @@ export default function AdminSettingsPage() {
             <ToggleRow label="Require email verification" desc="New accounts must verify email before buying" value={form.requireEmailVerification} onChange={v => set('requireEmailVerification', v)} />
             <ToggleRow
               label="Maintenance mode" desc="Takes the site offline for all non-admin users"
-              value={form.maintenanceMode} onChange={v => set('maintenanceMode', v)} danger
+              value={form.maintenanceMode}
+              onChange={v => {
+                // Require typed confirmation when ENABLING; bypass on disable.
+                if (v) setMaintenanceConfirm(true);
+                else set('maintenanceMode', false);
+              }}
+              danger
             />
           </div>
           {form.maintenanceMode && (
@@ -427,6 +435,27 @@ export default function AdminSettingsPage() {
           {saved && <span className="text-sm text-green-600 dark:text-green-400">✓ Saved</span>}
         </div>
       </form>
+
+      {/* Maintenance-mode arming confirmation — blast radius = entire site */}
+      <ConfirmModal
+        open={maintenanceConfirm}
+        onClose={() => setMaintenanceConfirm(false)}
+        onConfirm={() => {
+          set('maintenanceMode', true);
+          setMaintenanceConfirm(false);
+        }}
+        title="Bakım modu açılacak"
+        description={
+          <>
+            Etkinleştirilince <strong>ziyaretçilerin tamamı</strong> bakım sayfasına yönlendirilecek
+            ve site siz "Save all settings" diyene kadar kapalı kalacak.
+          </>
+        }
+        danger="critical"
+        confirmLabel="Bakımı Aç"
+        cancelLabel="Vazgeç"
+        confirmPhrase="MAINTENANCE"
+      />
     </div>
   );
 }

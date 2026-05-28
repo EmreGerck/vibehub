@@ -5,19 +5,22 @@ import { useConversations } from '../../../hooks/useMessages';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useI18n } from '../../../lib/i18n';
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
+function buildTimeAgo(t: (k: string) => string) {
+  return (dateStr: string): string => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return t('profileMessages.now');
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
+  };
 }
 
 export default function ProfileMessagesPage() {
   const { data: conversations, isLoading } = useConversations();
   const t = useI18n((s) => s.t);
+  const timeAgo = buildTimeAgo(t);
 
   return (
     <>
@@ -55,7 +58,7 @@ export default function ProfileMessagesPage() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {c.nickname ? `@${c.nickname}` : 'Unknown user'}
+                  {c.nickname ? `@${c.nickname}` : t('profileMessages.unknownUser')}
                   {c.unread > 0 && (
                     <span className="ml-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-600 text-white text-[10px] font-bold">
                       {c.unread}

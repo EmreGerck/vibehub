@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useMyVendorProfile, useUpdateMyVendorProfile } from '../../../../hooks/useVendors';
+import { useCan } from '../../../../hooks/usePermissions';
 import { useI18n } from '../../../../lib/i18n';
+import { PermissionDenied } from '../../../../components/shared/PermissionDenied';
 
 export default function VendorProfilePage() {
   const { data: profile, isLoading } = useMyVendorProfile();
   const update = useUpdateMyVendorProfile();
   const t = useI18n((s) => s.t);
+  const can = useCan();
+  const canEdit = can('STOREFRONT_EDIT');
 
   const [form, setForm] = useState({
     displayName: '',
@@ -56,6 +60,10 @@ export default function VendorProfilePage() {
         <div className="w-6 h-6 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
       </div>
     );
+  }
+
+  if (!canEdit) {
+    return <PermissionDenied requiredPermission="STOREFRONT_EDIT" />;
   }
 
   return (

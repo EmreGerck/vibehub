@@ -52,7 +52,7 @@ export default function CheckoutPage() {
       // Redirect to payment page instead of confirmation
       router.push(`/payment?orderId=${order.id}`);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to place order');
+      setError(err?.response?.data?.message || t('checkout.errorFallback'));
     }
   }
 

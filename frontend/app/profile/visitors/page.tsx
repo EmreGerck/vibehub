@@ -3,32 +3,37 @@
 import Link from 'next/link';
 import { useMyVisitors } from '../../../hooks/useSocialProfile';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useI18n } from '../../../lib/i18n';
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
+function buildTimeAgo(t: (k: string) => string) {
+  return (dateStr: string): string => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return t('profileVisitors.justNow');
+    if (m < 60) return t('profileVisitors.minutesAgo').replace('{n}', String(m));
+    const h = Math.floor(m / 60);
+    if (h < 24) return t('profileVisitors.hoursAgo').replace('{n}', String(h));
+    const d = Math.floor(h / 24);
+    return t('profileVisitors.daysAgo').replace('{n}', String(d));
+  };
 }
 
 export default function VisitorsPage() {
+  const t = useI18n((s) => s.t);
+  const timeAgo = buildTimeAgo(t);
   const { data: visitors, isLoading } = useMyVisitors();
 
   return (
     <>
-      <h2 className="text-xl font-semibold mb-6">Who visited your profile</h2>
+      <h2 className="text-xl font-semibold mb-6">{t('profileVisitors.title')}</h2>
 
       {isLoading && <Spinner />}
 
       {!isLoading && !visitors?.length && (
         <div className="text-center py-20 text-gray-400 dark:text-gray-600">
           <p className="text-5xl mb-4">👁</p>
-          <p className="text-lg">No visits yet</p>
-          <p className="text-sm mt-2">Share your profile link to get visitors!</p>
+          <p className="text-lg">{t('profileVisitors.empty')}</p>
+          <p className="text-sm mt-2">{t('profileVisitors.emptyHint')}</p>
         </div>
       )}
 
@@ -57,7 +62,7 @@ export default function VisitorsPage() {
                     @{v.nickname}
                   </Link>
                 ) : (
-                  <span className="font-medium text-gray-500 italic">Anonymous</span>
+                  <span className="font-medium text-gray-500 italic">{t('profileVisitors.anonymous')}</span>
                 )}
                 <p className="text-xs text-gray-500 mt-0.5">{timeAgo(v.visitedAt)}</p>
               </div>
@@ -66,13 +71,13 @@ export default function VisitorsPage() {
                   href={`/profile/messages/${v.userId}`}
                   className="text-xs btn-ghost px-3 py-1.5 shrink-0"
                 >
-                  Message
+                  {t('profileVisitors.message')}
                 </Link>
               )}
             </div>
           ))}
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center pt-2">
-            Ghost-mode visitors are hidden. Showing last 200 unique visitors.
+            {t('profileVisitors.ghostHidden')}
           </p>
         </div>
       )}

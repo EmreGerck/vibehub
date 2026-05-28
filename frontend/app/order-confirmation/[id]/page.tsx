@@ -51,7 +51,7 @@ export default function OrderConfirmationPage() {
               <div className="divide-y divide-gray-100 dark:divide-gray-800 mb-5">
                 {order.items?.map((item: any) => {
                   const imageUrl = item.variant?.product?.images?.[0] ?? item.product?.images?.[0];
-                  const title = item.variant?.product?.title ?? item.product?.title ?? 'Ürün';
+                  const title = item.variant?.product?.title ?? item.product?.title ?? t('profileOrders.product');
                   const variantLabel = item.variant?.label ?? item.variant?.sku;
                   const unitPrice = item.unitPrice ?? item.price;
                   return (
@@ -78,12 +78,12 @@ export default function OrderConfirmationPage() {
               <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2">
                 {order.shippingFee != null && order.shippingFee > 0 && (
                   <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <span>Kargo</span>
+                    <span>{t('orderConfirm.shippingFee')}</span>
                     <span>{formatPrice(order.shippingFee)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-gray-900 dark:text-white">
-                  <span>Toplam</span>
+                  <span>{t('orderConfirm.total')}</span>
                   <span className="text-purple-600 dark:text-purple-400">
                     {formatPrice(order.totalAmount ?? order.total)}
                   </span>
@@ -94,7 +94,7 @@ export default function OrderConfirmationPage() {
               {order.shippingAddress && (
                 <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800">
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                    Teslimat Adresi
+                    {t('orderConfirm.shippingAddress')}
                   </p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                     {order.shippingAddress.fullName}<br />
@@ -109,7 +109,7 @@ export default function OrderConfirmationPage() {
             </>
           ) : (
             <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-              Sipariş detayları yükleniyor…
+              {t('orderConfirm.loading')}
             </div>
           )}
         </div>
@@ -119,21 +119,21 @@ export default function OrderConfirmationPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">🧾</span>
             <div className="flex-1">
-              <p className="font-semibold text-green-800 dark:text-green-300 text-sm">e-Arşiv Fatura Kesildi</p>
+              <p className="font-semibold text-green-800 dark:text-green-300 text-sm">{t('orderConfirm.eInvoiceTitle')}</p>
               {invoiceNumber && (
                 <p className="text-xs text-green-600 dark:text-green-400 font-mono mt-0.5">
-                  Fatura No: {invoiceNumber}
+                  {t('orderConfirm.invoiceNumber')}: {invoiceNumber}
                 </p>
               )}
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                GİB standartlarına uygun elektronik faturanız hazır.
+                {t('orderConfirm.eInvoiceReady')}
               </p>
             </div>
             <Link
               href={`/invoice/${id}`}
               className="shrink-0 bg-green-600 hover:bg-green-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
             >
-              Faturayı Gör →
+              {t('orderConfirm.viewInvoice')}
             </Link>
           </div>
         </div>
@@ -142,7 +142,7 @@ export default function OrderConfirmationPage() {
         <div className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 mb-8 flex gap-3 animate-fade-in-up">
           <span className="text-lg shrink-0">📧</span>
           <span className="text-sm text-blue-700 dark:text-blue-300">
-            Sipariş onayı e-posta adresinize gönderildi. Kargoya verildiğinde tekrar bildirim alacaksınız.
+            {t('orderConfirm.emailNotice')}
           </span>
         </div>
 

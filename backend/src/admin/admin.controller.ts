@@ -51,6 +51,8 @@ import { IsBoolean, IsEmail, IsInt, IsNumber, IsOptional, IsString, Max, MaxLeng
 import { Type } from 'class-transformer';
 import { SecurityDigestService } from '../scheduler/security-digest.service';
 import { SearchService } from '../search/search.service';
+import { QueueService } from '../queue/queue.service';
+import { BusinessMetricsService } from './business-metrics.service';
 
 class UpdatePlatformSettingsDto {
   // Platform Identity
@@ -125,6 +127,8 @@ export class AdminController {
     private readonly forumService: ForumService,
     private readonly securityDigest: SecurityDigestService,
     private readonly searchService: SearchService,
+    private readonly queueService: QueueService,
+    private readonly businessMetrics: BusinessMetricsService,
   ) {}
 
   // ── Platform overview ─────────────────────────────────────────────────────────
@@ -851,6 +855,32 @@ export class AdminController {
   async reindexSearch() {
     const result = await this.searchService.reindexAll();
     return ApiResponse.ok(result, `Reindex complete — ${result.indexed} products indexed`);
+  }
+
+  // ── Queue health (BullMQ) ─────────────────────────────────────────────────────
+
+  @Get('queue-health')
+  @ApiOperation({
+    summary:
+      'BullMQ mail-queue counters (waiting / active / failed / completed). ' +
+      'Use this to detect mail delivery backlogs without opening a Redis shell.',
+  })
+  async queueHealth() {
+    const health = await this.queueService.getMailQueueHealth();
+    return ApiResponse.ok({ queue: 'mail', ...health }, 'Queue health');
+  }
+
+  // ── Business metrics (BI snapshot) ───────────────────────────────────────────
+
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Get('business-metrics')
+  @ApiOperation({
+    summary:
+      'Last-30-day business snapshot — GMV, active vendors, vendor activation rate, ' +
+      'refund rate, cart abandonment, avg time-to-first-order. Cached 60s.',
+  })
+  async getBusinessMetrics() {
+    return ApiResponse.ok(await this.businessMetrics.getSnapshot(), 'Business metrics');
   }
 
   @Get('settings')

@@ -7,14 +7,30 @@ const API_URL  = process.env.NEXT_PUBLIC_API_URL  || 'http://localhost:3001';
 export const metadata: Metadata = {
   title: 'Mağaza — Sanatçı Ürünleri',
   description: 'Türkiye\'nin en sevilen sanatçılarından t-shirt, hoodie, aksesuar ve özel koleksiyon ürünleri. Tüm ürünler resmi ve sertifikalı.',
+  // hreflang alternates — TR canonical + EN via ?lang=en (until /en/* routes ship).
   alternates: {
     canonical: `${SITE_URL}/shop`,
+    languages: {
+      tr: `${SITE_URL}/shop`,
+      'tr-TR': `${SITE_URL}/shop`,
+      en: `${SITE_URL}/shop?lang=en`,
+      'x-default': `${SITE_URL}/shop`,
+    },
   },
   openGraph: {
     title: 'VibeHub Mağaza — Sanatçı Ürünleri',
     description: 'Türkiye\'nin en sevilen sanatçılarından t-shirt, hoodie, aksesuar ve özel koleksiyon ürünleri.',
     url: `${SITE_URL}/shop`,
+    siteName: 'VibeHub',
+    locale: 'tr_TR',
     type: 'website',
+    images: [{ url: `${SITE_URL}/opengraph-image`, width: 1200, height: 630, alt: 'VibeHub Mağaza' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'VibeHub Mağaza — Sanatçı Ürünleri',
+    description: 'Türkiye\'nin en sevilen sanatçılarından t-shirt, hoodie, aksesuar ve özel koleksiyon ürünleri.',
+    images: [`${SITE_URL}/opengraph-image`],
   },
 };
 

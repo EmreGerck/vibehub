@@ -23,23 +23,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : `${title} resmi mağazası — VibeHub'da satın al.`;
     const image = vendor?.bannerUrl ?? vendor?.logoUrl ?? undefined;
 
+    const pathTr = `${SITE_URL}/store/${params.slug}`;
+    const absImage = image
+      ? (image.startsWith('http') ? image : `${SITE_URL}${image.startsWith('/') ? '' : '/'}${image}`)
+      : `${SITE_URL}/opengraph-image`;
     return {
       title,
       description,
       keywords: [title, 'resmi mağaza', 'merch', 'vibehub'],
-      alternates: { canonical: `${SITE_URL}/store/${params.slug}` },
+      // hreflang alternates — TR canonical + EN via ?lang=en (until /en/* routes ship).
+      alternates: {
+        canonical: pathTr,
+        languages: {
+          tr: pathTr,
+          'tr-TR': pathTr,
+          en: `${pathTr}?lang=en`,
+          'x-default': pathTr,
+        },
+      },
       openGraph: {
         title: `${title} Resmi Mağazası | VibeHub`,
         description,
         type: 'website',
-        url: `${SITE_URL}/store/${params.slug}`,
-        ...(image ? { images: [{ url: image, alt: `${title} mağaza görseli` }] } : {}),
+        url: pathTr,
+        siteName: 'VibeHub',
+        locale: 'tr_TR',
+        images: [{ url: absImage, alt: `${title} mağaza görseli` }],
       },
       twitter: {
         card: 'summary_large_image',
         title: `${title} Resmi Mağazası | VibeHub`,
         description,
-        ...(image ? { images: [image] } : {}),
+        images: [absImage],
       },
     };
   } catch {

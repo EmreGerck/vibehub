@@ -14,7 +14,9 @@ import {
   useToggleLock,
   useDeleteTopic,
 } from '../../../../hooks/useForum';
+import { useCan } from '../../../../hooks/usePermissions';
 import { useI18n } from '../../../../lib/i18n';
+import { PermissionDenied } from '../../../../components/shared/PermissionDenied';
 import type { ForumTopic, ForumChannel } from '../../../../types';
 
 // ── Toggle switch ────────────────────────────────────────────────────────────
@@ -94,6 +96,8 @@ function ChannelRow({
 
 export default function VendorForumPage() {
   const t = useI18n((s) => s.t);
+  const can = useCan();
+  const canManage = can('FORUM_MANAGE');
   const { user } = useAuthStore();
   const tenantId = user?.tenantId ?? '';
 
@@ -126,6 +130,10 @@ export default function VendorForumPage() {
     setNewChSlug('');
     setNewChEmoji('💬');
     setShowNewChannel(false);
+  }
+
+  if (!canManage) {
+    return <PermissionDenied requiredPermission="FORUM_MANAGE" />;
   }
 
   return (

@@ -30,7 +30,7 @@ export default function ProfileSettingsPage() {
       await deleteAccount.mutateAsync({ password: deletePassword });
       // onSettled in the hook handles redirect
     } catch (err: any) {
-      setDeleteError(err?.response?.data?.message || 'Failed to delete account. Check your password.');
+      setDeleteError(err?.response?.data?.message || t('profileSettings.deleteFailed'));
     }
   }
 
@@ -125,7 +125,7 @@ export default function ProfileSettingsPage() {
                   await updateMarketingConsent.mutateAsync(e.target.checked);
                   toast('success', e.target.checked ? t('profile.settings.marketingOn') : t('profile.settings.marketingOff'));
                 } catch {
-                  toast('error', 'Failed to update preference');
+                  toast('error', t('profileSettings.prefUpdateFail'));
                 }
               }}
               disabled={updateMarketingConsent.isPending}

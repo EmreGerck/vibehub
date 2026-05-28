@@ -238,6 +238,65 @@ export class MailService {
     await this.send(to, subject, html, `${formattedTotal} tutarında yeni sipariş: #${shortId}`);
   }
 
+  /**
+   * Notify a vendor that a new order containing their items has been placed.
+   * One email per affected vendor — only their slice of the order.
+   * Fired from order.service.placeOrder after the customer + admin notifications.
+   */
+  async sendVendorNewOrder(
+    to: string,
+    orderId: string,
+    storeName: string,
+    items: Array<{ title: string; qty: number; unitPrice: number }>,
+    currency: string,
+  ): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const vendorTotal = items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+    const formattedTotal = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(vendorTotal);
+    const itemList = items.slice(0, 10).map((i) =>
+      `<li style="padding:4px 0;color:#ddd;"><strong>${escapeHtml(i.title)}</strong> × ${i.qty}</li>`
+    ).join('');
+    const moreItems = items.length > 10 ? `<li style="color:#999;font-style:italic;">…ve ${items.length - 10} ürün daha</li>` : '';
+    const subject = `🎉 Yeni sipariş — #${shortId} (${formattedTotal})`;
+    const html = this.orderEmailHtml(
+      `🎉 ${escapeHtml(storeName)} için yeni sipariş!`,
+      `<strong>${formattedTotal}</strong> tutarında bir sipariş aldın.<br/><br/>
+      <strong>Sipariş ID:</strong> #${shortId}<br/><br/>
+      <strong>Ürünler:</strong>
+      <ul style="margin:8px 0 16px;padding-left:20px;">${itemList}${moreItems}</ul>
+      Müşteri ödemeyi tamamladığında siparişi onaylayıp kargoya verebilirsin.`,
+      'Sipariş Panelimde Aç',
+      `https://vibehub.com.tr/dashboard/vendor/orders`,
+    );
+    await this.send(to, subject, html, `${formattedTotal} tutarında yeni sipariş: #${shortId}`);
+  }
+
+  /**
+   * Notify a vendor that one of their orders had a refund requested by the customer.
+   * Fired from order.service.requestRefund after the customer's confirmation email.
+   */
+  async sendVendorRefundRequest(
+    to: string,
+    orderId: string,
+    storeName: string,
+    customerName: string,
+    reason: string,
+  ): Promise<void> {
+    const shortId = orderId.slice(0, 8).toUpperCase();
+    const subject = `↩️ İade talebi — #${shortId}`;
+    const html = this.orderEmailHtml(
+      `↩️ ${escapeHtml(storeName)} — yeni iade talebi`,
+      `<strong>${escapeHtml(customerName)}</strong> #${shortId} numaralı siparişin iadesini talep etti.<br/><br/>
+      <strong>Müşterinin belirttiği neden:</strong><br/>
+      <em style="color:#ccc;">"${escapeHtml(reason)}"</em><br/><br/>
+      İade kararı platform admini tarafından verilecek — sen yalnızca bilgi amaçlı haberdar ediliyorsun.
+      Yine de müşterinle iletişime geçmek istersen sipariş panelinden detayları görebilirsin.`,
+      'Sipariş Detayını Gör',
+      `https://vibehub.com.tr/dashboard/vendor/orders`,
+    );
+    await this.send(to, subject, html, `İade talebi geldi: #${shortId}`);
+  }
+
   async sendOrderConfirmed(to: string, orderId: string): Promise<void> {
     const shortId = orderId.slice(0, 8).toUpperCase();
     const subject = `VibeHub Siparişiniz Onaylandı — #${shortId}`;

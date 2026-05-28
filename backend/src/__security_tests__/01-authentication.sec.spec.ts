@@ -63,6 +63,9 @@ const mockJwt   = { sign: jest.fn().mockReturnValue('signed.jwt.token'), verify:
 const mockConfig = { get: jest.fn((k: string, d?: any) => d ?? '') } as unknown as ConfigService;
 
 async function buildAuth(prismaOverride?: any, otpOverride?: OtpService): Promise<AuthService> {
+  // Local import keeps the test file's dep graph self-contained
+  const { CartService } = await import('../cart/cart.service');
+  const mockCart = { clearCart: jest.fn(), getRawEntries: jest.fn().mockResolvedValue([]) } as any;
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       AuthService,
@@ -72,6 +75,7 @@ async function buildAuth(prismaOverride?: any, otpOverride?: OtpService): Promis
       { provide: OtpService,     useValue: otpOverride ?? makeOtp() },
       { provide: MailService,    useValue: mockMail },
       { provide: AuditService,   useValue: mockAudit },
+      { provide: CartService,    useValue: mockCart },
     ],
   }).compile();
   return module.get<AuthService>(AuthService);

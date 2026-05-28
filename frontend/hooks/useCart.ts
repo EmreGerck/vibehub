@@ -203,9 +203,18 @@ export function useAdminCreateShipment() {
       const res = await api.post<ApiResponse<any>>('/kargo/shipments', dto);
       return res.data.data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: ['vendor-orders'] });
+    },
   });
 }
+
+/**
+ * Vendor-side: same backend route as admin. Backend accepts VENDOR_OWNER/MANAGER
+ * and infers tenantId from the order's items.
+ */
+export const useCreateShipment = useAdminCreateShipment;
 
 export function useAdminConfirmDepotArrival() {
   const qc = useQueryClient();

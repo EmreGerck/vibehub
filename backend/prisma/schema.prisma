@@ -399,6 +399,8 @@ model Product {
   @@index([status])
   @@index([tags])
   @@index([categoryId])
+  // Hot path: vendor product-list page (filter by status + tenantId).
+  @@index([status, tenantId])
 }
 
 model ProductVariant {
@@ -448,6 +450,10 @@ model Order {
   @@index([customerId])
   @@index([status])
   @@index([paymentRef])
+  // Hot path: admin orders page filters by status + sorts by createdAt desc.
+  // NOTE: Order has no tenantId column (vendor live on OrderItem) so the
+  // composite is [status, createdAt] not [status, tenantId, createdAt].
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model OrderItem {
@@ -474,6 +480,8 @@ model OrderItem {
   @@index([tenantId])
   @@index([variantId])
   @@index([isPreOrder, preOrderStatus])
+  // Hot path: vendor "my orders" page filters tenantId + sorts by createdAt desc.
+  @@index([tenantId, createdAt(sort: Desc)])
 }
 
 enum PreOrderStatus {
@@ -939,4 +947,6 @@ model AppNotification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  // Hot path: unread badge polls SELECT COUNT(*) WHERE userId=? AND readAt IS NULL.
+  @@index([userId, readAt])
 }

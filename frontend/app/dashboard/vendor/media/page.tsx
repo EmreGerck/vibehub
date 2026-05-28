@@ -2,11 +2,16 @@
 
 import { useState } from 'react';
 import { useMyMedia, useCreateMedia, useUpdateMedia, useDeleteMedia } from '../../../../hooks/useMedia';
+import { useCan } from '../../../../hooks/usePermissions';
 import { useI18n } from '../../../../lib/i18n';
+import { PermissionDenied } from '../../../../components/shared/PermissionDenied';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
 import type { VendorMedia, MediaType } from '../../../../types';
 
 export default function VendorMediaPage() {
   const t = useI18n((s) => s.t);
+  const can = useCan();
+  const canManage = can('MEDIA_MANAGE');
   const { data: items, isLoading } = useMyMedia();
   const create = useCreateMedia();
   const update = useUpdateMedia();
@@ -27,6 +32,10 @@ export default function VendorMediaPage() {
     } catch (err: any) {
       setFormError(err?.response?.data?.message ?? t('media.invalidUrl'));
     }
+  }
+
+  if (!canManage) {
+    return <PermissionDenied requiredPermission="MEDIA_MANAGE" />;
   }
 
   return (
@@ -116,19 +125,21 @@ export default function VendorMediaPage() {
         </div>
       )}
 
-      {confirmDel && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="card p-6 w-full max-w-sm space-y-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">{t('media.deleteConfirm')}</h3>
-            <div className="flex gap-3">
-              <button onClick={async () => { await del.mutateAsync(confirmDel.id); setConfirmDel(null); }} disabled={del.isPending} className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium">
-                {del.isPending ? '…' : t('media.delete')}
-              </button>
-              <button onClick={() => setConfirmDel(null)} className="flex-1 btn-ghost">{t('admin.cancel')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        onConfirm={async () => {
+          if (!confirmDel) return;
+          await del.mutateAsync(confirmDel.id);
+          setConfirmDel(null);
+        }}
+        title={t('media.deleteConfirm')}
+        description={confirmDel?.title ?? (confirmDel?.type === 'SPOTIFY' ? 'Spotify' : 'YouTube')}
+        danger="warning"
+        confirmLabel={t('media.delete')}
+        cancelLabel={t('admin.cancel')}
+        busy={del.isPending}
+      />
     </div>
   );
 }

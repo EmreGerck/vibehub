@@ -10,7 +10,9 @@ import { api } from '../../../../lib/api';
 import { useAuthStore } from '../../../../store/auth.store';
 import { formatPrice } from '../../../../lib/format';
 import { useFollowStatus } from '../../../../hooks/useVendors';
+import { useCan } from '../../../../hooks/usePermissions';
 import { useI18n } from '../../../../lib/i18n';
+import { PermissionDenied } from '../../../../components/shared/PermissionDenied';
 import type { ApiResponse, ProductStatus } from '../../../../types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -90,6 +92,8 @@ export default function VendorAnalyticsPage() {
   const { user } = useAuthStore();
   const tenantId = user?.tenantId;
   const t = useI18n((s) => s.t);
+  const can = useCan();
+  const canView = can('ANALYTICS_VIEW');
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['vendor-analytics-products', tenantId],
@@ -99,7 +103,7 @@ export default function VendorAnalyticsPage() {
       );
       return res.data.data;
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && canView,
   });
 
   const { data: orders, isLoading: ordersLoading } = useQuery({
@@ -110,10 +114,10 @@ export default function VendorAnalyticsPage() {
       });
       return res.data.data;
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && canView,
   });
 
-  const { data: followData, isLoading: followLoading } = useFollowStatus(tenantId ?? undefined, !!tenantId);
+  const { data: followData, isLoading: followLoading } = useFollowStatus(tenantId ?? undefined, !!tenantId && canView);
 
   const isLoading = productsLoading || ordersLoading || followLoading;
 
@@ -151,6 +155,10 @@ export default function VendorAnalyticsPage() {
   }, [orderItems]);
 
   const recentOrders = orderItems.slice(0, 10);
+
+  if (!canView) {
+    return <PermissionDenied requiredPermission="ANALYTICS_VIEW" />;
+  }
 
   if (isLoading) {
     return (

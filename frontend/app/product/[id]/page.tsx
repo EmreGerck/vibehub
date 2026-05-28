@@ -28,11 +28,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const price = product?.price;
     const currency = product?.currency ?? 'TRY';
 
+    const pathTr = `${SITE_URL}/product/${params.id}`;
     return {
       title,
       description,
       keywords: [title, vendorName, 'resmi ürün', 'merch', 'vibehub'],
-      alternates: { canonical: `${SITE_URL}/product/${params.id}` },
+      // hreflang alternates — TR canonical + EN via ?lang=en (until /en/* routes ship).
+      alternates: {
+        canonical: pathTr,
+        languages: {
+          tr: pathTr,
+          'tr-TR': pathTr,
+          en: `${pathTr}?lang=en`,
+          'x-default': pathTr,
+        },
+      },
       openGraph: {
         title: `${title} — ${vendorName} | VibeHub`,
         description,
@@ -41,14 +51,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         // 'product' specifically we emit it as a raw property below via `other`,
         // which is what Facebook's Product card actually reads.
         type: 'website',
-        url: `${SITE_URL}/product/${params.id}`,
-        ...(image ? { images: [{ url: image, width: 800, height: 800, alt: title }] } : {}),
+        url: pathTr,
+        siteName: 'VibeHub',
+        locale: 'tr_TR',
+        ...(image
+          ? {
+              // OG images should be absolute URLs — if upstream returned a
+              // relative path, prepend SITE_URL so crawlers can fetch it.
+              images: [{
+                url: image.startsWith('http') ? image : `${SITE_URL}${image.startsWith('/') ? '' : '/'}${image}`,
+                width: 800,
+                height: 800,
+                alt: title,
+              }],
+            }
+          : { images: [{ url: `${SITE_URL}/opengraph-image`, width: 1200, height: 630, alt: title }] }),
       },
       twitter: {
         card: 'summary_large_image',
         title: `${title} — ${vendorName} | VibeHub`,
         description,
-        ...(image ? { images: [image] } : {}),
+        ...(image
+          ? { images: [image.startsWith('http') ? image : `${SITE_URL}${image.startsWith('/') ? '' : '/'}${image}`] }
+          : { images: [`${SITE_URL}/opengraph-image`] }),
       },
       other: {
         // og:type=product for Facebook Product Card (overrides default 'website')

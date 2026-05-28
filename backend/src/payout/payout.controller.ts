@@ -43,6 +43,25 @@ export class PayoutController {
     return ApiResponse.ok(data, 'Payouts retrieved');
   }
 
+  @Post('request')
+  @Roles(UserRole.VENDOR_OWNER, UserRole.VENDOR_MANAGER)
+  @RequirePermissions(VendorPermission.PAYOUT_REQUEST)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary:
+      'Vendor requests a payout for everything DELIVERED since their last payout. ' +
+      'Period is computed automatically; amounts are auto-summed from order items.',
+  })
+  async requestMine(@CurrentUser() user: any) {
+    if (!user.tenantId) {
+      throw new (await import('@nestjs/common').then((m) => m.BadRequestException))(
+        'Bu hesabın bir mağazası yok — payout talep edilemez.',
+      );
+    }
+    const data = await this.payouts.requestForTenant(user.tenantId, user.id);
+    return ApiResponse.ok(data, 'Payout talebin alındı — admin onayı bekliyor');
+  }
+
   // ── Admin ───────────────────────────────────────────────────────────────
 
   @Get()

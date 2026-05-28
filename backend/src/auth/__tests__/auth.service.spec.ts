@@ -19,6 +19,7 @@ import { OtpService } from '../otp.service';
 import { MailService } from '../../mail/mail.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../../audit/audit.service';
+import { CartService } from '../../cart/cart.service';
 import * as bcrypt from 'bcrypt';
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
@@ -96,6 +97,13 @@ function makeConfigMock(overrides: Record<string, string> = {}) {
   } as unknown as ConfigService;
 }
 
+function makeCartMock() {
+  return {
+    clearCart:      jest.fn().mockResolvedValue(undefined),
+    getRawEntries:  jest.fn().mockResolvedValue([]),
+  } as unknown as CartService;
+}
+
 // ── Helper: build module ──────────────────────────────────────────────────────
 
 async function buildModule(opts: {
@@ -105,6 +113,7 @@ async function buildModule(opts: {
   audit?: AuditService;
   config?: ConfigService;
   jwt?: JwtService;
+  cart?: CartService;
 }): Promise<AuthService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
@@ -113,6 +122,7 @@ async function buildModule(opts: {
       { provide: OtpService,     useValue: opts.otp     ?? makeOtpMock() },
       { provide: MailService,    useValue: opts.mail     ?? makeMailMock() },
       { provide: AuditService,   useValue: opts.audit   ?? makeAuditMock() },
+      { provide: CartService,    useValue: opts.cart    ?? makeCartMock() },
       { provide: ConfigService,  useValue: opts.config  ?? makeConfigMock({
         JWT_ACCESS_SECRET:  'test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         JWT_REFRESH_SECRET: 'test-refresh-secret-aaaaaaaaaaaaaaaaaaaaaa',

@@ -245,6 +245,54 @@ export class OrderService {
       this.logger.warn(`[order.placeOrder] admin email lookup failed: ${err?.message ?? err}`);
     }
 
+    // Notify each VENDOR whose products are in this order — one email per tenant
+    // with only that vendor's slice of the items. Fire-and-forget; failures must
+    // not block the customer's order.
+    try {
+      const itemsByTenant = new Map<string, Array<{ title: string; qty: number; unitPrice: number }>>();
+      for (const it of order.items as any[]) {
+        const tenantId = it.variant?.product?.tenantId;
+        if (!tenantId) continue;
+        const slice = itemsByTenant.get(tenantId) ?? [];
+        slice.push({
+          title: it.variant?.product?.title ?? `Ürün ${it.variantId.slice(0, 8)}`,
+          qty: it.qty,
+          unitPrice: Number(it.unitPriceSnapshot ?? 0),
+        });
+        itemsByTenant.set(tenantId, slice);
+      }
+      if (itemsByTenant.size > 0) {
+        const tenants = await this.prisma.tenant.findMany({
+          where: { id: { in: Array.from(itemsByTenant.keys()) } },
+          select: {
+            id: true,
+            displayName: true,
+            users: {
+              where: { role: 'VENDOR_OWNER' },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        });
+        for (const t of tenants) {
+          const ownerEmail = t.users[0]?.email;
+          if (!ownerEmail) continue;
+          const slice = itemsByTenant.get(t.id)!;
+          this.mail.sendVendorNewOrder(
+            ownerEmail,
+            order.id,
+            t.displayName ?? 'Mağazan',
+            slice,
+            order.currency,
+          ).catch((err: any) =>
+            this.logger.warn(`[order.placeOrder] vendor email failed (${t.id}): ${err?.message ?? err}`),
+          );
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`[order.placeOrder] vendor email lookup failed: ${err?.message ?? err}`);
+    }
+
     return order;
   }
 
@@ -741,6 +789,43 @@ export class OrderService {
       if (returnBarcode) {
         this.mail.sendReturnBarcode(order.customer.email, orderId, returnBarcode, 'aras').catch(() => {});
       }
+    }
+
+    // Notify vendor(s) whose products were in this order — informational only.
+    // Refund decisions are platform-admin gated; vendors just need awareness so
+    // they can reach out to the customer if they choose to.
+    try {
+      const tenantIds = new Set<string>();
+      for (const it of (order.items ?? []) as any[]) {
+        const tid = it.variant?.product?.tenantId;
+        if (tid) tenantIds.add(tid);
+      }
+      if (tenantIds.size > 0) {
+        const tenants = await this.prisma.tenant.findMany({
+          where: { id: { in: Array.from(tenantIds) } },
+          select: {
+            id: true,
+            displayName: true,
+            users: { where: { role: 'VENDOR_OWNER' }, select: { email: true }, take: 1 },
+          },
+        });
+        const customerName = (order.customer as any)?.name ?? order.customer?.email ?? 'Müşteri';
+        for (const t of tenants) {
+          const ownerEmail = t.users[0]?.email;
+          if (!ownerEmail) continue;
+          this.mail.sendVendorRefundRequest(
+            ownerEmail,
+            orderId,
+            t.displayName ?? 'Mağazan',
+            customerName,
+            reason.trim(),
+          ).catch((err: any) =>
+            this.logger.warn?.(`[Order] vendor refund email failed (${t.id}): ${err?.message ?? err}`),
+          );
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn?.(`[Order] vendor refund email lookup failed: ${err?.message ?? err}`);
     }
 
     // Push notification to customer

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../../lib/api';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
 import type { ApiResponse } from '../../../../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -184,12 +185,12 @@ export default function AdminBannersPage() {
   const { data: banners = [], isLoading } = useBannersAdmin();
   const createBanner = useCreateBanner();
   const updateBanner = useUpdateBanner();
-  const deleteBanner = useDeleteBanner();
+  const deleteBannerMutation = useDeleteBanner();
   const toggleBanner = useToggleBanner();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteBanner, setDeleteBanner] = useState<HeroBanner | null>(null);
 
   // Per-field language tabs
   const [ltSubtitle, setLtSubtitle] = useState<LangTab>('tr');
@@ -282,9 +283,10 @@ export default function AdminBannersPage() {
     closeForm();
   }
 
-  async function handleDelete(id: string) {
-    await deleteBanner.mutateAsync(id);
-    setDeleteConfirm(null);
+  async function handleConfirmDelete() {
+    if (!deleteBanner) return;
+    await deleteBannerMutation.mutateAsync(deleteBanner.id);
+    setDeleteBanner(null);
   }
 
   const isPending = createBanner.isPending || updateBanner.isPending;
@@ -355,20 +357,10 @@ export default function AdminBannersPage() {
                         >
                           Edit
                         </button>
-                        {deleteConfirm === banner.id ? (
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleDelete(banner.id)}
-                              className="text-xs text-red-600 border border-red-300 dark:border-red-800 px-3 py-1.5 rounded-lg">
-                              Confirm
-                            </button>
-                            <button onClick={() => setDeleteConfirm(null)} className="text-xs text-gray-500 px-2 py-1.5">×</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setDeleteConfirm(banner.id)}
-                            className="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 border border-gray-300 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-800 px-3 py-1.5 rounded-lg transition-colors">
-                            Delete
-                          </button>
-                        )}
+                        <button onClick={() => setDeleteBanner(banner)}
+                          className="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400 border border-gray-300 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-800 px-3 py-1.5 rounded-lg transition-colors">
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -485,6 +477,19 @@ export default function AdminBannersPage() {
           </div>
         </div>
       )}
+
+      {/* Banner delete confirmation */}
+      <ConfirmModal
+        open={!!deleteBanner}
+        onClose={() => setDeleteBanner(null)}
+        onConfirm={handleConfirmDelete}
+        title="Bu banner silinecek"
+        description={deleteBanner ? `"${deleteBanner.heading}" anasayfadan kalıcı olarak kaldırılacak.` : ''}
+        danger="warning"
+        confirmLabel="Sil"
+        cancelLabel="Vazgeç"
+        busy={deleteBannerMutation.isPending}
+      />
     </div>
   );
 }

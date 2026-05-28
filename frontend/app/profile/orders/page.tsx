@@ -19,14 +19,14 @@ const STATUS_BADGE: Record<string, string> = {
   REFUNDED:          'badge-red',
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  PLACED:            'Alındı',
-  CONFIRMED:         'Onaylandı',
-  SHIPPED:           'Kargoda',
-  DELIVERED:         'Teslim Edildi',
-  CANCELLED:         'İptal',
-  REFUND_REQUESTED:  '↩️ İade Talebi',
-  REFUNDED:          'İade Edildi',
+const STATUS_LABEL_KEY: Record<string, string> = {
+  PLACED:            'profileOrders.status.PLACED',
+  CONFIRMED:         'profileOrders.status.CONFIRMED',
+  SHIPPED:           'profileOrders.status.SHIPPED',
+  DELIVERED:         'profileOrders.status.DELIVERED',
+  CANCELLED:         'profileOrders.status.CANCELLED',
+  REFUND_REQUESTED:  'profileOrders.status.REFUND_REQUESTED',
+  REFUNDED:          'profileOrders.status.REFUNDED',
 };
 
 export default function ProfileOrdersPage() {
@@ -60,7 +60,7 @@ export default function ProfileOrdersPage() {
             <Link key={order.id} href={`/profile/orders/${order.id}`} className="block border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-purple-400 dark:hover:border-purple-700 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-gray-500 font-mono">Order #{order.id}</p>
+                  <p className="text-xs text-gray-500 font-mono">{t('profileOrders.orderNumber')} #{order.id}</p>
                   <p className="text-sm font-medium mt-1">
                     {new Date(order.createdAt).toLocaleDateString(undefined, {
                       year: 'numeric', month: 'long', day: 'numeric',
@@ -69,7 +69,7 @@ export default function ProfileOrdersPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={STATUS_BADGE[order.status] ?? 'badge-gray'}>
-                    {STATUS_LABEL[order.status] ?? order.status}
+                    {STATUS_LABEL_KEY[order.status] ? t(STATUS_LABEL_KEY[order.status]) : order.status}
                   </span>
                   <span className="font-bold">{formatPrice(order.totalAmount)}</span>
                 </div>
@@ -92,7 +92,7 @@ export default function ProfileOrdersPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {item.variant?.product?.title ?? 'Product'}
+                          {item.variant?.product?.title ?? t('profileOrders.product')}
                         </p>
                         {attrs && <p className="text-xs text-gray-500">{attrs}</p>}
                         <p className="text-xs text-gray-500">
