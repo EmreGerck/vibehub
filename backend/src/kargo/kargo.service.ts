@@ -20,6 +20,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
+import { AuditService } from '../audit/audit.service';
 import { NotificationType } from '@prisma/client';
 import * as https from 'https';
 
@@ -75,6 +76,7 @@ export class KargoService {
     private readonly mail:    MailService,
     private readonly notifications: NotificationsService,
     private readonly push:    PushService,
+    private readonly audit:   AuditService,
   ) {
     this.arasApiKey       = this.config.get('ARAS_KARGO_API_KEY', '');
     this.arasCustomerCode = this.config.get('ARAS_KARGO_CUSTOMER_CODE', '');
@@ -217,12 +219,12 @@ export class KargoService {
     return (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
   }
 
-  /** Admin: mark a return shipment as arrived at the depot. */
-  async confirmDepotArrival(orderId: string, adminNote?: string) {
+  /** Admin: mark a return shipment as arrived at the depot. Notifies customer + audit-logs. */
+  async confirmDepotArrival(orderId: string, adminNote?: string, adminId?: string) {
     const rs = await (this.prisma as any).returnShipment.findUnique({ where: { orderId } });
     if (!rs) throw new Error('No return shipment found for this order');
 
-    return (this.prisma as any).returnShipment.update({
+    const updated = await (this.prisma as any).returnShipment.update({
       where: { orderId },
       data: {
         status: 'ARRIVED_AT_DEPOT',
@@ -230,6 +232,44 @@ export class KargoService {
         ...(adminNote ? { adminNote } : {}),
       },
     });
+
+    // Audit-log depot arrival (was previously missing; critical step in refund workflow)
+    if (adminId) {
+      await this.audit.log({
+        actorId: adminId,
+        action: 'DEPOT_ARRIVAL_CONFIRMED',
+        targetType: 'ReturnShipment',
+        targetId: rs.id,
+        metadata: { orderId, returnBarcode: rs.returnBarcode, note: adminNote?.slice(0, 200) },
+      });
+    }
+
+    // Notify customer — depot arrival is a critical "we got your package" moment
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        select: { customerId: true },
+      });
+      if (order?.customerId) {
+        await this.notifications.create({
+          userId: order.customerId,
+          type: NotificationType.ORDER_SHIPPED,
+          title: '🏭 Paketin depomuza ulaştı',
+          body: 'Ekibimiz ürünü inceliyor. İade kararını en kısa sürede sana bildireceğiz.',
+          data: { orderId, kind: 'DEPOT_ARRIVED' },
+        });
+        await this.push.sendToUser(
+          order.customerId,
+          '🏭 Paketin depomuza ulaştı',
+          'Ürünü inceliyoruz — iade kararı kısa sürede gelecek',
+          { url: `/profile/orders/${orderId}`, type: 'DEPOT_ARRIVED', orderId },
+        );
+      }
+    } catch (err: any) {
+      this.logger.warn(`[Kargo] confirmDepotArrival notification failed: ${err?.message ?? err}`);
+    }
+
+    return updated;
   }
 
   /** Mark a return shipment as completed (after admin refund decision). */

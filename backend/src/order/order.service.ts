@@ -645,10 +645,23 @@ export class OrderService {
     // Push notification to customer
     await this.push.sendToUser(
       customerId,
-      '↩️ İade Talebiniz Alındı',
-      `#${orderId.slice(0, 8).toUpperCase()} — İade kargo kodunuz e-posta ile gönderildi.`,
-      { url: `/profile/orders/${orderId}` },
+      '↩️ İade talebin alındı',
+      returnBarcode
+        ? `Kargo kodun hazır: ${returnBarcode}. E-postandan detayları gör.`
+        : `#${orderId.slice(0, 8).toUpperCase()} — İade kargo kodunu e-postanda bulabilirsin.`,
+      { url: `/profile/orders/${orderId}`, type: 'REFUND_REQUESTED', orderId, returnBarcode },
     ).catch(() => {});
+
+    // In-app notification (bell badge)
+    await this.notifications.create({
+      userId: customerId,
+      type: NotificationType.ORDER_SHIPPED,
+      title: '↩️ İade talebin alındı',
+      body: returnBarcode
+        ? `Kargo kodun: ${returnBarcode}. Aras şubesine bırakabilirsin.`
+        : 'İade kargo kodun e-postana gönderildi.',
+      data: { orderId, returnBarcode, kind: 'REFUND_REQUESTED' },
+    }).catch(() => {});
 
     await this.audit.log({
       actorId:    customerId,
@@ -695,13 +708,23 @@ export class OrderService {
       ).catch(() => {});
     }
 
-    // Push notification
+    // Push notification — friendlier money-back messaging
+    const amountText = `${Number(order.totalAmount).toFixed(2)} ${order.currency || 'TRY'}`;
     await this.push.sendToUser(
       order.customerId,
-      '✅ İadeniz Onaylandı!',
-      `#${orderId.slice(0, 8).toUpperCase()} numaralı siparişinizin iadesi onaylandı. 5-10 iş günü içinde hesabınıza yansıyacak.`,
-      { url: `/profile/orders/${orderId}` },
+      '✅ İaden onaylandı!',
+      `${amountText} — 5-10 iş günü içinde hesabına yansıyacak.`,
+      { url: `/profile/orders/${orderId}`, type: 'REFUND_APPROVED', orderId },
     ).catch(() => {});
+
+    // In-app notification (bell badge)
+    await this.notifications.create({
+      userId: order.customerId,
+      type: NotificationType.ORDER_SHIPPED,
+      title: '✅ İaden onaylandı!',
+      body: `${amountText} tutarındaki iaden 5-10 iş günü içinde ödeme yöntemine yansıyacak.`,
+      data: { orderId, amount: order.totalAmount, currency: order.currency, kind: 'REFUND_APPROVED' },
+    }).catch(() => {});
 
     // Mark return shipment as completed
     try {
@@ -755,10 +778,19 @@ export class OrderService {
     // Push notification
     await this.push.sendToUser(
       order.customerId,
-      '❌ İade Talebi Sonucu',
-      `#${orderId.slice(0, 8).toUpperCase()} siparişinizin iade talebi değerlendirilemedi. Detaylar için e-postanızı kontrol edin.`,
-      { url: `/profile/orders/${orderId}` },
+      '❌ İade talebin değerlendirildi',
+      'Detaylı açıklama için e-postanı kontrol et veya sipariş sayfanı aç.',
+      { url: `/profile/orders/${orderId}`, type: 'REFUND_REJECTED', orderId },
     ).catch(() => {});
+
+    // In-app notification
+    await this.notifications.create({
+      userId: order.customerId,
+      type: NotificationType.ORDER_SHIPPED,
+      title: '❌ İade talebin değerlendirildi',
+      body: note.length > 100 ? note.slice(0, 100) + '…' : note,
+      data: { orderId, kind: 'REFUND_REJECTED', adminNote: note },
+    }).catch(() => {});
 
     await this.audit.log({
       actorId:    adminId,

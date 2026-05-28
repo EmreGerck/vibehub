@@ -16,6 +16,7 @@ import { Spinner } from '../../../../components/ui/Spinner';
 import { toast } from '../../../../store/toast.store';
 import { useState } from 'react';
 import { OrderTimeline, type OrderTimelineStatus } from '../../../../components/order/OrderTimeline';
+import { ReturnTimeline, type ReturnTimelineStatus } from '../../../../components/order/ReturnTimeline';
 
 const STEPS = ['PLACED', 'CONFIRMED', 'SHIPPED', 'DELIVERED'] as const;
 
@@ -209,41 +210,74 @@ function ShipmentTracker({ trackingNumber, carrier, estimatedDelivery }: {
   );
 }
 
-// ── Return shipment banner ────────────────────────────────────────────────────
+// ── Return shipment banner — full Hepsiburada-style flow ─────────────────────
 function ReturnShipmentBanner({ orderId }: { orderId: string }) {
   const { data: rs, isLoading } = useOrderReturnShipment(orderId, true);
+  const t = useI18n((s) => s.t);
+  const [faqOpen, setFaqOpen] = useState(false);
 
   if (isLoading || !rs) return null;
 
-  const info = RETURN_STATUS[rs.status] ?? RETURN_STATUS.INITIATED;
   const carrierLabel = CARRIER_LABELS[rs.carrier] ?? rs.carrier;
+  const mapsQuery = encodeURIComponent(`${carrierLabel} şubesi`);
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+  const carrierFindLabel = t('refundFlow.findCarrierBranch').replace('{{carrier}}', carrierLabel);
 
   return (
-    <div className="border border-blue-200 dark:border-blue-800 rounded-xl overflow-hidden mb-4">
+    <div className="border border-amber-200 dark:border-amber-800 rounded-xl overflow-hidden mb-4">
       {/* Header */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 px-5 py-3 border-b border-blue-200 dark:border-blue-800 flex items-center gap-2">
+      <div className="bg-amber-50 dark:bg-amber-900/20 px-5 py-3 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
         <span className="text-lg">📦</span>
-        <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300">İade Kargo Bilgisi</h3>
-        <span className={`ml-auto text-xs font-semibold ${info.color}`}>
-          {info.icon} {info.label}
-        </span>
+        <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">İade Süreci</h3>
       </div>
 
-      <div className="p-5 space-y-4">
-        {/* Barcode */}
-        {rs.status === 'INITIATED' || rs.status === 'DROPPED_OFF' ? (
+      <div className="p-5 space-y-5">
+        {/* Return timeline */}
+        <ReturnTimeline
+          status={rs.status as ReturnTimelineStatus}
+          timestamps={{
+            initiatedAt: rs.createdAt,
+            droppedOffAt: rs.droppedOffAt,
+            arrivedAtDepotAt: rs.arrivedAtDepotAt,
+            completedAt: rs.status === 'COMPLETED' ? rs.updatedAt : null,
+          }}
+        />
+
+        {/* Barcode card — prominent when still actionable */}
+        {(rs.status === 'INITIATED' || rs.status === 'DROPPED_OFF') ? (
           <div className="rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-400/30 dark:border-purple-600/40 p-5 flex flex-col sm:flex-row items-center gap-4">
-            <div className="text-4xl select-none">🏷️</div>
+            <div className="text-5xl select-none">🏷️</div>
             <div className="flex-1 text-center sm:text-left">
               <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-1">
-                İade Kargo Kodunuz
+                İade Kargo Kodun
               </p>
-              <p className="text-2xl font-mono font-bold tracking-widest text-gray-900 dark:text-white">
+              <p className="text-2xl font-mono font-bold tracking-widest text-gray-900 dark:text-white select-all">
                 {rs.returnBarcode}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {carrierLabel} şubesine götürün · Personele bu kodu gösterin
+                {carrierLabel} şubesine götür · Personele bu kodu göster
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:border-purple-500 dark:hover:border-purple-500 transition-colors"
+                >
+                  📍 {carrierFindLabel}
+                </a>
+                <button
+                  onClick={() => {
+                    try {
+                      navigator.clipboard.writeText(rs.returnBarcode);
+                      toast('success', t('orderDetail.copied'));
+                    } catch { /* fallback: select-all on click already works */ }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-500 transition-colors"
+                >
+                  📋 {t('orderDetail.copy')}
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -253,31 +287,59 @@ function ReturnShipmentBanner({ orderId }: { orderId: string }) {
           </div>
         )}
 
-        {/* Instructions */}
-        {(rs.status === 'INITIATED') && (
+        {/* Instructions — only for very early stages */}
+        {rs.status === 'INITIATED' && (
           <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-sm text-gray-600 dark:text-gray-300 space-y-2">
             <p className="font-semibold text-gray-900 dark:text-white text-xs uppercase tracking-wider">Nasıl kullanılır?</p>
             <ol className="list-decimal list-inside space-y-1 text-xs leading-relaxed">
-              <li>Ürünü hasarsız, orijinal ambalajında paketleyin.</li>
-              <li>En yakın <strong>{carrierLabel}</strong> şubesine gidin.</li>
-              <li>Personele yukarıdaki kodu gösterin.</li>
-              <li>Paketiniz VibeHub deposuna yönlendirilecektir.</li>
-              <li>Depoya ulaşınca ekibimiz inceleyip size bilgi verecektir.</li>
+              <li>Ürünü hasarsız, orijinal ambalajında paketle.</li>
+              <li>En yakın <strong>{carrierLabel}</strong> şubesine git.</li>
+              <li>Personele yukarıdaki kodu göster.</li>
+              <li>Paketin VibeHub deposuna yönlendirilecek.</li>
+              <li>Depoya ulaşınca otomatik bildirim alırsın.</li>
             </ol>
           </div>
         )}
 
+        {/* Depot arrived state */}
         {rs.status === 'ARRIVED_AT_DEPOT' && (
           <div className="rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 px-4 py-3 text-sm text-orange-700 dark:text-orange-300">
-            🏭 Paketiniz depoya ulaştı. Ekibimiz ürünü inceliyor — en kısa sürede bilgilendirileceksiniz.
+            🏭 {t('refundFlow.depotArrivedHelp')}
           </div>
         )}
 
         {rs.arrivedAtDepotAt && (
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Depoya ulaşma tarihi: {new Date(rs.arrivedAtDepotAt).toLocaleString('tr-TR')}
+            Depoya ulaşma: {new Date(rs.arrivedAtDepotAt).toLocaleString('tr-TR')}
           </p>
         )}
+
+        {/* FAQ accordion */}
+        <div className="border-t border-amber-200 dark:border-amber-800/60 pt-4">
+          <button
+            onClick={() => setFaqOpen(!faqOpen)}
+            className="flex items-center justify-between w-full text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+          >
+            <span>❓ {t('refundFlow.faqTitle')}</span>
+            <span className="text-xs">{faqOpen ? '▲' : '▼'}</span>
+          </button>
+          {faqOpen && (
+            <div className="mt-3 space-y-3 text-xs text-gray-600 dark:text-gray-400">
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">{t('refundFlow.faqHowLong')}</p>
+                <p className="mt-0.5">{t('refundFlow.faqHowLongAnswer')}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">{t('refundFlow.faqMoneyBack')}</p>
+                <p className="mt-0.5">{t('refundFlow.faqMoneyBackAnswer')}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">{t('refundFlow.faqShipping')}</p>
+                <p className="mt-0.5">{t('refundFlow.faqShippingAnswer')}</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -566,71 +628,17 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Refund request button + modal */}
+      {/* Refund request button + form with reason templates */}
       {canRefund && !refundDone && (
-        <div className="border border-amber-200 dark:border-amber-800/60 rounded-xl p-5 bg-amber-50/50 dark:bg-amber-900/10">
-          {!showRefund ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">İade Talebi</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  14 gün içinde herhangi bir gerekçe göstermeksizin iade talep edebilirsiniz.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowRefund(true)}
-                className="ml-4 shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-              >
-                ↩️ İade Talebi Oluştur
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">İade nedeninizi belirtin</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Talebiniz onaylandığında size Aras Kargo iade kodu e-posta ile gönderilecektir.
-                </p>
-              </div>
-              <textarea
-                value={refundReason}
-                onChange={e => setRefundReason(e.target.value)}
-                placeholder="Örnek: Ürün beden uyumsuzluğu, hasarlı teslimat, yanlış ürün..."
-                className="input w-full h-28 resize-none text-sm"
-                maxLength={1000}
-              />
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{refundReason.length}/1000 karakter</span>
-                <span>* Minimum 10 karakter giriniz</span>
-              </div>
-              {/* 14-day legal note */}
-              <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  🏛️ <strong>Yasal Bilgi:</strong> 6502 Sayılı Tüketicinin Korunması Hakkında Kanun kapsamında teslimattan itibaren
-                  <strong> 14 takvim günü</strong> içinde cayma hakkını kullanabilirsiniz. Onaylanan iadeler
-                  <strong> 5-10 iş günü</strong> içinde orijinal ödeme yönteminize iade edilir.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowRefund(false); setRefundReason(''); }}
-                  className="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  onClick={handleRefundSubmit}
-                  disabled={requestRefund.isPending || refundReason.trim().length < 10}
-                  className="flex-1 px-4 py-2 text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {requestRefund.isPending ? (
-                    <span className="flex items-center justify-center gap-2"><Spinner size="sm" /> Gönderiliyor…</span>
-                  ) : '↩️ İade Talep Et + Kargo Kodu Al'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <RefundRequestPanel
+          isOpen={showRefund}
+          onOpen={() => setShowRefund(true)}
+          onCancel={() => { setShowRefund(false); setRefundReason(''); }}
+          reason={refundReason}
+          setReason={setRefundReason}
+          onSubmit={handleRefundSubmit}
+          isPending={requestRefund.isPending}
+        />
       )}
 
       {/* Invoice link */}
@@ -642,6 +650,134 @@ export default function OrderDetailPage() {
         </div>
       )}
     </>
+  );
+}
+
+// ── Refund request panel with reason templates + legal note ───────────────────
+function RefundRequestPanel({
+  isOpen,
+  onOpen,
+  onCancel,
+  reason,
+  setReason,
+  onSubmit,
+  isPending,
+}: {
+  isOpen: boolean;
+  onOpen: () => void;
+  onCancel: () => void;
+  reason: string;
+  setReason: (v: string) => void;
+  onSubmit: () => void;
+  isPending: boolean;
+}) {
+  const t = useI18n((s) => s.t);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+
+  const templates: { key: string; label: string }[] = [
+    { key: 'sizeMismatch', label: t('refundForm.reasonSizeMismatch') },
+    { key: 'qualityIssue', label: t('refundForm.reasonQualityIssue') },
+    { key: 'wrongItem',    label: t('refundForm.reasonWrongItem') },
+    { key: 'damaged',      label: t('refundForm.reasonDamaged') },
+    { key: 'changedMind',  label: t('refundForm.reasonChangedMind') },
+  ];
+
+  function applyTemplate(key: string, label: string) {
+    setSelectedTemplate(key);
+    // Pre-fill with template; user can edit/extend
+    if (!reason.includes(label)) {
+      setReason(label + (reason ? ` — ${reason}` : ''));
+    }
+  }
+
+  return (
+    <div className="border border-amber-200 dark:border-amber-800/60 rounded-xl p-5 bg-amber-50/50 dark:bg-amber-900/10">
+      {!isOpen ? (
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('refundForm.title')}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              14 gün içinde herhangi bir gerekçe göstermeksizin iade talep edebilirsin.
+            </p>
+          </div>
+          <button
+            onClick={onOpen}
+            className="ml-4 shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+          >
+            ↩️ İade Talebi Oluştur
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">{t('refundForm.reasonLabel')}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Onay sonrası kargo iade kodun anında oluşturulur.
+            </p>
+          </div>
+
+          {/* Reason templates */}
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">{t('refundForm.reasonTemplates')}</p>
+            <div className="flex flex-wrap gap-2">
+              {templates.map((tpl) => (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  onClick={() => applyTemplate(tpl.key, tpl.label)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    selectedTemplate === tpl.key
+                      ? 'bg-amber-500 border-amber-500 text-white'
+                      : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-amber-400 dark:hover:border-amber-600'
+                  }`}
+                >
+                  {tpl.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <textarea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder={t('refundForm.reasonPlaceholder')}
+            className="input w-full h-28 resize-none text-sm"
+            maxLength={1000}
+          />
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span>{reason.length}/1000</span>
+            <span>* {t('refundForm.minChars')}</span>
+          </div>
+
+          {/* 14-day legal note */}
+          <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              🏛️ <strong>Yasal Bilgi:</strong> 6502 Sayılı Tüketicinin Korunması Hakkında Kanun kapsamında teslimattan itibaren
+              <strong> 14 takvim günü</strong> içinde cayma hakkını kullanabilirsin. Onaylanan iadeler
+              <strong> 5-10 iş günü</strong> içinde orijinal ödeme yöntemine iade edilir.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              {t('refundForm.cancel')}
+            </button>
+            <button
+              onClick={onSubmit}
+              disabled={isPending || reason.trim().length < 10}
+              className="flex-1 px-4 py-2 text-sm font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPending ? (
+                <span className="flex items-center justify-center gap-2"><Spinner size="sm" /> {t('refundForm.submitting')}</span>
+              ) : `↩️ ${t('refundForm.submit')}`}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

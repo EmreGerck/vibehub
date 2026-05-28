@@ -137,12 +137,13 @@ export class KargoController {
   @Patch('return/:orderId/arrived')
   @Roles(UserRole.PLATFORM_ADMIN, UserRole.GOD_USER)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Admin: mark return shipment as arrived at depot' })
+  @ApiOperation({ summary: 'Admin: mark return shipment as arrived at depot (notifies customer + audit-logs)' })
   async confirmDepotArrival(
     @Param('orderId') orderId: string,
     @Body() dto: DepotArrivalDto,
+    @CurrentUser() user: any,
   ) {
-    const rs = await this.kargo.confirmDepotArrival(orderId, dto.note);
+    const rs = await this.kargo.confirmDepotArrival(orderId, dto.note, user.id);
     return ApiResponse.ok(rs, 'Depot arrival confirmed');
   }
 
