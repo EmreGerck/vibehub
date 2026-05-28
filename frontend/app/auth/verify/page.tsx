@@ -57,11 +57,18 @@ export default function VerifyPage() {
     try {
       const data = await verifyOtp.mutateAsync({ challenge, code: c, trustDevice });
       setSuccess(true);
+      const nextPath = sessionStorage.getItem('mfa_next');
       sessionStorage.removeItem('mfa_challenge');
       sessionStorage.removeItem('mfa_email');
       sessionStorage.removeItem('mfa_cooldown');
+      sessionStorage.removeItem('mfa_next');
       // brief celebratory pause
       setTimeout(() => {
+        // Honor "next" path (e.g., checkout-bounce flow)
+        if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
+          router.push(nextPath);
+          return;
+        }
         const role = data.user.role;
         if (role === 'GOD_USER' || role === 'PLATFORM_ADMIN') router.push('/dashboard/admin/vendors');
         else if (role === 'VENDOR_OWNER' || role === 'VENDOR_MANAGER') router.push('/dashboard/vendor/overview');
@@ -191,7 +198,7 @@ export default function VerifyPage() {
 
         <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
           <Link href="/auth/login" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-            ← Back to sign in
+            ← {t('auth.backToSignIn')}
           </Link>
         </p>
       </div>

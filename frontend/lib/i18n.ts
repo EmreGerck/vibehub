@@ -1082,6 +1082,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // ── Auth extended ──
     'auth.emailPlaceholder': 'siz@ornek.com',
     'auth.mfaToggle': 'Ek güvenlik: e-posta kodu ile doğrula',
+    'auth.mfaRequired': 'Güvenliğiniz için her girişte e-postanıza tek kullanımlık kod gönderilir',
     'auth.invalidCredentials': 'Geçersiz kimlik bilgileri',
     'auth.termsRequired': 'Devam etmek için Hizmet Şartlarını kabul etmelisiniz.',
     'auth.privacyRequired': 'Devam etmek için Gizlilik Politikasını ve KVKK Aydınlatmasını kabul etmelisiniz.',
@@ -2231,6 +2232,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // ── Auth extended ──
     'auth.emailPlaceholder': 'you@example.com',
     'auth.mfaToggle': 'Extra security: verify with email code',
+    'auth.mfaRequired': 'For your security, a one-time code will be sent to your email every sign-in',
     'auth.invalidCredentials': 'Invalid credentials',
     'auth.termsRequired': 'You must accept the Terms of Service to continue.',
     'auth.privacyRequired': 'You must accept the Privacy Policy and KVKK disclosure to continue.',

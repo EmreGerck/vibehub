@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsString } from 'class-validator';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 import { Request } from 'express';
 import * as crypto from 'crypto';
 import { IyzicoService } from './iyzico.service';
@@ -13,12 +13,17 @@ import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
+import { Roles } from '../common/roles.decorator';
 import { ApiResponse } from '../common/response.dto';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, UserRole } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 
 class MockPayDto {
   @IsString() orderId: string;
+}
+
+class RefundPaymentDto {
+  @IsOptional() @IsNumber() amount?: number;
 }
 
 
@@ -112,7 +117,8 @@ export class PaymentController {
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('iyzico/verify/:token')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Manually verify a payment by token' })
+  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Manually verify a payment by token (admin only)' })
   async verify(@Param('token') token: string) {
     const result = await this.iyzico.verifyPayment(token);
     return ApiResponse.ok(result, 'Payment verified');
@@ -121,9 +127,10 @@ export class PaymentController {
   @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('iyzico/refund/:paymentId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Refund a payment' })
-  async refund(@Param('paymentId') paymentId: string, @Body('amount') amount: number) {
-    const result = await this.iyzico.refundPayment(paymentId, amount);
+  @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Refund a payment (admin only)' })
+  async refund(@Param('paymentId') paymentId: string, @Body() dto: RefundPaymentDto) {
+    const result = await this.iyzico.refundPayment(paymentId, dto.amount);
     return ApiResponse.ok(result, 'Refund processed');
   }
 
@@ -135,8 +142,12 @@ export class PaymentController {
   @Post('mock/pay')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Simulate payment confirmation (demo mode — no real money)' })
+  @ApiOperation({ summary: 'Simulate payment confirmation (demo mode — non-production only)' })
   async mockPay(@Body() dto: MockPayDto, @CurrentUser() user: any) {
+    // Hard production guard — never allow free order confirmation in real env
+    if (this.config.get<string>('NODE_ENV') === 'production') {
+      throw new NotFoundException();
+    }
     // Use 'any' cast — Prisma types update after `prisma generate` on deploy
     const order: any = await this.prisma.order.findUnique({
       where: { id: dto.orderId },

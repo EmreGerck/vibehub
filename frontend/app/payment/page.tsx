@@ -197,15 +197,17 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* Test card hint */}
-          <div className="mb-5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 flex items-start gap-2">
-            <span className="text-amber-500 shrink-0">ℹ️</span>
-            <div className="text-xs text-amber-700 dark:text-amber-300">
-              <p className="font-semibold mb-0.5">Test kartı kullanın</p>
-              <p>Kart No: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">4242 4242 4242 4242</code></p>
-              <p>Son Tarih: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">12/30</code> &nbsp; CVV: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">123</code></p>
+          {/* Test card hint — DEV/STAGING ONLY (never shown in production) */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="mb-5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 flex items-start gap-2">
+              <span className="text-amber-500 shrink-0">ℹ️</span>
+              <div className="text-xs text-amber-700 dark:text-amber-300">
+                <p className="font-semibold mb-0.5">Test kartı kullanın (sadece geliştirme)</p>
+                <p>Kart No: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">4242 4242 4242 4242</code></p>
+                <p>Son Tarih: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">12/30</code> &nbsp; CVV: <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono">123</code></p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handlePay} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">

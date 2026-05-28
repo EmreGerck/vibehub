@@ -686,14 +686,9 @@ export default function AdminOrdersPage() {
                                 {t('adminOrder.cancel')}
                               </button>
                             )}
-                            {!['REFUNDED', 'REFUND_REQUESTED', 'CANCELLED'].includes(order.status) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); openAction(order, 'refund'); }}
-                                className="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg"
-                              >
-                                {t('adminOrder.refund')}
-                              </button>
-                            )}
+                            {/* Legacy "Refund" button removed — refunds must now go through the
+                                customer-requested workflow (REFUND_REQUESTED status + RefundReviewModal).
+                                If admin needs to force a refund, they cancel the order with restock. */}
                           </div>
                         </td>
                       </tr>

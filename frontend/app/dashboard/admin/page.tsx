@@ -125,7 +125,7 @@ export default function AdminOverviewPage() {
           <StatCard
             label="Pending approval"
             value={data?.vendors.pending ?? '—'}
-            href="/dashboard/admin/vendors?status=PENDING_REVIEW"
+            href="/dashboard/admin/vendors?status=PENDING"
             color={data?.vendors.pending ? 'yellow' : 'blue'}
           />
           <StatCard
@@ -159,7 +159,7 @@ export default function AdminOverviewPage() {
             </div>
           </Link>
 
-          <Link href="/dashboard/admin/vendors?status=PENDING_REVIEW" className="card p-5 flex items-center gap-4 hover:shadow-lg transition-shadow">
+          <Link href="/dashboard/admin/vendors?status=PENDING" className="card p-5 flex items-center gap-4 hover:shadow-lg transition-shadow">
             <span className="text-3xl">🏪</span>
             <div>
               <p className="font-semibold text-gray-900 dark:text-white">

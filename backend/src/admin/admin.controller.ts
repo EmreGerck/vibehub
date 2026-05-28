@@ -832,6 +832,7 @@ export class AdminController {
   }
 
   @Patch('settings')
+  @Roles(UserRole.GOD_USER)
   @ApiOperation({ summary: 'Update global platform settings (GOD_USER only)' })
   async updatePlatformSettings(
     @Body() dto: UpdatePlatformSettingsDto,

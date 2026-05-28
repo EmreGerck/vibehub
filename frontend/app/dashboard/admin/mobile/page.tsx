@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../../lib/api';
+import { ConfirmModal } from '../../../../components/ui/ConfirmModal';
 import type { ApiResponse, Product } from '../../../../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -130,6 +131,7 @@ export default function AdminMobilePage() {
   const [pushBody, setPushBody] = useState('');
   const [pushSent, setPushSent] = useState(false);
   const [pushError, setPushError] = useState('');
+  const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
 
   // Seed form values from config once loaded
   useEffect(() => {
@@ -179,18 +181,24 @@ export default function AdminMobilePage() {
     }
   }
 
-  async function sendPush() {
+  function requestSendPush() {
     setPushError('');
     setPushSent(false);
     if (!pushTitle.trim()) { setPushError('Title is required.'); return; }
     if (!pushBody.trim()) { setPushError('Body is required.'); return; }
+    setPushConfirmOpen(true);
+  }
+
+  async function confirmSendPush() {
     try {
       await pushBroadcast.mutateAsync({ title: pushTitle, body: pushBody });
+      setPushConfirmOpen(false);
       setPushSent(true);
       setPushTitle('');
       setPushBody('');
       setTimeout(() => setPushSent(false), 4000);
     } catch (err: any) {
+      setPushConfirmOpen(false);
       setPushError(err?.response?.data?.message ?? 'Failed to send');
     }
   }
@@ -452,7 +460,7 @@ export default function AdminMobilePage() {
 
           <div className="pt-1">
             <button
-              onClick={sendPush}
+              onClick={requestSendPush}
               disabled={pushBroadcast.isPending || !pushTitle.trim() || !pushBody.trim()}
               className="btn-primary"
             >
@@ -461,6 +469,36 @@ export default function AdminMobilePage() {
           </div>
         </div>
       </SectionCard>
+
+      {/* Push broadcast confirmation — blast radius = every device */}
+      <ConfirmModal
+        open={pushConfirmOpen}
+        onClose={() => setPushConfirmOpen(false)}
+        onConfirm={confirmSendPush}
+        title="Tüm kullanıcılara push bildirimi gönderilecek"
+        description={
+          <>
+            Bu bildirim <strong>kayıtlı tüm cihazlara</strong> hemen iletilecek.
+            Bu işlem geri alınamaz.
+          </>
+        }
+        danger="critical"
+        confirmLabel="Evet, Gönder"
+        cancelLabel="İptal"
+        confirmPhrase="GONDER"
+        busy={pushBroadcast.isPending}
+      >
+        <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3 space-y-2 text-left">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Başlık</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{pushTitle}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">İçerik</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">{pushBody}</p>
+          </div>
+        </div>
+      </ConfirmModal>
 
     </div>
   );

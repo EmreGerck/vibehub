@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { useAuthStore } from '../../../store/auth.store';
 import { Input } from '../../../components/ui/Input';
@@ -12,57 +12,59 @@ import { useI18n } from '../../../lib/i18n';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loginMfa } = useAuth();
+  const searchParams = useSearchParams();
+  const { loginMfa } = useAuth();
   const { user, _hasHydrated } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [useMfa, setUseMfa] = useState(true);
   const t = useI18n((s) => s.t);
+
+  // Honor ?next=... query param so checkout-bounced users return to where they came from
+  const nextPath = searchParams?.get('next') || null;
+
+  function routeAfterAuth(role: string) {
+    // If a "next" path was provided (e.g. from middleware after auth bounce), prefer it
+    if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
+      router.replace(nextPath);
+      return;
+    }
+    if (role === 'GOD_USER' || role === 'PLATFORM_ADMIN') router.replace('/dashboard/admin/vendors');
+    else if (role === 'VENDOR_OWNER' || role === 'VENDOR_MANAGER') router.replace('/dashboard/vendor/overview');
+    else router.replace('/');
+  }
 
   useEffect(() => {
     if (!_hasHydrated || !user) return;
-    if (user.role === 'GOD_USER' || user.role === 'PLATFORM_ADMIN') {
-      router.replace('/dashboard/admin/vendors');
-    } else if (user.role === 'VENDOR_OWNER' || user.role === 'VENDOR_MANAGER') {
-      router.replace('/dashboard/vendor/overview');
-    } else {
-      router.replace('/');
-    }
-  }, [user, _hasHydrated, router]);
-
-  function routeToRole(role: string) {
-    if (role === 'GOD_USER' || role === 'PLATFORM_ADMIN') router.push('/dashboard/admin/vendors');
-    else if (role === 'VENDOR_OWNER' || role === 'VENDOR_MANAGER') router.push('/dashboard/vendor/overview');
-    else router.push('/');
-  }
+    routeAfterAuth(user.role);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, _hasHydrated]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     try {
-      if (useMfa) {
-        let deviceToken: string | undefined;
-        try { deviceToken = localStorage.getItem('device_token') ?? undefined; } catch {}
-        const data = await loginMfa.mutateAsync({ email, password, deviceToken });
-        if (data.trusted) {
-          routeToRole(data.user.role);
-          return;
-        }
-        sessionStorage.setItem('mfa_challenge', data.challenge);
-        sessionStorage.setItem('mfa_email', data.email);
-        sessionStorage.setItem('mfa_cooldown', String(data.cooldownUntil));
-        router.push('/auth/verify');
-      } else {
-        const data = await login.mutateAsync({ email, password });
-        routeToRole(data.user.role);
+      // OTP is MANDATORY for every login. Trusted devices may short-circuit the step.
+      let deviceToken: string | undefined;
+      try { deviceToken = localStorage.getItem('device_token') ?? undefined; } catch {}
+      const data = await loginMfa.mutateAsync({ email, password, deviceToken });
+      if (data.trusted) {
+        // Device previously verified → no OTP needed this round
+        routeAfterAuth(data.user.role);
+        return;
       }
+      // Hand off to /auth/verify for OTP code
+      sessionStorage.setItem('mfa_challenge', data.challenge);
+      sessionStorage.setItem('mfa_email', data.email);
+      sessionStorage.setItem('mfa_cooldown', String(data.cooldownUntil));
+      if (nextPath) sessionStorage.setItem('mfa_next', nextPath);
+      router.push('/auth/verify');
     } catch (err: any) {
       setError(err?.response?.data?.message || t('auth.invalidCredentials'));
     }
   }
 
-  const isPending = login.isPending || loginMfa.isPending;
+  const isPending = loginMfa.isPending;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-950 transition-colors relative overflow-hidden">
@@ -105,20 +107,13 @@ export default function LoginPage() {
               required
             />
 
-            <label className="flex items-center gap-2 cursor-pointer group select-none">
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={useMfa}
-                onChange={(e) => setUseMfa(e.target.checked)}
-              />
-              <span className={`relative h-5 w-9 rounded-full transition-colors duration-300 ${useMfa ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-300 ${useMfa ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            {/* OTP is mandatory — informational, not toggleable */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+              <span className="text-purple-600 dark:text-purple-400">🔒</span>
+              <span className="text-xs text-purple-800 dark:text-purple-200">
+                {t('auth.mfaRequired')}
               </span>
-              <span className="text-xs text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                {t('auth.mfaToggle')}
-              </span>
-            </label>
+            </div>
 
             <div className="flex justify-end">
               <Link href="/auth/forgot-password" className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 underline-grow transition-colors">

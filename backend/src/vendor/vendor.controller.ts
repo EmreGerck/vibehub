@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { VendorService } from './vendor.service';
 import { ApplyVendorDto } from './dto/apply-vendor.dto';
@@ -37,8 +38,9 @@ export class VendorController {
   // ── Public ─────────────────────────────────────────────────────────────────
 
   @Public()
+  @Throttle({ default: { ttl: 3600000, limit: 3 } })
   @Post('apply')
-  @ApiOperation({ summary: 'Apply to become a vendor (creates Tenant + VENDOR_OWNER user)' })
+  @ApiOperation({ summary: 'Apply to become a vendor (creates Tenant + VENDOR_OWNER user, throttled 3/hr per IP)' })
   async apply(@Body() dto: ApplyVendorDto) {
     const tenant = await this.vendorService.apply(dto);
     return ApiResponse.ok(tenant, 'Application submitted — pending review');

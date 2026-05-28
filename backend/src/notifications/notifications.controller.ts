@@ -10,11 +10,19 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiResponse } from '../common/response.dto';
+import { AuditService } from '../audit/audit.service';
+
+class PushBroadcastDto {
+  @IsString() @MinLength(1) @MaxLength(50) title: string;
+  @IsString() @MinLength(1) @MaxLength(160) body: string;
+}
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -65,14 +73,26 @@ export class NotificationsController {
 @ApiBearerAuth()
 @Controller('admin/notifications')
 export class AdminNotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly audit: AuditService,
+  ) {}
 
   @Post('push-broadcast')
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.GOD_USER, UserRole.PLATFORM_ADMIN)
-  @ApiOperation({ summary: 'Broadcast a push notification to all users with registered devices' })
-  async pushBroadcast(@Body() body: { title: string; body: string }) {
-    await this.notificationsService.broadcastPush(body.title, body.body);
+  @Throttle({ default: { ttl: 3600000, limit: 5 } })
+  @ApiOperation({ summary: 'Broadcast a push notification to all users with registered devices (5/hr per admin, audit-logged)' })
+  async pushBroadcast(@Body() dto: PushBroadcastDto, @CurrentUser() user: any) {
+    await this.notificationsService.broadcastPush(dto.title, dto.body);
+    // Audit-log every broadcast — blast radius = every user with a device token
+    await this.audit.log({
+      actorId: user.id,
+      action: 'ADMIN_PUSH_BROADCAST',
+      targetType: 'PushNotification',
+      targetId: 'broadcast',
+      metadata: { title: dto.title, bodyLength: dto.body.length },
+    });
     return ApiResponse.ok(null, 'Push notification broadcast sent');
   }
 }

@@ -9,7 +9,7 @@ import VendorFeaturesModal from '../../../../components/admin/VendorFeaturesModa
 import ForumSettingsModal from '../../../../components/admin/ForumSettingsModal';
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING_REVIEW: 'badge-yellow',
+  PENDING: 'badge-yellow',
   ACTIVE: 'badge-green',
   FROZEN: 'badge-blue',
   REJECTED: 'badge-red',
@@ -182,7 +182,7 @@ export default function AdminVendorsPage() {
           className="input w-auto"
         >
           <option value="">{t('admin.allStatuses')}</option>
-          <option value="PENDING_REVIEW">{t('admin.pendingReview')}</option>
+          <option value="PENDING">{t('admin.pendingReview')}</option>
           <option value="ACTIVE">{t('admin.active')}</option>
           <option value="FROZEN">{t('admin.frozen')}</option>
           <option value="REJECTED">{t('admin.rejected')}</option>
@@ -220,7 +220,7 @@ export default function AdminVendorsPage() {
                     <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{(Number(vendor.commissionRate) * 100).toFixed(1)}%</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {(vendor.status as string) === 'PENDING_REVIEW' && (
+                        {(vendor.status as string) === 'PENDING' && (
                           <>
                             <button onClick={() => setStatus(vendor.id, 'ACTIVE')} className="text-xs bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800/60 text-green-700 dark:text-green-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.approve')}</button>
                             <button onClick={() => setStatus(vendor.id, 'REJECTED')} className="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg transition-colors">{t('admin.reject')}</button>
