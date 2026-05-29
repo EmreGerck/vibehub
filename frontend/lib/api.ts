@@ -32,7 +32,7 @@ api.interceptors.request.use((config) => {
 
 let _refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (!_refreshPromise) {
     _refreshPromise = axios
       .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })

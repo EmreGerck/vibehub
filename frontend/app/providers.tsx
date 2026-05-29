@@ -12,9 +12,7 @@ import { HtmlLangSync } from '../components/ui/HtmlLangSync';
 import { MobileBottomNav } from '../components/layout/MobileBottomNav';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
 import { useAuthStore } from '../store/auth.store';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { refreshAccessToken } from '../lib/api';
 
 /**
  * Runs once on mount. If the user object is hydrated from localStorage but the
@@ -31,19 +29,16 @@ function AuthBootstrap() {
 
   useEffect(() => {
     if (!hasHydrated) return;
-    // User is persisted but token is gone (page refresh) — silently restore
+    // User is persisted but token is gone (page refresh) — silently restore.
+    // Use the shared singleton from api.ts so this dedupes with any 401-retry
+    // refresh that the response interceptor kicks off in parallel; otherwise
+    // two refresh calls race, the loser sees the just-rotated token, and the
+    // user gets bounced to login.
     if (user && !accessToken) {
-      axios
-        .post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
-        .then((res) => {
-          const token = res.data?.data?.accessToken;
-          if (token) setAccessToken(token);
-          else clearAuth();
-        })
-        .catch(() => {
-          // Refresh cookie expired — session is truly over
-          clearAuth();
-        });
+      refreshAccessToken().then((token) => {
+        if (token) setAccessToken(token);
+        else clearAuth();
+      });
     }
   }, [hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
