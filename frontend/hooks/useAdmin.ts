@@ -451,6 +451,64 @@ export function useAuditLog(params?: { page?: number; limit?: number; action?: s
   });
 }
 
+// ── User error log + error-code registry ─────────────────────────────────────
+
+export interface UserErrorLogEntry {
+  id: string;
+  errorCode: string;
+  traceId: string;
+  userId: string | null;
+  user: { id: string; email: string; role: string } | null;
+  route: string;
+  method: string;
+  statusCode: number;
+  payloadSnapshot: Record<string, unknown>;
+  message: string | null;
+  stack: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export function useErrorLog(params?: {
+  page?: number;
+  limit?: number;
+  errorCode?: string;
+  userId?: string;
+  traceId?: string;
+  statusCode?: number;
+  fromDate?: string;
+  toDate?: string;
+}) {
+  return useQuery({
+    queryKey: ['error-log', params],
+    queryFn: async () => {
+      const res = await api.get('/admin/error-log', { params });
+      return res.data.data as { items: UserErrorLogEntry[]; total: number; page: number; limit: number };
+    },
+  });
+}
+
+export interface ErrorCodeDefinition {
+  code: string;
+  httpStatus: number;
+  severity: 'P0' | 'P1' | 'P2';
+  domain: string;
+  internalDescription: string;
+  userMessage?: string;
+}
+
+export function useErrorCodes() {
+  return useQuery({
+    queryKey: ['error-codes'],
+    queryFn: async () => {
+      const res = await api.get('/admin/error-codes');
+      return res.data.data as ErrorCodeDefinition[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // ── Platform Settings ─────────────────────────────────────────────────────────
 
 export interface PlatformSettings {

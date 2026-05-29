@@ -9,6 +9,8 @@ import { formatPrice } from '../../lib/format';
 import { useI18n } from '../../lib/i18n';
 import { Spinner } from '../../components/ui/Spinner';
 import { ProductImage } from '../../components/ui/ProductImage';
+import { CodedErrorAlert } from '../../components/ui/CodedErrorAlert';
+import { parseApiError, type ParsedApiError } from '../../lib/error-codes';
 
 // ── Card number formatter ──────────────────────────────────────────────────────
 function formatCardNumber(raw: string) {
@@ -31,7 +33,7 @@ export default function PaymentPage() {
   const t = useI18n((s) => s.t);
 
   const [step,     setStep]     = useState<Step>('form');
-  const [error,    setError]    = useState('');
+  const [error,    setError]    = useState<ParsedApiError | string | null>(null);
   const [cardNum,  setCardNum]  = useState('');
   const [holder,   setHolder]   = useState('');
   const [expiry,   setExpiry]   = useState('');
@@ -56,7 +58,7 @@ export default function PaymentPage() {
   // ── Simulate 3-D Secure then call backend ────────────────────────────────────
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError(null);
 
     const raw = cardNum.replace(/\s/g, '');
     if (raw.length < 16) { setError(t('payment.invalidCardNumber')); return; }
@@ -88,7 +90,7 @@ export default function PaymentPage() {
         }, 600);
       } catch (err: any) {
         setStep('failed');
-        setError(err?.response?.data?.message ?? t('payment.failed'));
+        setError(parseApiError(err, t('payment.failed')));
       }
     }, 2200);
   }
@@ -127,9 +129,11 @@ export default function PaymentPage() {
           <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
             <span className="text-3xl">✕</span>
           </div>
-          <div>
+          <div className="space-y-3">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{t('payment.failedTitle')}</h2>
-            <p className="text-sm text-red-500">{error}</p>
+            {error && (typeof error === 'string'
+              ? <p className="text-sm text-red-500">{error}</p>
+              : <CodedErrorAlert error={error} />)}
           </div>
           <button onClick={() => setStep('form')} className="btn-primary w-full">
             {t('payment.tryAgain')}
@@ -215,11 +219,9 @@ export default function PaymentPage() {
           <form onSubmit={handlePay} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 space-y-4">
             <h2 className="font-semibold text-gray-900 dark:text-white mb-2">{t('payment.cardInfo')}</h2>
 
-            {error && step === 'form' && (
-              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-600 dark:text-red-400">
-                {error}
-              </div>
-            )}
+            {error && step === 'form' && (typeof error === 'string'
+              ? <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-600 dark:text-red-400">{error}</div>
+              : <CodedErrorAlert error={error} />)}
 
             {/* Card number */}
             <div>

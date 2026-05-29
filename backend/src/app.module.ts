@@ -44,6 +44,7 @@ import { TrapModule } from './trap/trap.module';
 import { MerchantFeedModule } from './merchant-feed/merchant-feed.module';
 import { SeoModule } from './seo/seo.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { ErrorTrackingModule } from './common/error-tracking.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     MerchantFeedModule,
     SeoModule,
     AnalyticsModule,
+    ErrorTrackingModule,
   ],
   providers: [
     // All routes are JWT-protected by default; decorate with @Public() to opt out

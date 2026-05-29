@@ -163,6 +163,7 @@ model User {
   notifications      AppNotification[]
   assignedNfcTags    NfcTag[]            @relation("NfcTagAssignee")
   pageViews          PageView[]
+  errorLogs          UserErrorLog[]
 
   @@index([email])
   @@index([tenantId])
@@ -1008,4 +1009,31 @@ model AppNotification {
   @@index([userId, createdAt])
   // Hot path: unread badge polls SELECT COUNT(*) WHERE userId=? AND readAt IS NULL.
   @@index([userId, readAt])
+}
+
+// Every user-visible failure is captured here so support staff can decode the
+// VH-XXXX code a customer reports. Distinct from AuditLog (state changes), this
+// table only holds failures. Stack + internal message are NEVER shipped to the
+// client — only errorCode + traceId + a generic support hint.
+model UserErrorLog {
+  id              String   @id @default(uuid())
+  errorCode       String   // e.g. "VH-1001" — matches the registry in common/error-codes.ts
+  traceId         String   // surfaced to the user so support can look it up
+  userId          String?  // null for anonymous traffic (login attempts, public reads)
+  route           String   // request path
+  method          String   // HTTP verb
+  statusCode      Int
+  payloadSnapshot Json     @default("{}") // sanitised request body (no creds/tokens)
+  message         String?  // original internal message — admin-only
+  stack           String?  // admin-only
+  userAgent       String?
+  ipAddress       String?
+  createdAt       DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([errorCode, createdAt])
+  @@index([userId, createdAt])
+  @@index([traceId])
+  @@index([createdAt])
 }

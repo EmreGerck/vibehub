@@ -77,9 +77,11 @@ const NAV_GROUPS: NavGroup[] = [
     icon: '🛡️',
     defaultOpen: false,
     items: [
-      { href: '/dashboard/admin/users',     label: 'Kullanıcılar',       icon: '👤' },
-      { href: '/dashboard/admin/security',  label: 'Güvenlik Monitörü',  icon: '🛡️' },
-      { href: '/dashboard/admin/audit-log', label: 'İşlem Kaydı',        icon: '🔍' },
+      { href: '/dashboard/admin/users',        label: 'Kullanıcılar',       icon: '👤' },
+      { href: '/dashboard/admin/security',     label: 'Güvenlik Monitörü',  icon: '🛡️' },
+      { href: '/dashboard/admin/audit-log',    label: 'İşlem Kaydı',        icon: '🔍' },
+      { href: '/dashboard/admin/error-log',    label: 'Hata Kayıtları',     icon: '🚨' },
+      { href: '/dashboard/admin/error-codes',  label: 'Hata Kodları',       icon: '📖' },
     ],
   },
   {

@@ -8,15 +8,17 @@ import { Navbar } from '../../components/layout/Navbar';
 import { useCart, usePlaceOrder } from '../../hooks/useCart';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
+import { CodedErrorAlert } from '../../components/ui/CodedErrorAlert';
 import { Spinner } from '../../components/ui/Spinner';
 import { formatPrice } from '../../lib/format';
 import { useI18n } from '../../lib/i18n';
+import { parseApiError, type ParsedApiError } from '../../lib/error-codes';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { data: cart, isLoading: cartLoading } = useCart();
   const placeOrder = usePlaceOrder();
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ParsedApiError | string>('');
   const t = useI18n((s) => s.t);
 
   const [form, setForm] = useState({
@@ -52,7 +54,7 @@ export default function CheckoutPage() {
       // Redirect to payment page instead of confirmation
       router.push(`/payment?orderId=${order.id}`);
     } catch (err: any) {
-      setError(err?.response?.data?.message || t('checkout.errorFallback'));
+      setError(parseApiError(err, t('checkout.errorFallback')));
     }
   }
 
@@ -102,7 +104,13 @@ export default function CheckoutPage() {
           <form onSubmit={handleSubmit} className="flex-1 space-y-5">
             <div className="card p-5">
               <h2 className="font-semibold mb-4">{t('checkout.shippingAddress')}</h2>
-              {error && <div className="mb-4"><Alert type="error" message={error} /></div>}
+              {error && (
+                <div className="mb-4">
+                  {typeof error === 'string'
+                    ? <Alert type="error" message={error} />
+                    : <CodedErrorAlert error={error} />}
+                </div>
+              )}
 
               <div className="space-y-4">
                 <Input label={t('checkout.fullName')} value={form.name} onChange={setField('name')} required />

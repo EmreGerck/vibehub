@@ -907,6 +907,17 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.deleting': 'Siliniyor…',
     'common.approve': 'Onayla',
 
+    // ── Errors (coded error display + admin tooling) ──
+    'errors.supportFallback': 'Bir hata oluştu. Destek ekibimize bu kodu iletin.',
+    'errors.trace': 'İz',
+    'errors.copyCode': 'Kopyala',
+    'errors.copied': 'Kopyalandı',
+    'admin.errorLogNav': 'Hata Kayıtları',
+    'admin.errorCodesNav': 'Hata Kodları',
+    'admin.errorCodesHint': 'Müşteriden gelen kodu burada arayarak kaynağını ve çözümünü görebilirsiniz.',
+    'admin.anonymousUser': 'oturumsuz kullanıcı',
+    'admin.noMatches': 'Eşleşme yok.',
+
     // ── Admin sidebar (replacing hardcoded TR labels) ──
     'admin.categoriesNav': 'Kategoriler',
     'admin.preOrdersNav': 'Ön Siparişler',
@@ -2424,6 +2435,17 @@ const translations: Record<Locale, Record<string, string>> = {
     'common.delete': 'Delete',
     'common.deleting': 'Deleting…',
     'common.approve': 'Approve',
+
+    // ── Errors (coded error display + admin tooling) ──
+    'errors.supportFallback': 'An error occurred. Please share this code with support.',
+    'errors.trace': 'Trace',
+    'errors.copyCode': 'Copy',
+    'errors.copied': 'Copied',
+    'admin.errorLogNav': 'Error Log',
+    'admin.errorCodesNav': 'Error Codes',
+    'admin.errorCodesHint': 'Look up a code reported by a customer to see its source and remediation.',
+    'admin.anonymousUser': 'anonymous',
+    'admin.noMatches': 'No matches.',
 
     // ── Admin sidebar (replacing hardcoded TR labels) ──
     'admin.categoriesNav': 'Categories',

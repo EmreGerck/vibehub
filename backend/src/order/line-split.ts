@@ -1,5 +1,6 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { FulfilmentType } from '@prisma/client';
+import { CodedException } from '../common/coded-exception';
 
 /**
  * Single source of truth for the per-line money split at order time.
@@ -86,9 +87,10 @@ export function computeLineSplit(input: LineSplitInput): LineSplitOutput {
   // ── Lane 2: flat commission (unchanged historical behaviour) ───────────────
   if (fulfilment === FulfilmentType.VENDOR_MANAGED) {
     if (commissionRate.isNegative() || commissionRate.greaterThan(ONE)) {
-      throw new Error(
-        `Invalid commission rate for store "${input.storeName ?? 'vendor'}"`,
-      );
+      throw new CodedException('VH-1004', {
+        storeName: input.storeName ?? 'vendor',
+        commissionRate: commissionRate.toString(),
+      });
     }
     const platformFee  = lineTotal.mul(commissionRate);
     const vendorPayout = lineTotal.sub(platformFee);
@@ -102,17 +104,20 @@ export function computeLineSplit(input: LineSplitInput): LineSplitOutput {
 
   // ── Lane 1: VibeHub-managed → strip VAT, deduct mfg cost, split remainder ──
   if (!input.vatRate || input.vatRate.isNegative() || input.vatRate.greaterThan(ONE)) {
-    throw new Error(`"${label}" için geçerli bir KDV oranı yok — kategori KDV'sini ayarla`);
+    throw new CodedException('VH-1003', { productTitle: label, vatRate: input.vatRate?.toString() ?? null });
   }
   if (input.manufacturingUnitCost == null || input.manufacturingUnitCost.isNegative()) {
-    throw new Error(`"${label}" için üretim birimi maliyeti tanımlı değil`);
+    throw new CodedException('VH-1001', { productTitle: label });
   }
   if (
     input.profitSharePct == null ||
     input.profitSharePct.isNegative() ||
     input.profitSharePct.greaterThan(ONE)
   ) {
-    throw new Error(`"${label}" için sanatçı kâr payı yüzdesi (0-100) tanımlı değil`);
+    throw new CodedException('VH-1002', {
+      productTitle: label,
+      profitSharePct: input.profitSharePct?.toString() ?? null,
+    });
   }
 
   const vatRate         = input.vatRate;

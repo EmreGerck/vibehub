@@ -23,6 +23,7 @@ import { PatchVendorFeaturesDto, PatchForumSettingsDto } from './dto/vendor-feat
 import { PatchPreOrderStatusDto } from './dto/admin-product.dto';
 import { CreateAdminUserDto } from './dto/create-admin.dto';
 import { QueryAuditDto } from './dto/query-audit.dto';
+import { QueryErrorLogDto } from './dto/query-error-log.dto';
 import { QueryVendorsDto } from '../vendor/dto/query-vendors.dto';
 import { QueryOrdersDto } from '../order/dto/query-orders.dto';
 import { QueryProductsDto } from '../product/dto/query-products.dto';
@@ -662,6 +663,21 @@ export class AdminController {
   async getAuditLog(@Query() query: QueryAuditDto) {
     const data = await this.adminService.getAuditLog(query);
     return ApiResponse.ok(data, 'Audit log retrieved');
+  }
+
+  // ── Error log (captured user-visible failures, decoded by error code) ────────
+
+  @Get('error-log')
+  @ApiOperation({ summary: 'Paginated captured user errors with filters' })
+  async getErrorLog(@Query() query: QueryErrorLogDto) {
+    const data = await this.adminService.getUserErrorLog(query);
+    return ApiResponse.ok(data, 'Error log retrieved');
+  }
+
+  @Get('error-codes')
+  @ApiOperation({ summary: 'Reference list of all defined error codes (registry dump)' })
+  async getErrorCodes() {
+    return ApiResponse.ok(this.adminService.getErrorCodes(), 'Error codes retrieved');
   }
 
   // ── Events ────────────────────────────────────────────────────────────────────

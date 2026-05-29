@@ -54,6 +54,12 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  // Global error filter — wraps every thrown exception into the
+  // { errorCode, traceId, supportMessage } shape and captures it to
+  // UserErrorLog for support staff to decode.
+  const { ErrorTrackingFilter } = await import('./common/error-tracking.filter');
+  app.useGlobalFilters(app.get(ErrorTrackingFilter));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

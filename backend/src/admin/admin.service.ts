@@ -17,6 +17,9 @@ import { QueryAuditDto } from './dto/query-audit.dto';
 import { QueryProductsDto } from '../product/dto/query-products.dto';
 import { CreateBannerDto, UpdateBannerDto } from './dto/banner.dto';
 import { AdminCreateProductDto, AdminUpdateProductDto, AdminProductDiscountDto, AdminProductPreOrderDto } from './dto/admin-product.dto';
+import { CodedException } from '../common/coded-exception';
+import { ERROR_CODES } from '../common/error-codes';
+import { QueryErrorLogDto } from './dto/query-error-log.dto';
 import {
   AdminCreateVariantDto,
   AdminUpdateVariantDto,
@@ -902,6 +905,13 @@ export class AdminService {
       );
     }
 
+    // VH-4001 (computed here, enforced inside the transaction below — after the
+    // lock-after-first-order check, since the lock is a higher-priority guard
+    // and must continue to fire on a flip attempt even when the new state would
+    // separately fail VH-4001).
+    const effectiveMfgUnitId =
+      dto.manufacturingUnitId !== undefined ? dto.manufacturingUnitId : (product as any).manufacturingUnitId;
+
     // Audit fix — Sprint 13: when admin flips VIBEHUB→VENDOR, force-clear the
     // lane-1 fields so we don't leave a VENDOR_MANAGED product carrying a
     // stale profitSharePct or mfg unit pointer. The order-time line-split
@@ -923,6 +933,15 @@ export class AdminService {
             'Bu ürün için satış başladıktan sonra fulfilment / üretim / kâr payı değiştirilemez. Yeni bir ürün oluşturun.',
           );
         }
+      }
+      // VH-4001: only enforced for unlocked products — see comment above on
+      // ordering. A VIBEHUB_MANAGED product without a manufacturingUnit would
+      // throw VH-1001 at checkout (no mfg cost). Catch it at write time.
+      if (effectiveFulfilment === 'VIBEHUB_MANAGED' && !effectiveMfgUnitId) {
+        throw new CodedException('VH-4001', {
+          productId,
+          attemptedFulfilment: effectiveFulfilment,
+        });
       }
       return tx.product.update({
         where: { id: productId },
@@ -1570,6 +1589,39 @@ export class AdminService {
   }
 
   // ── Audit log ─────────────────────────────────────────────────────────────────
+
+  async getUserErrorLog(query: QueryErrorLogDto) {
+    const where: any = {};
+    if (query.errorCode)  where.errorCode = query.errorCode;
+    if (query.userId)     where.userId = query.userId;
+    if (query.traceId)    where.traceId = query.traceId;
+    if (query.statusCode) where.statusCode = query.statusCode;
+    if (query.fromDate || query.toDate) {
+      where.createdAt = {};
+      if (query.fromDate) where.createdAt.gte = new Date(query.fromDate);
+      if (query.toDate)   where.createdAt.lte = new Date(query.toDate);
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.userErrorLog.findMany({
+        where,
+        skip: query.skip,
+        take: query.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, email: true, role: true } },
+        },
+      }),
+      this.prisma.userErrorLog.count({ where }),
+    ]);
+
+    return { items, total, page: query.page, limit: query.limit };
+  }
+
+  getErrorCodes() {
+    // Stable order by code so the reference page is easy to scan.
+    return Object.values(ERROR_CODES).sort((a, b) => a.code.localeCompare(b.code));
+  }
 
   async getAuditLog(query: QueryAuditDto) {
     const where: any = {};

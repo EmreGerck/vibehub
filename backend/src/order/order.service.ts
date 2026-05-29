@@ -18,6 +18,7 @@ import { QueryOrdersDto } from './dto/query-orders.dto';
 import { NotificationType, OrderStatus, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { computeLineSplit } from './line-split';
+import { CodedException } from '../common/coded-exception';
 
 // Vendor-allowed status transitions
 const VENDOR_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -142,6 +143,10 @@ export class OrderService {
           storeName:             v.product.tenant.displayName,
         });
       } catch (err: any) {
+        // CodedException already carries an errorCode → let the global filter
+        // serialise it. Only wrap raw Errors (sanity guards in line-split for
+        // negative prices, invalid quantities) as generic BadRequest.
+        if (err instanceof CodedException) throw err;
         throw new BadRequestException(err.message);
       }
 
