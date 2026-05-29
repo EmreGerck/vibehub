@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { OtpService } from './otp.service';
@@ -27,7 +26,7 @@ import { CartModule } from '../cart/cart.module';
     CartModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, JwtAuthGuard, RolesGuard, OtpService],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard, OtpService],
   exports: [AuthService, JwtAuthGuard, RolesGuard, JwtModule, OtpService],
 })
 export class AuthModule {}

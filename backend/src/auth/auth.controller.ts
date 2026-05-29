@@ -11,6 +11,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -18,7 +19,6 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../common/current-user.decorator';
 import { Public } from '../common/public.decorator';
@@ -115,21 +115,15 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(JwtRefreshGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate access token using httpOnly refresh cookie' })
-  async refresh(
-    // NOTE: `user` is intentionally `any` here. `JwtRefreshGuard` uses the
-    // `jwt-refresh` strategy which returns `{...JwtPayload, refreshToken}` —
-    // a different shape than the global `JwtAuthGuard` (no `id` field, uses `sub`).
-    // Don't substitute AuthenticatedUser — it would lie about the available keys.
-    @CurrentUser() user: any,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const oldToken = req.cookies?.['refresh_token'];
-    const result = await this.authService.refreshTokens(user.sub, oldToken);
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // refresh_token is an opaque UUID (see auth.service.ts:627), not a JWT,
+    // so we look it up by value rather than running it through a JWT strategy.
+    const token = req.cookies?.['refresh_token'];
+    if (!token) throw new UnauthorizedException('No refresh token');
+    const result = await this.authService.refreshTokensByValue(token);
     this.setRefreshCookie(res, result.refreshToken);
     return ApiResponse.ok(
       { accessToken: result.accessToken, user: result.user },
