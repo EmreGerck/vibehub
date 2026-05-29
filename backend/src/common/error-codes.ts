@@ -141,6 +141,24 @@ export const ERROR_CODES: Record<string, ErrorCodeDefinition> = {
     userMessage: 'Açık siparişleriniz olduğu için hesabınızı şu an silemezsiniz. Siparişler tamamlandıktan sonra tekrar deneyin.',
   },
 
+  // ── 3xxx vendor / tenant ─────────────────────────────────────────────────
+  'VH-3001': {
+    code: 'VH-3001',
+    httpStatus: HttpStatus.CONFLICT,
+    severity: 'P2',
+    domain: 'vendor',
+    internalDescription: 'Vendor application rejected — owner email is already linked to an existing User row.',
+    userMessage: 'Bu e-posta adresi zaten kayıtlı. Var olan hesabınızla giriş yapıp başvuruyu sürdürebilirsiniz.',
+  },
+  'VH-3002': {
+    code: 'VH-3002',
+    httpStatus: HttpStatus.CONFLICT,
+    severity: 'P2',
+    domain: 'vendor',
+    internalDescription: 'Vendor application rejected — store slug is already taken by another tenant.',
+    userMessage: 'Bu mağaza adresi (slug) başka bir mağaza tarafından kullanılıyor. Farklı bir adres seçin.',
+  },
+
   // ── 4xxx product / catalog ───────────────────────────────────────────────
   'VH-4001': {
     code: 'VH-4001',

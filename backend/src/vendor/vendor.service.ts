@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { CodedException } from '../common/coded-exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { QueueService } from '../queue/queue.service';
@@ -38,7 +39,9 @@ export class VendorService {
           honeypotValue: dto.website.slice(0, 100),
         },
       }).catch(() => {});
-      throw new ConflictException('This email is already registered');
+      // Honeypot returns the same code as a real email conflict so a bot
+      // can't distinguish "tripped the trap" from "email already exists".
+      throw new CodedException('VH-3001', { emailAttempted: dto.ownerEmail });
     }
 
     const [slugExists, emailExists] = await Promise.all([
@@ -46,8 +49,8 @@ export class VendorService {
       this.prisma.user.findUnique({ where: { email: dto.ownerEmail } }),
     ]);
 
-    if (slugExists) throw new ConflictException('This store slug is already taken');
-    if (emailExists) throw new ConflictException('This email is already registered');
+    if (slugExists) throw new CodedException('VH-3002', { slug: dto.slug });
+    if (emailExists) throw new CodedException('VH-3001', { emailAttempted: dto.ownerEmail });
 
     const passwordHash = await bcrypt.hash(dto.ownerPassword, 12);
 

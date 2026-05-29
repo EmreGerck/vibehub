@@ -7,8 +7,10 @@ import { useApplyVendor } from '../../../hooks/useVendors';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Alert } from '../../../components/ui/Alert';
+import { CodedErrorAlert } from '../../../components/ui/CodedErrorAlert';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useI18n } from '../../../lib/i18n';
+import { parseApiError, type ParsedApiError } from '../../../lib/error-codes';
 
 export default function ApplyVendorPage() {
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function ApplyVendorPage() {
     // Honeypot — see register page for rationale
     website: '',
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ParsedApiError | string | null>(null);
   const [done, setDone] = useState(false);
 
   function set(field: string) {
@@ -54,7 +56,7 @@ export default function ApplyVendorPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError(null);
     if (form.ownerPassword !== form.confirmPassword) {
       setError(t('vendorApply.passwordsNoMatch'));
       return;
@@ -72,7 +74,7 @@ export default function ApplyVendorPage() {
       });
       setDone(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || t('vendorApply.somethingWentWrong'));
+      setError(parseApiError(err, t('vendorApply.somethingWentWrong')));
     }
   }
 
@@ -128,7 +130,9 @@ export default function ApplyVendorPage() {
               />
             </div>
 
-            {error && <Alert type="error" message={error} />}
+            {error && (typeof error === 'string'
+              ? <Alert type="error" message={error} />
+              : <CodedErrorAlert error={error} />)}
 
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">

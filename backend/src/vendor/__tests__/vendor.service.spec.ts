@@ -112,17 +112,17 @@ describe('VendorService', () => {
       expect(result).toMatchObject({ slug: 'test-store' });
     });
 
-    it('throws ConflictException when slug already taken', async () => {
+    it('throws VH-3002 when slug already taken', async () => {
       const prisma = makePrisma({ user: null });
       (prisma.tenant.findUnique as jest.Mock).mockResolvedValue(PENDING_TENANT);
       const svc = await build(prisma);
-      await expect(svc.apply(APPLY_DTO)).rejects.toThrow(ConflictException);
+      await expect(svc.apply(APPLY_DTO)).rejects.toMatchObject({ errorCode: 'VH-3002' });
     });
 
-    it('throws ConflictException when email already registered', async () => {
+    it('throws VH-3001 when email already registered', async () => {
       const prisma = makePrisma({ tenant: null, user: { id: USER_ID, email: 'owner@test.com' } });
       const svc = await build(prisma);
-      await expect(svc.apply(APPLY_DTO)).rejects.toThrow(ConflictException);
+      await expect(svc.apply(APPLY_DTO)).rejects.toMatchObject({ errorCode: 'VH-3001' });
     });
   });
 
