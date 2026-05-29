@@ -1,6 +1,5 @@
 import {
   Injectable,
-  ConflictException,
   UnauthorizedException,
   BadRequestException,
   HttpException,
@@ -11,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CodedException } from '../common/coded-exception';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from '../common/jwt-payload.interface';
@@ -59,11 +59,11 @@ export class AuthService {
         targetId: null,
         metadata: { emailAttempted: dto.email, honeypotValue: dto.website.slice(0, 100) },
       }).catch(() => {});
-      throw new ConflictException('Email already registered');
+      throw new CodedException('VH-2002', { emailAttempted: dto.email });
     }
 
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (exists) throw new ConflictException('Email already registered');
+    if (exists) throw new CodedException('VH-2002', { emailAttempted: dto.email });
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const now = new Date();
@@ -104,7 +104,7 @@ export class AuthService {
         targetId: null,
         metadata: { reason: 'user_not_found', emailAttempted: dto.email },
       }).catch(() => {});
-      throw new UnauthorizedException('Invalid credentials');
+      throw new CodedException('VH-2001');
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -130,7 +130,7 @@ export class AuthService {
         targetId: user.id,
         metadata: { reason: 'wrong_password', email: user.email, locked },
       }).catch(() => {});
-      throw new UnauthorizedException('Invalid credentials');
+      throw new CodedException('VH-2001');
     }
 
     await this.otp.resetLoginAttempts(dto.email);
@@ -172,7 +172,7 @@ export class AuthService {
         targetId: null,
         metadata: { reason: 'user_not_found', emailAttempted: dto.email, mfa: true },
       }).catch(() => {});
-      throw new UnauthorizedException('Invalid credentials');
+      throw new CodedException('VH-2001');
     }
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
@@ -194,7 +194,7 @@ export class AuthService {
         targetId: user.id,
         metadata: { reason: 'wrong_password', email: user.email, locked, mfa: true },
       }).catch(() => {});
-      throw new UnauthorizedException('Invalid credentials');
+      throw new CodedException('VH-2001');
     }
     await this.otp.resetLoginAttempts(dto.email);
 
@@ -227,15 +227,15 @@ export class AuthService {
     try {
       payload = this.jwtService.verify(challenge, { secret: this.config.get('JWT_ACCESS_SECRET') });
     } catch {
-      throw new UnauthorizedException('Challenge expired or invalid');
+      throw new CodedException('VH-2003');
     }
-    if (payload?.purpose !== 'mfa') throw new UnauthorizedException('Invalid challenge');
+    if (payload?.purpose !== 'mfa') throw new CodedException('VH-2003');
 
     const result = await this.otp.verifyOtp(payload.email, code);
     if (!result.ok) {
-      if (result.reason === 'expired') throw new BadRequestException('Code expired');
+      if (result.reason === 'expired') throw new CodedException('VH-2004');
       if (result.reason === 'too-many-attempts') throw new HttpException('Too many attempts', HttpStatus.TOO_MANY_REQUESTS);
-      throw new UnauthorizedException('Invalid code');
+      throw new CodedException('VH-2005');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -275,9 +275,9 @@ export class AuthService {
     try {
       payload = this.jwtService.verify(challenge, { secret: this.config.get('JWT_ACCESS_SECRET') });
     } catch {
-      throw new UnauthorizedException('Challenge expired or invalid');
+      throw new CodedException('VH-2003');
     }
-    if (payload?.purpose !== 'mfa') throw new UnauthorizedException('Invalid challenge');
+    if (payload?.purpose !== 'mfa') throw new CodedException('VH-2003');
 
     const remaining = await this.otp.resendCooldownRemaining(payload.email);
     if (remaining > 0) {
@@ -374,7 +374,7 @@ export class AuthService {
   async resetPassword(token: string, newPassword: string) {
     const record = await this.prisma.passwordResetToken.findUnique({ where: { token } });
     if (!record || record.used || record.expiresAt < new Date()) {
-      throw new BadRequestException('Invalid or expired reset token');
+      throw new CodedException('VH-2006');
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -408,7 +408,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User not found');
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!valid) throw new BadRequestException('Invalid current password');
+    if (!valid) throw new CodedException('VH-2007');
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
     await this.prisma.$transaction([
@@ -466,7 +466,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User not found');
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new BadRequestException('Invalid password');
+    if (!valid) throw new CodedException('VH-2008');
 
     // 1. Refuse if there's an in-flight order — vendor still owes fulfillment.
     // Allowed terminal statuses: DELIVERED, CANCELLED, REFUNDED.
@@ -478,9 +478,7 @@ export class AuthService {
       },
     });
     if (activeOrderCount > 0) {
-      throw new BadRequestException(
-        `Hesabını silmeden önce ${activeOrderCount} adet açık siparişinin tamamlanması gerekiyor (teslim, iptal veya iade). Lütfen sipariş durumlarını sayfanda kontrol et.`,
-      );
+      throw new CodedException('VH-2009', { activeOrderCount });
     }
 
     // 2 + 3 + 4: do all of it in one transaction so a mid-flight crash never

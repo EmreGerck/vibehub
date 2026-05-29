@@ -9,6 +9,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, HttpException, ConflictException } from '@nestjs/common';
+import { CodedException } from '../common/coded-exception';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/auth.service';
@@ -100,7 +101,7 @@ describe('[SEC-AUTH-01] Brute Force Attack Prevention', () => {
     const otp = makeOtp();
     const svc = await buildAuth(undefined, otp);
     await expect(svc.login({ email: 'victim@example.com', password: 'WRONG_PASSWORD' }))
-      .rejects.toThrow(UnauthorizedException);
+      .rejects.toMatchObject({ errorCode: 'VH-2001' });
     expect(otp.recordFailedLogin).toHaveBeenCalledWith('victim@example.com');
   });
 
@@ -108,7 +109,7 @@ describe('[SEC-AUTH-01] Brute Force Attack Prevention', () => {
     const otp = makeOtp({ locked: true });
     const svc = await buildAuth(undefined, otp);
     await expect(svc.login({ email: 'victim@example.com', password: 'WRONG' }))
-      .rejects.toThrow(UnauthorizedException);
+      .rejects.toMatchObject({ errorCode: 'VH-2001' });
     // Alert is fire-and-forget — just verify it was called
     await new Promise(r => setTimeout(r, 10));
     expect(mockMail.sendSecurityAlert).toHaveBeenCalledWith('victim@example.com', expect.any(Number));
@@ -153,10 +154,12 @@ describe('[SEC-AUTH-02] Account Enumeration Prevention', () => {
     try { await svcWrongPass.login({ email: 'victim@example.com', password: 'WRONG' }); }
     catch (e) { errWrongPass = e; }
 
-    // Both must be UnauthorizedException with same generic message
-    expect(errNotFound).toBeInstanceOf(UnauthorizedException);
-    expect(errWrongPass).toBeInstanceOf(UnauthorizedException);
-    expect(errNotFound.message).toBe(errWrongPass.message); // identical response
+    // Both must carry the same code with no leaking context (account enumeration prevention).
+    expect(errNotFound).toBeInstanceOf(CodedException);
+    expect(errWrongPass).toBeInstanceOf(CodedException);
+    expect(errNotFound.errorCode).toBe('VH-2001');
+    expect(errWrongPass.errorCode).toBe('VH-2001');
+    expect(errNotFound.context).toEqual(errWrongPass.context); // identical response
   });
 
   it('register endpoint returns ConflictException for duplicate email (not user data)', async () => {
@@ -167,7 +170,7 @@ describe('[SEC-AUTH-02] Account Enumeration Prevention', () => {
       password: 'NewPassword123!',
       termsAccepted: true,
       privacyAccepted: true,
-    })).rejects.toThrow(ConflictException);
+    })).rejects.toMatchObject({ errorCode: 'VH-2002' });
     // Response must NOT leak existing user's id/role/tenantId
   });
 
@@ -219,7 +222,7 @@ describe('[SEC-AUTH-03] Password Hashing Integrity', () => {
     ];
     for (const payload of sqlPayloads) {
       await expect(svc.login({ email: 'victim@example.com', password: payload }))
-        .rejects.toThrow(UnauthorizedException);
+        .rejects.toMatchObject({ errorCode: 'VH-2001' });
     }
   });
 });

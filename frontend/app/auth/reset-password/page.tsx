@@ -6,8 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { Input } from '../../../components/ui/Input';
 import { Alert } from '../../../components/ui/Alert';
+import { CodedErrorAlert } from '../../../components/ui/CodedErrorAlert';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useI18n } from '../../../lib/i18n';
+import { parseApiError, type ParsedApiError } from '../../../lib/error-codes';
 
 export default function ResetPasswordPage() {
   return (
@@ -24,12 +26,12 @@ function ResetPasswordContent() {
   const [confirm, setConfirm] = useState('');
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ParsedApiError | string | null>(null);
   const t = useI18n((s) => s.t);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError(null);
     if (password !== confirm) {
       setError(t('auth.passwordsNoMatch'));
       return;
@@ -43,7 +45,7 @@ function ResetPasswordContent() {
       await api.post('/auth/reset-password', { token, newPassword: password });
       setDone(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || t('auth.invalidExpiredLink'));
+      setError(parseApiError(err, t('auth.invalidExpiredLink')));
     } finally {
       setLoading(false);
     }
@@ -89,7 +91,9 @@ function ResetPasswordContent() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && <Alert type="error" message={error} />}
+              {error && (typeof error === 'string'
+                ? <Alert type="error" message={error} />
+                : <CodedErrorAlert error={error} />)}
               <Input
                 label={t('auth.newPassword')}
                 type="password"

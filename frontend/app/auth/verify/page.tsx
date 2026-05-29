@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { OtpInput } from '../../../components/auth/OtpInput';
 import { Spinner } from '../../../components/ui/Spinner';
+import { CodedErrorAlert } from '../../../components/ui/CodedErrorAlert';
 import { useI18n } from '../../../lib/i18n';
 import { toast } from '../../../store/toast.store';
+import { parseApiError, type ParsedApiError } from '../../../lib/error-codes';
 
 const OTP_LENGTH = 6;
 
@@ -20,7 +22,7 @@ export default function VerifyPage() {
   const [email, setEmail] = useState<string>('');
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [parsedError, setParsedError] = useState<ParsedApiError | string | null>(null);
   const [success, setSuccess] = useState(false);
   const [trustDevice, setTrustDevice] = useState(true);
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
@@ -53,7 +55,7 @@ export default function VerifyPage() {
     if (submitOnceRef.current || !challenge) return;
     submitOnceRef.current = true;
     setError(false);
-    setErrorMessage('');
+    setParsedError(null);
     try {
       const data = await verifyOtp.mutateAsync({ challenge, code: c, trustDevice });
       setSuccess(true);
@@ -77,7 +79,7 @@ export default function VerifyPage() {
     } catch (err: any) {
       submitOnceRef.current = false;
       setError(true);
-      setErrorMessage(err?.response?.data?.message || t('otp.invalid'));
+      setParsedError(parseApiError(err, t('otp.invalid')));
       setCode('');
       setTimeout(() => setError(false), 700);
     }
@@ -91,7 +93,8 @@ export default function VerifyPage() {
       sessionStorage.setItem('mfa_cooldown', String(data.cooldownUntil));
       toast('success', t('otp.codeSent'));
     } catch (err: any) {
-      toast('error', err?.response?.data?.message || t('auth.resendError'));
+      const parsed = parseApiError(err, t('auth.resendError'));
+      toast('error', parsed.isCoded ? `${parsed.supportMessage} (${parsed.errorCode})` : parsed.message);
     }
   }
 
@@ -140,10 +143,12 @@ export default function VerifyPage() {
           </div>
 
           {/* Inline error */}
-          {errorMessage && !success && (
-            <p className="mt-3 text-center text-sm text-red-500 dark:text-red-400 animate-fade-in">
-              {errorMessage}
-            </p>
+          {parsedError && !success && (
+            <div className="mt-3 animate-fade-in">
+              {typeof parsedError === 'string'
+                ? <p className="text-center text-sm text-red-500 dark:text-red-400">{parsedError}</p>
+                : <CodedErrorAlert error={parsedError} />}
+            </div>
           )}
 
           {/* Trust device */}

@@ -5,25 +5,27 @@ import Link from 'next/link';
 import { api } from '../../../lib/api';
 import { Input } from '../../../components/ui/Input';
 import { Alert } from '../../../components/ui/Alert';
+import { CodedErrorAlert } from '../../../components/ui/CodedErrorAlert';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useI18n } from '../../../lib/i18n';
+import { parseApiError, type ParsedApiError } from '../../../lib/error-codes';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ParsedApiError | string | null>(null);
   const t = useI18n((s) => s.t);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError(null);
     setLoading(true);
     try {
       await api.post('/auth/forgot-password', { email });
       setSent(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || t('common.somethingWentWrong'));
+      setError(parseApiError(err, t('common.somethingWentWrong')));
     } finally {
       setLoading(false);
     }
@@ -56,7 +58,9 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && <Alert type="error" message={error} />}
+              {error && (typeof error === 'string'
+                ? <Alert type="error" message={error} />
+                : <CodedErrorAlert error={error} />)}
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t('auth.forgotPasswordHint')}
               </p>

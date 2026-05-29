@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { Input } from '../../../components/ui/Input';
 import { Alert } from '../../../components/ui/Alert';
+import { CodedErrorAlert } from '../../../components/ui/CodedErrorAlert';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useI18n } from '../../../lib/i18n';
+import { parseApiError, type ParsedApiError } from '../../../lib/error-codes';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,12 +23,12 @@ export default function RegisterPage() {
   // Honeypot — hidden field bots fill but humans can't see. Backend rejects
   // the request and audits HONEYPOT_HIT when this is non-empty.
   const [website, setWebsite] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ParsedApiError | string | null>(null);
   const t = useI18n((s) => s.t);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError(null);
     if (password !== confirm) {
       setError(t('auth.passwordsNoMatch'));
       return;
@@ -45,7 +47,7 @@ export default function RegisterPage() {
       await login.mutateAsync({ email, password });
       router.push('/');
     } catch (err: any) {
-      setError(err?.response?.data?.message || t('auth.registrationFailed'));
+      setError(parseApiError(err, t('auth.registrationFailed')));
     }
   }
 
@@ -81,7 +83,9 @@ export default function RegisterPage() {
               />
             </div>
 
-            {error && <Alert type="error" message={error} />}
+            {error && (typeof error === 'string'
+              ? <Alert type="error" message={error} />
+              : <CodedErrorAlert error={error} />)}
 
             <Input
               label={t('auth.email')}

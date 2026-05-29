@@ -7,8 +7,10 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useAuthStore } from '../../../store/auth.store';
 import { Input } from '../../../components/ui/Input';
 import { Alert } from '../../../components/ui/Alert';
+import { CodedErrorAlert } from '../../../components/ui/CodedErrorAlert';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useI18n } from '../../../lib/i18n';
+import { parseApiError, type ParsedApiError } from '../../../lib/error-codes';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function LoginPage() {
   const { user, _hasHydrated } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ParsedApiError | string | null>(null);
   const t = useI18n((s) => s.t);
 
   // Honor ?next=... query param so checkout-bounced users return to where they came from
@@ -42,7 +44,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError(null);
     try {
       // OTP is MANDATORY for every login. Trusted devices may short-circuit the step.
       let deviceToken: string | undefined;
@@ -60,7 +62,7 @@ export default function LoginPage() {
       if (nextPath) sessionStorage.setItem('mfa_next', nextPath);
       router.push('/auth/verify');
     } catch (err: any) {
-      setError(err?.response?.data?.message || t('auth.invalidCredentials'));
+      setError(parseApiError(err, t('auth.invalidCredentials')));
     }
   }
 
@@ -84,7 +86,9 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="animate-shake">
-                <Alert type="error" message={error} />
+                {typeof error === 'string'
+                  ? <Alert type="error" message={error} />
+                  : <CodedErrorAlert error={error} />}
               </div>
             )}
 

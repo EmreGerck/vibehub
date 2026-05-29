@@ -12,6 +12,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, ConflictException } from '@nestjs/common';
+import { CodedException } from '../../common/coded-exception';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
@@ -179,7 +180,7 @@ describe('AuthService', () => {
 
       await expect(
         svc.login({ email: 'nobody@example.com', password: 'any' }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ errorCode: 'VH-2001' });
 
       expect(otp.recordFailedLogin).toHaveBeenCalledWith('nobody@example.com');
       expect(audit.log).toHaveBeenCalledWith(
@@ -196,7 +197,7 @@ describe('AuthService', () => {
 
       await expect(
         svc.login({ email: MOCK_USER.email, password: 'WrongPassword!' }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ errorCode: 'VH-2001' });
 
       expect(otp.recordFailedLogin).toHaveBeenCalledWith(MOCK_USER.email);
       expect(audit.log).toHaveBeenCalledWith(
@@ -215,7 +216,7 @@ describe('AuthService', () => {
 
       await expect(
         svc.login({ email: MOCK_USER.email, password: 'WrongPassword!' }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toMatchObject({ errorCode: 'VH-2001' });
 
       expect(mail.sendSecurityAlert).toHaveBeenCalledWith(MOCK_USER.email, 15);
       expect(audit.log).toHaveBeenCalledWith(
@@ -263,7 +264,7 @@ describe('AuthService', () => {
 
       await expect(
         svc.register({ email: MOCK_USER.email, password: 'AnyPass1!', termsAccepted: true, privacyAccepted: true }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toMatchObject({ errorCode: 'VH-2002' });
 
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
