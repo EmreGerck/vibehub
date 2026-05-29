@@ -13,6 +13,12 @@
 import type { MetadataRoute } from 'next';
 import { TOPICS } from './rehber/topics';
 
+// Regenerate on every request (like robots.ts) so products/vendors created after the last
+// build appear in the sitemap without waiting for a redeploy. The per-fetch revalidate below
+// keeps API load low. Without this the route is statically generated at build time, which is
+// why the catalogue was missing from the live sitemap.
+export const dynamic = 'force-dynamic';
+
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://vibehub.com.tr';
 const API_URL   = process.env.NEXT_PUBLIC_API_URL  || 'http://localhost:3001';
 
@@ -36,9 +42,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // ── Static pages ────────────────────────────────────────────────────────────
   const staticPages: SitemapEntry[] = [
-    { url: SITE_URL,                          lastModified: now, changeFrequency: 'daily',   priority: 1.0 },
+    { url: `${SITE_URL}/`,                    lastModified: now, changeFrequency: 'daily',   priority: 1.0 },
     { url: `${SITE_URL}/shop`,               lastModified: now, changeFrequency: 'hourly',  priority: 0.9 },
-    { url: `${SITE_URL}/vendors`,            lastModified: now, changeFrequency: 'daily',   priority: 0.8 },
+    // No `/vendors` index page exists (only /vendors/apply). Vendor stores are emitted below
+    // as /store/{slug}. Listing a bare /vendors here put a 404 URL in the sitemap.
     { url: `${SITE_URL}/rehber`,             lastModified: now, changeFrequency: 'weekly',  priority: 0.7 },
     { url: `${SITE_URL}/support`,            lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/faq`,                lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
@@ -69,11 +76,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // ── Vendor stores ─────────────────────────────────────────────────────────────
-  interface VendorItem { slug: string; updatedAt?: string }
+  interface VendorItem { slug: string; updatedAt?: string; createdAt?: string }
   const vendorData = await fetchJSON<{ items: VendorItem[]; total: number }>('/vendors?limit=500&page=1');
   const vendorEntries: SitemapEntry[] = (vendorData?.items ?? []).map((v) => ({
     url:             `${SITE_URL}/store/${v.slug}`,
-    lastModified:    v.updatedAt ? new Date(v.updatedAt) : now,
+    lastModified:    v.updatedAt ? new Date(v.updatedAt) : (v.createdAt ? new Date(v.createdAt) : now),
     changeFrequency: 'weekly',
     priority:        0.7,
   }));
